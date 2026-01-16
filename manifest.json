@@ -1,0 +1,10 @@
+{
+  "name": "Multilan Helper",
+  "id": "000000000000000000",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "src/ui.html",
+  "capabilities": ["inspect"],
+  "enableProposedApi": false,
+  "editorType": ["figma", "dev"]
+}

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 11px;
+      color: var(--figma-color-text);
+      background: var(--figma-color-bg);
+    }
+
+    /* Language Bar */
+    .lang-bar {
+      display: flex;
+      gap: 4px;
+      padding: 8px;
+      background: var(--figma-color-bg-secondary);
+      border-bottom: 1px solid var(--figma-color-border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .lang-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--figma-color-border);
+      border-radius: 6px;
+      background: var(--figma-color-bg);
+      color: var(--figma-color-text);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .lang-btn:hover {
+      background: var(--figma-color-bg-hover);
+    }
+
+    .lang-btn.active {
+      background: var(--figma-color-bg-brand);
+      color: white;
+      border-color: var(--figma-color-bg-brand);
+    }
+
+    .lang-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--figma-color-border);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      color: var(--figma-color-text-secondary);
+    }
+
+    .tab:hover {
+      background: var(--figma-color-bg-hover);
+    }
+
+    .tab.active {
+      color: var(--figma-color-text);
+      border-bottom-color: var(--figma-color-bg-brand);
+    }
+
+    /* Panel Content */
+    .panel {
+      display: none;
+      padding: 12px;
+      overflow-y: auto;
+      max-height: calc(100vh - 140px);
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    /* Search */
+    .search-box {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--figma-color-border);
+      border-radius: 6px;
+      background: var(--figma-color-bg);
+      color: var(--figma-color-text);
+      margin-bottom: 12px;
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: var(--figma-color-border-brand);
+    }
+
+    /* Text Node List */
+    .text-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .text-item {
+      padding: 10px;
+      border: 1px solid var(--figma-color-border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .text-item:hover {
+      background: var(--figma-color-bg-hover);
+    }
+
+    .text-item.unlinked {
+      border-left: 3px solid #f59e0b;
+    }
+
+    .text-item.linked {
+      border-left: 3px solid #10b981;
+    }
+
+    .text-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .text-item-name {
+      font-weight: 500;
+      color: var(--figma-color-text);
+    }
+
+    .text-item-id {
+      font-size: 10px;
+      color: var(--figma-color-text-secondary);
+      background: var(--figma-color-bg-secondary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .text-item-content {
+      color: var(--figma-color-text-secondary);
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Selected Node Panel */
+    .selected-node {
+      background: var(--figma-color-bg-secondary);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+
+    .selected-node h3 {
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .selected-node-text {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+
+    .translations-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .translation-row {
+      display: flex;
+      gap: 8px;
+      font-size: 10px;
+    }
+
+    .translation-lang {
+      width: 24px;
+      font-weight: 600;
+      color: var(--figma-color-text-secondary);
+    }
+
+    .translation-text {
+      flex: 1;
+      color: var(--figma-color-text);
+    }
+
+    /* Search Results */
+    .search-results {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .search-result {
+      padding: 8px;
+      border: 1px solid var(--figma-color-border);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .search-result:hover {
+      background: var(--figma-color-bg-hover);
+    }
+
+    .search-result-id {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--figma-color-bg-brand);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      background: var(--figma-color-bg-secondary);
+      color: var(--figma-color-text);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      padding: 8px 12px;
+      background: var(--figma-color-bg-secondary);
+      border-top: 1px solid var(--figma-color-border);
+      font-size: 10px;
+      color: var(--figma-color-text-secondary);
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+
+    /* View Mode Banner */
+    .view-mode-banner {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 8px 12px;
+      text-align: center;
+      font-size: 11px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: var(--figma-color-text-secondary);
+    }
+
+    /* Scope Toggle */
+    .scope-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .scope-btn {
+      flex: 1;
+      padding: 6px;
+      border: 1px solid var(--figma-color-border);
+      border-radius: 4px;
+      background: var(--figma-color-bg);
+      color: var(--figma-color-text-secondary);
+      cursor: pointer;
+      font-size: 10px;
+    }
+
+    .scope-btn.active {
+      background: var(--figma-color-bg-secondary);
+      color: var(--figma-color-text);
+      border-color: var(--figma-color-border-brand);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- View Mode Banner (shown for non-editors) -->
+    <div id="viewModeBanner" class="view-mode-banner" style="display: none;">
+      View Mode - You can preview translations but cannot edit
+    </div>
+
+    <!-- Language Bar -->
+    <div class="lang-bar">
+      <button class="lang-btn" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="fr">FR</button>
+      <button class="lang-btn" data-lang="nl">NL</button>
+      <button class="lang-btn" data-lang="de">DE</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" data-tab="texts">Texts</div>
+      <div class="tab" data-tab="link">Link</div>
+      <div class="tab" data-tab="settings">Settings</div>
+    </div>
+
+    <!-- Texts Panel -->
+    <div id="textsPanel" class="panel active">
+      <div class="scope-toggle">
+        <button class="scope-btn active" data-scope="page">Entire Page</button>
+        <button class="scope-btn" data-scope="selection">Selection</button>
+      </div>
+      <input type="text" class="search-box" id="textSearch" placeholder="Filter texts...">
+      <div id="textList" class="text-list">
+        <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Link Panel -->
+    <div id="linkPanel" class="panel">
+      <div id="selectedNodeInfo" class="selected-node">
+        <h3>Selected Text</h3>
+        <div class="empty-state">Select a text layer in Figma</div>
+      </div>
+      <input type="text" class="search-box" id="multilanSearch" placeholder="Search multilanId or text...">
+      <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="panel">
+      <h3 style="margin-bottom: 12px;">Placeholder Values</h3>
+      <div id="placeholderSettings">
+        <div style="margin-bottom: 8px;">
+          <label style="display: block; margin-bottom: 4px;">username</label>
+          <input type="text" class="search-box" data-placeholder="username" value="John" style="margin-bottom: 0;">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label style="display: block; margin-bottom: 4px;">count</label>
+          <input type="text" class="search-box" data-placeholder="count" value="5" style="margin-bottom: 0;">
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span id="statusText">Ready</span>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let state = {
+      canEdit: true,
+      currentLang: 'en',
+      scope: 'page',
+      textNodes: [],
+      selectedNode: null,
+      searchResults: [],
+      placeholders: {
+        username: 'John',
+        count: '5'
+      }
+    };
+
+    // DOM Elements
+    const langBtns = document.querySelectorAll('.lang-btn');
+    const tabs = document.querySelectorAll('.tab');
+    const panels = document.querySelectorAll('.panel');
+    const scopeBtns = document.querySelectorAll('.scope-btn');
+    const textSearch = document.getElementById('textSearch');
+    const textList = document.getElementById('textList');
+    const multilanSearch = document.getElementById('multilanSearch');
+    const searchResults = document.getElementById('searchResults');
+    const selectedNodeInfo = document.getElementById('selectedNodeInfo');
+    const statusText = document.getElementById('statusText');
+    const viewModeBanner = document.getElementById('viewModeBanner');
+
+    // Initialize
+    parent.postMessage({ pluginMessage: { type: 'init' } }, '*');
+
+    // Language buttons
+    langBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!state.canEdit) {
+          // In view mode, just highlight the button to show preview
+          langBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.currentLang = btn.dataset.lang;
+          renderTextList();
+          return;
+        }
+
+        const lang = btn.dataset.lang;
+        state.currentLang = lang;
+        langBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        parent.postMessage({
+          pluginMessage: {
+            type: 'switch-language',
+            language: lang,
+            scope: state.scope,
+            placeholders: state.placeholders
+          }
+        }, '*');
+      });
+    });
+
+    // Tabs
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        panels.forEach(p => p.classList.remove('active'));
+        document.getElementById(tab.dataset.tab + 'Panel').classList.add('active');
+      });
+    });
+
+    // Scope toggle
+    scopeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        scopeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.scope = btn.dataset.scope;
+
+        parent.postMessage({
+          pluginMessage: { type: 'refresh', scope: state.scope }
+        }, '*');
+      });
+    });
+
+    // Text search filter
+    textSearch.addEventListener('input', () => {
+      renderTextList();
+    });
+
+    // MultilanId search
+    let searchTimeout;
+    multilanSearch.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const query = multilanSearch.value.trim();
+        if (query.length >= 2) {
+          parent.postMessage({
+            pluginMessage: { type: 'search', searchQuery: query }
+          }, '*');
+        } else {
+          searchResults.innerHTML = '';
+        }
+      }, 300);
+    });
+
+    // Placeholder settings
+    document.querySelectorAll('[data-placeholder]').forEach(input => {
+      input.addEventListener('input', () => {
+        state.placeholders[input.dataset.placeholder] = input.value;
+      });
+    });
+
+    // Render text nodes list
+    function renderTextList() {
+      const filter = textSearch.value.toLowerCase();
+      const filtered = state.textNodes.filter(node => {
+        return node.name.toLowerCase().includes(filter) ||
+               node.characters.toLowerCase().includes(filter) ||
+               (node.multilanId && node.multilanId.toLowerCase().includes(filter));
+      });
+
+      if (filtered.length === 0) {
+        textList.innerHTML = '<div class="empty-state">No text layers found</div>';
+        return;
+      }
+
+      textList.innerHTML = filtered.map(node => {
+        const linkedClass = node.multilanId ? 'linked' : 'unlinked';
+        const translations = node.translations || {};
+        const previewText = translations[state.currentLang] || node.characters;
+
+        return `
+          <div class="text-item ${linkedClass}" data-id="${node.id}">
+            <div class="text-item-header">
+              <span class="text-item-name">${escapeHtml(node.name)}</span>
+              ${node.multilanId ? `<span class="text-item-id">${escapeHtml(node.multilanId)}</span>` : '<span class="text-item-id">Not linked</span>'}
+            </div>
+            <div class="text-item-content">${escapeHtml(previewText)}</div>
+          </div>
+        `;
+      }).join('');
+
+      // Add click handlers
+      textList.querySelectorAll('.text-item').forEach(item => {
+        item.addEventListener('click', () => {
+          parent.postMessage({
+            pluginMessage: { type: 'select-node', nodeId: item.dataset.id }
+          }, '*');
+        });
+      });
+    }
+
+    // Render selected node info
+    function renderSelectedNode() {
+      if (!state.selectedNode) {
+        selectedNodeInfo.innerHTML = `
+          <h3>Selected Text</h3>
+          <div class="empty-state">Select a text layer in Figma</div>
+        `;
+        return;
+      }
+
+      const node = state.selectedNode;
+      const translations = node.translations || {};
+
+      selectedNodeInfo.innerHTML = `
+        <h3>Selected Text</h3>
+        <div class="selected-node-text">"${escapeHtml(node.characters)}"</div>
+        <div style="font-size: 10px; color: var(--figma-color-text-secondary);">
+          Layer: ${escapeHtml(node.name)}
+        </div>
+        ${node.multilanId ? `
+          <div style="margin-top: 8px;">
+            <span class="text-item-id">${escapeHtml(node.multilanId)}</span>
+          </div>
+          <div class="translations-preview">
+            ${Object.entries(translations).map(([lang, text]) => `
+              <div class="translation-row">
+                <span class="translation-lang">${lang.toUpperCase()}</span>
+                <span class="translation-text">${escapeHtml(text)}</span>
+              </div>
+            `).join('')}
+          </div>
+          ${state.canEdit ? `
+            <div class="btn-row">
+              <button class="btn btn-danger" onclick="unlinkNode('${node.id}')">Unlink</button>
+            </div>
+          ` : ''}
+        ` : `
+          <div style="margin-top: 8px; color: #f59e0b;">Not linked to any multilanId</div>
+          ${state.canEdit ? '<div style="margin-top: 8px; font-size: 10px;">Search below to link this text</div>' : ''}
+        `}
+      `;
+    }
+
+    // Render search results
+    function renderSearchResults() {
+      if (state.searchResults.length === 0) {
+        searchResults.innerHTML = '<div class="empty-state">No results</div>';
+        return;
+      }
+
+      searchResults.innerHTML = state.searchResults.map(result => {
+        return `
+          <div class="search-result" data-id="${escapeHtml(result.multilanId)}">
+            <div class="search-result-id">${escapeHtml(result.multilanId)}</div>
+            <div class="translations-preview">
+              ${Object.entries(result.translations).slice(0, 2).map(([lang, text]) => `
+                <div class="translation-row">
+                  <span class="translation-lang">${lang.toUpperCase()}</span>
+                  <span class="translation-text">${escapeHtml(text)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Add click handlers
+      searchResults.querySelectorAll('.search-result').forEach(item => {
+        item.addEventListener('click', () => {
+          if (!state.selectedNode) {
+            alert('Please select a text layer first');
+            return;
+          }
+          if (!state.canEdit) {
+            alert('You do not have edit permissions');
+            return;
+          }
+          parent.postMessage({
+            pluginMessage: {
+              type: 'link-node',
+              nodeId: state.selectedNode.id,
+              multilanId: item.dataset.id
+            }
+          }, '*');
+        });
+      });
+    }
+
+    // Unlink node
+    function unlinkNode(nodeId) {
+      parent.postMessage({
+        pluginMessage: { type: 'unlink-node', nodeId }
+      }, '*');
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Handle messages from plugin
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      switch (msg.type) {
+        case 'init':
+          state.canEdit = msg.canEdit;
+          state.textNodes = msg.textNodes || [];
+          state.selectedNode = msg.selectedNode;
+
+          if (!state.canEdit) {
+            viewModeBanner.style.display = 'block';
+            langBtns.forEach(btn => btn.disabled = false); // Allow preview switching
+          }
+
+          statusText.textContent = `${msg.translationCount} translations loaded`;
+          renderTextList();
+          renderSelectedNode();
+          break;
+
+        case 'text-nodes-updated':
+          state.textNodes = msg.textNodes || [];
+          if (msg.selectedNode !== undefined) {
+            state.selectedNode = msg.selectedNode;
+            renderSelectedNode();
+          }
+          renderTextList();
+          break;
+
+        case 'selection-changed':
+          state.selectedNode = msg.selectedNode;
+          renderSelectedNode();
+
+          // Auto-search if node has text
+          if (state.selectedNode && !state.selectedNode.multilanId) {
+            multilanSearch.value = state.selectedNode.characters.slice(0, 30);
+            parent.postMessage({
+              pluginMessage: { type: 'search', searchQuery: state.selectedNode.characters }
+            }, '*');
+          }
+          break;
+
+        case 'search-results':
+          state.searchResults = msg.results || [];
+          renderSearchResults();
+          break;
+
+        case 'language-switched':
+          statusText.textContent = `Updated ${msg.success} texts`;
+          if (msg.missing.length > 0) {
+            statusText.textContent += ` (${msg.missing.length} missing translations)`;
+          }
+          break;
+      }
+    };
+  </script>
+</body>
+</html>
