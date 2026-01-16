@@ -1,0 +1,74 @@
+[
+  {
+    "id": 10001,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Submit", "id": 1 },
+      { "languageId": "fr", "wording": "Soumettre", "id": 2 },
+      { "languageId": "nl", "wording": "Indienen", "id": 3 },
+      { "languageId": "de", "wording": "Einreichen", "id": 4 }
+    ]
+  },
+  {
+    "id": 10002,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Cancel", "id": 5 },
+      { "languageId": "fr", "wording": "Annuler", "id": 6 },
+      { "languageId": "nl", "wording": "Annuleren", "id": 7 },
+      { "languageId": "de", "wording": "Abbrechen", "id": 8 }
+    ]
+  },
+  {
+    "id": 10003,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Welcome", "id": 9 },
+      { "languageId": "fr", "wording": "Bienvenue", "id": 10 },
+      { "languageId": "nl", "wording": "Welkom", "id": 11 },
+      { "languageId": "de", "wording": "Willkommen", "id": 12 }
+    ]
+  },
+  {
+    "id": 10004,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Username", "id": 13 },
+      { "languageId": "fr", "wording": "Nom d'utilisateur", "id": 14 },
+      { "languageId": "nl", "wording": "Gebruikersnaam", "id": 15 },
+      { "languageId": "de", "wording": "Benutzername", "id": 16 }
+    ]
+  },
+  {
+    "id": 10005,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Password", "id": 17 },
+      { "languageId": "fr", "wording": "Mot de passe", "id": 18 },
+      { "languageId": "nl", "wording": "Wachtwoord", "id": 19 },
+      { "languageId": "de", "wording": "Passwort", "id": 20 }
+    ]
+  },
+  {
+    "id": 10006,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Login successful", "id": 21 },
+      { "languageId": "fr", "wording": "Connexion réussie", "id": 22 },
+      { "languageId": "nl", "wording": "Inloggen geslaagd", "id": 23 },
+      { "languageId": "de", "wording": "Anmeldung erfolgreich", "id": 24 }
+    ]
+  },
+  {
+    "id": 10007,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "This field is required", "id": 25 },
+      { "languageId": "fr", "wording": "Ce champ est obligatoire", "id": 26 },
+      { "languageId": "nl", "wording": "Dit veld is verplicht", "id": 27 },
+      { "languageId": "de", "wording": "Dieses Feld ist erforderlich", "id": 28 }
+    ]
+  },
+  {
+    "id": 10008,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Hello {username}", "id": 29 },
+      { "languageId": "fr", "wording": "Bonjour {username}", "id": 30 },
+      { "languageId": "nl", "wording": "Hallo {username}", "id": 31 },
+      { "languageId": "de", "wording": "Hallo {username}", "id": 32 }
+    ]
+  }
+]

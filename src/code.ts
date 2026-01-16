@@ -1,9 +1,21 @@
-// Multilang Switcher Plugin - Main code
+// Multilan Helper Plugin - Main code
 // Runs in Figma's sandbox environment
 
-import translations from "./translations.json";
+import apiData from "./translations/api-data.json";
 
-// Types
+// Types - API format
+interface MultilanText {
+  languageId: string;
+  wording: string;
+  id: number;
+}
+
+interface ApiMultilan {
+  id: number;
+  multilanTextList: MultilanText[];
+}
+
+// Internal format
 interface TranslationMap {
   [multilanId: string]: {
     [lang: string]: string;
@@ -34,7 +46,23 @@ const PLUGIN_DATA_KEY = "multilanId";
 const SUPPORTED_LANGUAGES = ["en", "fr", "nl", "de"] as const;
 type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
-const translationData: TranslationMap = translations;
+// Build translation map from API format
+function buildTranslationMap(data: ApiMultilan[]): TranslationMap {
+  const map: TranslationMap = {};
+
+  for (const item of data) {
+    const multilanId = String(item.id);
+    map[multilanId] = {};
+
+    for (const text of item.multilanTextList) {
+      map[multilanId][text.languageId] = text.wording;
+    }
+  }
+
+  return map;
+}
+
+const translationData: TranslationMap = buildTranslationMap(apiData as ApiMultilan[]);
 
 // Show UI
 figma.showUI(__html__, {
