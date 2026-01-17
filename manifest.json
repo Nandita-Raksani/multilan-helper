@@ -1,10 +1,14 @@
 {
   "name": "Multilan Helper",
-  "id": "000000000000000000",
+  "id": "REPLACE_WITH_YOUR_PLUGIN_ID",
   "api": "1.0.0",
   "main": "dist/code.js",
   "ui": "src/ui.html",
-  "capabilities": ["inspect"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  },
+  "capabilities": [],
   "enableProposedApi": false,
-  "editorType": ["figma", "dev"]
+  "editorType": ["figma"]
 }

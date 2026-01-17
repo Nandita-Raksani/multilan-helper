@@ -1,6 +1,8 @@
 // Multilan Helper Plugin - Main code
 // Runs in Figma's sandbox environment
 
+declare const __html__: string;
+
 import apiData from "./translations/api-data.json";
 
 // Types - API format
@@ -29,6 +31,7 @@ interface TextNodeInfo {
   multilanId: string | null;
   translations: { [lang: string]: string } | null;
   hasOverflow: boolean;
+  isPlaceholder: boolean;
 }
 
 interface PluginMessage {
@@ -39,10 +42,20 @@ interface PluginMessage {
   multilanId?: string;
   searchQuery?: string;
   placeholders?: { [key: string]: string };
+  text?: string;
+  confirmations?: Array<{ nodeId: string; multilanId: string }>;
+}
+
+// Type guard for language
+function isLanguage(lang: string | undefined): lang is Language {
+  return lang !== undefined && SUPPORTED_LANGUAGES.includes(lang as Language);
 }
 
 // Constants
 const PLUGIN_DATA_KEY = "multilanId";
+const PLACEHOLDER_KEY = "isPlaceholder";
+const ORIGINAL_FILL_KEY = "originalFill";
+const PLACEHOLDER_COLOR: RGB = { r: 0.96, g: 0.62, b: 0.04 }; // #f59e0b (orange/amber)
 const SUPPORTED_LANGUAGES = ["en", "fr", "nl", "de"] as const;
 type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
@@ -105,6 +118,20 @@ function getMultilanId(node: TextNode): string | null {
 // Set multilanId on a text node
 function setMultilanId(node: TextNode, multilanId: string): void {
   node.setPluginData(PLUGIN_DATA_KEY, multilanId);
+  // Update node name to include multilanId for visibility in Layers panel
+  updateNodeNameWithId(node, multilanId);
+}
+
+// Update node name to show multilanId (visible on hover in Layers panel)
+function updateNodeNameWithId(node: TextNode, multilanId: string): void {
+  // Remove any existing [id] suffix first
+  const baseName = node.name.replace(/\s*\[\d+\]$/, "");
+  node.name = `${baseName} [${multilanId}]`;
+}
+
+// Remove multilanId from node name
+function removeIdFromNodeName(node: TextNode): void {
+  node.name = node.name.replace(/\s*\[\d+\]$/, "");
 }
 
 // Get translation for a multilanId and language
@@ -117,6 +144,47 @@ function getTranslation(multilanId: string, lang: Language): string | null {
 // Get all translations for a multilanId
 function getAllTranslations(multilanId: string): { [lang: string]: string } | null {
   return translationData[multilanId] || null;
+}
+
+// Check if a node is marked as placeholder
+function isPlaceholder(node: TextNode): boolean {
+  return node.getPluginData(PLACEHOLDER_KEY) === "true";
+}
+
+// Mark a node as placeholder with visual indicator
+async function markAsPlaceholder(node: TextNode, multilanId: string, text: string): Promise<void> {
+  // Store the multilanId and placeholder flag
+  node.setPluginData(PLUGIN_DATA_KEY, multilanId);
+  node.setPluginData(PLACEHOLDER_KEY, "true");
+
+  // Store original fill color for later restoration
+  const fills = node.fills;
+  if (Array.isArray(fills) && fills.length > 0) {
+    node.setPluginData(ORIGINAL_FILL_KEY, JSON.stringify(fills));
+  }
+
+  // Apply placeholder color (orange)
+  node.fills = [{ type: "SOLID", color: PLACEHOLDER_COLOR }];
+
+  // Set the text content
+  await figma.loadFontAsync(node.fontName as FontName);
+  node.characters = text;
+}
+
+// Clear placeholder status and restore original styling
+function clearPlaceholderStatus(node: TextNode): void {
+  node.setPluginData(PLACEHOLDER_KEY, "");
+
+  // Restore original fill if stored
+  const originalFill = node.getPluginData(ORIGINAL_FILL_KEY);
+  if (originalFill) {
+    try {
+      node.fills = JSON.parse(originalFill);
+    } catch {
+      // If parsing fails, leave current fill
+    }
+    node.setPluginData(ORIGINAL_FILL_KEY, "");
+  }
 }
 
 // Replace placeholders with sample values
@@ -137,7 +205,8 @@ function buildTextNodeInfo(node: TextNode): TextNodeInfo {
     characters: node.characters,
     multilanId,
     translations,
-    hasOverflow: false // TODO: Implement overflow detection
+    hasOverflow: false, // TODO: Implement overflow detection
+    isPlaceholder: isPlaceholder(node)
   };
 }
 
@@ -236,6 +305,11 @@ function linkTextNode(nodeId: string, multilanId: string): boolean {
   const node = figma.getNodeById(nodeId);
   if (!node || node.type !== "TEXT") return false;
 
+  // Clear placeholder status if it was a placeholder (restores original styling)
+  if (isPlaceholder(node)) {
+    clearPlaceholderStatus(node);
+  }
+
   setMultilanId(node, multilanId);
   return true;
 }
@@ -245,8 +319,214 @@ function unlinkTextNode(nodeId: string): boolean {
   const node = figma.getNodeById(nodeId);
   if (!node || node.type !== "TEXT") return false;
 
+  // Also clear placeholder status if present
+  if (isPlaceholder(node)) {
+    clearPlaceholderStatus(node);
+  }
+
+  // Remove multilanId from node name
+  removeIdFromNodeName(node);
+
   node.setPluginData(PLUGIN_DATA_KEY, "");
   return true;
+}
+
+// Bulk auto-link: find matches for unlinked text nodes
+interface BulkMatchResult {
+  exactMatches: Array<{ nodeId: string; nodeName: string; text: string; multilanId: string }>;
+  fuzzyMatches: Array<{
+    nodeId: string;
+    nodeName: string;
+    text: string;
+    suggestions: Array<{ multilanId: string; translations: { [lang: string]: string }; score: number }>;
+  }>;
+  unmatched: Array<{ nodeId: string; nodeName: string; text: string }>;
+}
+
+function bulkAutoLink(scope: "page" | "selection"): BulkMatchResult {
+  const nodes = getTextNodesInScope(scope);
+  const result: BulkMatchResult = {
+    exactMatches: [],
+    fuzzyMatches: [],
+    unmatched: []
+  };
+
+  // Build a reverse lookup: text -> multilanId for exact matching
+  const textToMultilanId: Map<string, string> = new Map();
+  for (const [multilanId, langs] of Object.entries(translationData)) {
+    for (const text of Object.values(langs)) {
+      if (!textToMultilanId.has(text)) {
+        textToMultilanId.set(text, multilanId);
+      }
+    }
+  }
+
+  for (const node of nodes) {
+    // Skip already linked nodes (unless they're placeholders)
+    const currentId = getMultilanId(node);
+    if (currentId && !isPlaceholder(node)) continue;
+
+    const text = node.characters.trim();
+    if (!text) continue;
+
+    // Pass 1: Exact match
+    const exactMatch = textToMultilanId.get(text);
+    if (exactMatch) {
+      result.exactMatches.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        text,
+        multilanId: exactMatch
+      });
+      continue;
+    }
+
+    // Pass 2: Fuzzy match
+    const fuzzyResults = searchTranslationsWithScore(text);
+    if (fuzzyResults.length > 0 && fuzzyResults[0].score >= 0.3) {
+      result.fuzzyMatches.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        text,
+        suggestions: fuzzyResults.slice(0, 3)
+      });
+    } else {
+      result.unmatched.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        text
+      });
+    }
+  }
+
+  return result;
+}
+
+// Search translations with score (for fuzzy matching)
+function searchTranslationsWithScore(
+  query: string
+): Array<{ multilanId: string; translations: { [lang: string]: string }; score: number }> {
+  const results: Array<{ multilanId: string; translations: { [lang: string]: string }; score: number }> = [];
+  const lowerQuery = query.toLowerCase();
+
+  for (const [multilanId, langs] of Object.entries(translationData)) {
+    let bestScore = 0;
+
+    // Check multilanId match
+    if (multilanId.toLowerCase().includes(lowerQuery)) {
+      bestScore = Math.max(bestScore, 0.8);
+    }
+
+    // Check translation text match in any language
+    for (const text of Object.values(langs)) {
+      const lowerText = text.toLowerCase();
+      if (lowerText === lowerQuery) {
+        bestScore = 1;
+      } else if (lowerText.includes(lowerQuery)) {
+        bestScore = Math.max(bestScore, 0.6);
+      } else if (lowerQuery.includes(lowerText)) {
+        bestScore = Math.max(bestScore, 0.5);
+      } else if (lowerQuery.split(" ").some((word) => word.length > 2 && lowerText.includes(word))) {
+        bestScore = Math.max(bestScore, 0.3);
+      }
+    }
+
+    if (bestScore > 0) {
+      results.push({ multilanId, translations: langs, score: bestScore });
+    }
+  }
+
+  // Sort by score descending
+  results.sort((a, b) => b.score - a.score);
+
+  return results.slice(0, 10);
+}
+
+// Apply exact matches from bulk auto-link
+function applyExactMatches(matches: Array<{ nodeId: string; multilanId: string }>): number {
+  let count = 0;
+  for (const match of matches) {
+    if (linkTextNode(match.nodeId, match.multilanId)) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// Global search: search by multilanId OR text content
+function globalSearchTranslations(query: string): Array<{ multilanId: string; translations: { [lang: string]: string } }> {
+  const results: Array<{ multilanId: string; translations: { [lang: string]: string }; score: number }> = [];
+  const lowerQuery = query.toLowerCase();
+
+  for (const [multilanId, langs] of Object.entries(translationData)) {
+    let bestScore = 0;
+
+    // Check if query matches multilanId (exact or partial)
+    if (multilanId === query) {
+      bestScore = 1; // Exact ID match
+    } else if (multilanId.includes(query)) {
+      bestScore = Math.max(bestScore, 0.9); // Partial ID match
+    }
+
+    // Check translation text match in any language
+    for (const text of Object.values(langs)) {
+      const lowerText = text.toLowerCase();
+      if (lowerText === lowerQuery) {
+        bestScore = Math.max(bestScore, 1); // Exact text match
+      } else if (lowerText.includes(lowerQuery)) {
+        bestScore = Math.max(bestScore, 0.7); // Text contains query
+      } else if (lowerQuery.includes(lowerText)) {
+        bestScore = Math.max(bestScore, 0.5); // Query contains text
+      } else if (lowerQuery.split(" ").some((word) => word.length > 2 && lowerText.includes(word))) {
+        bestScore = Math.max(bestScore, 0.3); // Word match
+      }
+    }
+
+    if (bestScore > 0) {
+      results.push({ multilanId, translations: langs, score: bestScore });
+    }
+  }
+
+  // Sort by score descending
+  results.sort((a, b) => b.score - a.score);
+
+  // Return top 30 results
+  return results.slice(0, 30).map(({ multilanId, translations }) => ({ multilanId, translations }));
+}
+
+// Create a new text node linked to a multilanId
+async function createLinkedTextNode(multilanId: string, text: string, lang: Language): Promise<void> {
+  // Get the translation for the specified language
+  const translation = getTranslation(multilanId, lang) || text;
+
+  // Create text node
+  const textNode = figma.createText();
+
+  // Load default font
+  await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+
+  // Set text
+  textNode.characters = translation;
+
+  // Link to multilanId
+  setMultilanId(textNode, multilanId);
+
+  // Position near viewport center or current selection
+  const selection = figma.currentPage.selection;
+  if (selection.length > 0) {
+    const bounds = selection[0];
+    textNode.x = bounds.x + bounds.width + 20;
+    textNode.y = bounds.y;
+  } else {
+    textNode.x = figma.viewport.center.x;
+    textNode.y = figma.viewport.center.y;
+  }
+
+  // Select the new node
+  figma.currentPage.selection = [textNode];
+  figma.viewport.scrollAndZoomIntoView([textNode]);
+
+  figma.notify(`Created text node: "${translation}" (${multilanId})`);
 }
 
 // Select a node in the canvas
@@ -375,6 +655,104 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     case "refresh":
       const textNodes = getAllTextNodesInfo(msg.scope || "page");
       figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
+      break;
+
+    case "lookup-multilanId":
+      if (msg.multilanId) {
+        const translations = getAllTranslations(msg.multilanId);
+        figma.ui.postMessage({
+          type: "lookup-result",
+          multilanId: msg.multilanId,
+          translations,
+          found: translations !== null
+        });
+      }
+      break;
+
+    case "mark-as-placeholder":
+      if (!canEdit()) {
+        figma.notify("You don't have edit permissions", { error: true });
+        return;
+      }
+      {
+        const selection = figma.currentPage.selection;
+        if (selection.length !== 1 || selection[0].type !== "TEXT") {
+          figma.notify("Please select a single text layer", { error: true });
+          return;
+        }
+        const textNode = selection[0] as TextNode;
+        if (msg.multilanId && msg.text) {
+          await markAsPlaceholder(textNode, msg.multilanId, msg.text);
+          figma.notify(`Marked as placeholder: ${msg.multilanId}`);
+          const textNodes = getAllTextNodesInfo("page");
+          const selectedNode = getSelectedTextNodeInfo();
+          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
+        }
+      }
+      break;
+
+    case "bulk-auto-link":
+      if (!canEdit()) {
+        figma.notify("You don't have edit permissions", { error: true });
+        return;
+      }
+      {
+        const result = bulkAutoLink(msg.scope || "page");
+        figma.ui.postMessage({
+          type: "bulk-auto-link-results",
+          ...result
+        });
+      }
+      break;
+
+    case "apply-exact-matches":
+      if (!canEdit()) {
+        figma.notify("You don't have edit permissions", { error: true });
+        return;
+      }
+      if (msg.confirmations) {
+        const count = applyExactMatches(msg.confirmations);
+        figma.notify(`Auto-linked ${count} text nodes`);
+        const textNodes = getAllTextNodesInfo(msg.scope || "page");
+        figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
+      }
+      break;
+
+    case "confirm-fuzzy-link":
+      if (!canEdit()) {
+        figma.notify("You don't have edit permissions", { error: true });
+        return;
+      }
+      if (msg.nodeId && msg.multilanId) {
+        const success = linkTextNode(msg.nodeId, msg.multilanId);
+        if (success) {
+          figma.notify(`Linked to ${msg.multilanId}`);
+        }
+      }
+      break;
+
+    case "global-search":
+      if (msg.searchQuery) {
+        const results = globalSearchTranslations(msg.searchQuery);
+        figma.ui.postMessage({
+          type: "global-search-results",
+          results
+        });
+      }
+      break;
+
+    case "create-linked-text":
+      if (!canEdit()) {
+        figma.notify("You don't have edit permissions", { error: true });
+        return;
+      }
+      if (msg.multilanId && msg.text) {
+        await createLinkedTextNode(msg.multilanId, msg.text, (msg.language as Language) || "en");
+        figma.ui.postMessage({
+          type: "text-created",
+          multilanId: msg.multilanId
+        });
+      }
       break;
 
     case "close":

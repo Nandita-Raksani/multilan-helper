@@ -320,6 +320,323 @@
       color: var(--figma-color-text);
       border-color: var(--figma-color-border-brand);
     }
+
+    /* Placeholder badge */
+    .placeholder-badge {
+      font-size: 9px;
+      background: #f59e0b;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+
+    .text-item.placeholder {
+      border-left: 3px solid #f59e0b;
+      background: rgba(245, 158, 11, 0.1);
+    }
+
+    /* Create Panel */
+    .create-section {
+      margin-bottom: 16px;
+    }
+
+    .create-section h4 {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--figma-color-text);
+    }
+
+    .lookup-result {
+      background: var(--figma-color-bg-secondary);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+
+    .lookup-result.not-found {
+      border: 1px dashed #f59e0b;
+    }
+
+    .copy-btn {
+      padding: 4px 8px;
+      font-size: 10px;
+      background: var(--figma-color-bg);
+      border: 1px solid var(--figma-color-border);
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+
+    .copy-btn:hover {
+      background: var(--figma-color-bg-hover);
+    }
+
+    .copy-btn.copied {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+
+    /* Bulk Auto-Link Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--figma-color-bg);
+      border-radius: 8px;
+      padding: 16px;
+      max-width: 300px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal h3 {
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .modal-section {
+      margin-bottom: 16px;
+    }
+
+    .modal-section h4 {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--figma-color-text-secondary);
+    }
+
+    .match-item {
+      padding: 8px;
+      background: var(--figma-color-bg-secondary);
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 10px;
+    }
+
+    .match-item-text {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .match-item-id {
+      color: var(--figma-color-text-secondary);
+    }
+
+    .fuzzy-suggestion {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px;
+      background: var(--figma-color-bg);
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+
+    .fuzzy-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .fuzzy-actions button {
+      padding: 4px 8px;
+      font-size: 9px;
+      border-radius: 3px;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-accept {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-skip {
+      background: var(--figma-color-bg-secondary);
+      color: var(--figma-color-text);
+    }
+
+    .summary-stats {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 11px;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .stat-dot.exact { background: #10b981; }
+    .stat-dot.fuzzy { background: #3b82f6; }
+    .stat-dot.unmatched { background: #ef4444; }
+
+    /* Auto-link button row */
+    .texts-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .texts-header .scope-toggle {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .btn-auto-link {
+      padding: 6px 10px;
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    /* Search Panel */
+    .search-panel-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--figma-color-border);
+      border-radius: 6px;
+      background: var(--figma-color-bg);
+      color: var(--figma-color-text);
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+
+    .search-panel-input:focus {
+      outline: none;
+      border-color: var(--figma-color-border-brand);
+    }
+
+    .search-hint {
+      font-size: 10px;
+      color: var(--figma-color-text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .search-result-card {
+      padding: 12px;
+      border: 1px solid var(--figma-color-border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .search-result-card:hover {
+      background: var(--figma-color-bg-hover);
+      border-color: var(--figma-color-border-brand);
+    }
+
+    .search-result-card:hover .multilanId-tooltip {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .multilanId-tooltip {
+      position: absolute;
+      top: -8px;
+      right: 8px;
+      background: var(--figma-color-bg-brand);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.15s;
+      z-index: 5;
+    }
+
+    .search-result-primary {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--figma-color-text);
+    }
+
+    .search-result-translations {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .search-result-lang {
+      font-size: 10px;
+      background: var(--figma-color-bg-secondary);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .search-result-lang strong {
+      color: var(--figma-color-text-secondary);
+      margin-right: 4px;
+    }
+
+    .search-result-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--figma-color-border);
+    }
+
+    .btn-create-text {
+      padding: 6px 12px;
+      font-size: 10px;
+      background: var(--figma-color-bg-brand);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-create-text:hover {
+      opacity: 0.9;
+    }
+
+    .btn-copy-text {
+      padding: 6px 12px;
+      font-size: 10px;
+      background: var(--figma-color-bg-secondary);
+      color: var(--figma-color-text);
+      border: 1px solid var(--figma-color-border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .search-results-count {
+      font-size: 10px;
+      color: var(--figma-color-text-secondary);
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -339,20 +656,53 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <div class="tab active" data-tab="texts">Texts</div>
+      <div class="tab active" data-tab="search">Search</div>
+      <div class="tab" data-tab="texts">Texts</div>
+      <div class="tab" data-tab="create">Create</div>
       <div class="tab" data-tab="link">Link</div>
       <div class="tab" data-tab="settings">Settings</div>
     </div>
 
+    <!-- Search Panel -->
+    <div id="searchPanel" class="panel active">
+      <input type="text" class="search-panel-input" id="globalSearchInput" placeholder="Search by multilanId or text...">
+      <div class="search-hint">Type to search all translations. Hover results to see multilanId.</div>
+      <div id="globalSearchResultsCount" class="search-results-count"></div>
+      <div id="globalSearchResults"></div>
+    </div>
+
     <!-- Texts Panel -->
-    <div id="textsPanel" class="panel active">
-      <div class="scope-toggle">
-        <button class="scope-btn active" data-scope="page">Entire Page</button>
-        <button class="scope-btn" data-scope="selection">Selection</button>
+    <div id="textsPanel" class="panel">
+      <div class="texts-header">
+        <div class="scope-toggle">
+          <button class="scope-btn active" data-scope="page">Entire Page</button>
+          <button class="scope-btn" data-scope="selection">Selection</button>
+        </div>
+        <button class="btn btn-secondary btn-auto-link" id="autoLinkBtn">Auto-Link All</button>
       </div>
       <input type="text" class="search-box" id="textSearch" placeholder="Filter texts...">
       <div id="textList" class="text-list">
         <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Create Panel -->
+    <div id="createPanel" class="panel">
+      <div class="create-section">
+        <h4>Look up MultilanId</h4>
+        <input type="text" class="search-box" id="multilanIdInput" placeholder="Enter multilanId (e.g., 12345)">
+        <div id="lookupResult"></div>
+      </div>
+
+      <div class="create-section" id="placeholderSection" style="display: none;">
+        <h4>Create Placeholder</h4>
+        <p style="font-size: 10px; color: var(--figma-color-text-secondary); margin-bottom: 8px;">
+          ID not found. Enter text manually and mark as placeholder.
+        </p>
+        <input type="text" class="search-box" id="placeholderText" placeholder="Enter placeholder text...">
+        <div class="btn-row">
+          <button class="btn btn-primary" id="markPlaceholderBtn" style="background: #f59e0b;">Mark as Placeholder</button>
+        </div>
       </div>
     </div>
 
@@ -381,6 +731,19 @@
       </div>
     </div>
 
+    <!-- Bulk Auto-Link Modal -->
+    <div id="bulkLinkModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Auto-Link Results</h3>
+        <div id="bulkLinkSummary" class="summary-stats"></div>
+        <div id="bulkLinkContent"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="closeBulkModal">Close</button>
+          <button class="btn btn-primary" id="applyExactMatches" style="display: none;">Apply Exact Matches</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Status Bar -->
     <div class="status-bar">
       <span id="statusText">Ready</span>
@@ -399,7 +762,12 @@
       placeholders: {
         username: 'John',
         count: '5'
-      }
+      },
+      lookupMultilanId: null,
+      lookupResult: null,
+      bulkLinkResults: null,
+      globalSearchResults: [],
+      allTranslations: []
     };
 
     // DOM Elements
@@ -414,6 +782,26 @@
     const selectedNodeInfo = document.getElementById('selectedNodeInfo');
     const statusText = document.getElementById('statusText');
     const viewModeBanner = document.getElementById('viewModeBanner');
+
+    // Create panel elements
+    const multilanIdInput = document.getElementById('multilanIdInput');
+    const lookupResult = document.getElementById('lookupResult');
+    const placeholderSection = document.getElementById('placeholderSection');
+    const placeholderText = document.getElementById('placeholderText');
+    const markPlaceholderBtn = document.getElementById('markPlaceholderBtn');
+
+    // Bulk link elements
+    const autoLinkBtn = document.getElementById('autoLinkBtn');
+    const bulkLinkModal = document.getElementById('bulkLinkModal');
+    const bulkLinkSummary = document.getElementById('bulkLinkSummary');
+    const bulkLinkContent = document.getElementById('bulkLinkContent');
+    const closeBulkModal = document.getElementById('closeBulkModal');
+    const applyExactMatches = document.getElementById('applyExactMatches');
+
+    // Global search elements
+    const globalSearchInput = document.getElementById('globalSearchInput');
+    const globalSearchResults = document.getElementById('globalSearchResults');
+    const globalSearchResultsCount = document.getElementById('globalSearchResultsCount');
 
     // Initialize
     parent.postMessage({ pluginMessage: { type: 'init' } }, '*');
@@ -498,6 +886,340 @@
       });
     });
 
+    // Global search (Search panel)
+    let globalSearchTimeout;
+    globalSearchInput.addEventListener('input', () => {
+      clearTimeout(globalSearchTimeout);
+      globalSearchTimeout = setTimeout(() => {
+        const query = globalSearchInput.value.trim();
+        if (query.length >= 1) {
+          parent.postMessage({
+            pluginMessage: { type: 'global-search', searchQuery: query }
+          }, '*');
+        } else {
+          state.globalSearchResults = [];
+          renderGlobalSearchResults();
+        }
+      }, 200);
+    });
+
+    // Render global search results
+    function renderGlobalSearchResults() {
+      const results = state.globalSearchResults;
+
+      if (results.length === 0) {
+        globalSearchResultsCount.textContent = '';
+        if (globalSearchInput.value.trim()) {
+          globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
+        } else {
+          globalSearchResults.innerHTML = '<div class="empty-state">Start typing to search translations</div>';
+        }
+        return;
+      }
+
+      globalSearchResultsCount.textContent = `${results.length} result${results.length > 1 ? 's' : ''} found`;
+
+      globalSearchResults.innerHTML = results.map(result => {
+        const primaryText = result.translations[state.currentLang] || result.translations['en'] || Object.values(result.translations)[0];
+        return `
+          <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
+            <div class="multilanId-tooltip">ID: ${escapeHtml(result.multilanId)}</div>
+            <div class="search-result-primary">${escapeHtml(primaryText)}</div>
+            <div class="search-result-translations">
+              ${Object.entries(result.translations).map(([lang, text]) => `
+                <span class="search-result-lang"><strong>${lang.toUpperCase()}</strong>${escapeHtml(text)}</span>
+              `).join('')}
+            </div>
+            <div class="search-result-actions">
+              <button class="btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}">Create Text Node</button>
+              <button class="btn-copy-text" data-text="${escapeHtml(primaryText)}">Copy</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Add event handlers
+      globalSearchResults.querySelectorAll('.btn-create-text').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const multilanId = btn.dataset.id;
+          const text = btn.dataset.text;
+          parent.postMessage({
+            pluginMessage: {
+              type: 'create-linked-text',
+              multilanId,
+              text,
+              language: state.currentLang
+            }
+          }, '*');
+        });
+      });
+
+      globalSearchResults.querySelectorAll('.btn-copy-text').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const text = btn.dataset.text;
+          try {
+            await navigator.clipboard.writeText(text);
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+              btn.textContent = 'Copy';
+            }, 1500);
+          } catch (err) {
+            alert('Failed to copy');
+          }
+        });
+      });
+    }
+
+    // MultilanId lookup (Create panel)
+    let lookupTimeout;
+    multilanIdInput.addEventListener('input', () => {
+      clearTimeout(lookupTimeout);
+      lookupTimeout = setTimeout(() => {
+        const id = multilanIdInput.value.trim();
+        if (id.length >= 1) {
+          state.lookupMultilanId = id;
+          parent.postMessage({
+            pluginMessage: { type: 'lookup-multilanId', multilanId: id }
+          }, '*');
+        } else {
+          lookupResult.innerHTML = '';
+          placeholderSection.style.display = 'none';
+          state.lookupMultilanId = null;
+          state.lookupResult = null;
+        }
+      }, 300);
+    });
+
+    // Mark as placeholder button
+    markPlaceholderBtn.addEventListener('click', () => {
+      const text = placeholderText.value.trim();
+      if (!text) {
+        alert('Please enter placeholder text');
+        return;
+      }
+      if (!state.lookupMultilanId) {
+        alert('Please enter a multilanId first');
+        return;
+      }
+      if (!state.selectedNode) {
+        alert('Please select a text layer in Figma first');
+        return;
+      }
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'mark-as-placeholder',
+          multilanId: state.lookupMultilanId,
+          text: text
+        }
+      }, '*');
+
+      // Clear inputs
+      placeholderText.value = '';
+    });
+
+    // Auto-Link All button
+    autoLinkBtn.addEventListener('click', () => {
+      if (!state.canEdit) {
+        alert('You do not have edit permissions');
+        return;
+      }
+      parent.postMessage({
+        pluginMessage: { type: 'bulk-auto-link', scope: state.scope }
+      }, '*');
+    });
+
+    // Close bulk link modal
+    closeBulkModal.addEventListener('click', () => {
+      bulkLinkModal.classList.remove('active');
+      // Refresh the list
+      parent.postMessage({
+        pluginMessage: { type: 'refresh', scope: state.scope }
+      }, '*');
+    });
+
+    // Apply exact matches button
+    applyExactMatches.addEventListener('click', () => {
+      if (!state.bulkLinkResults || !state.bulkLinkResults.exactMatches) return;
+
+      const confirmations = state.bulkLinkResults.exactMatches.map(m => ({
+        nodeId: m.nodeId,
+        multilanId: m.multilanId
+      }));
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'apply-exact-matches',
+          confirmations,
+          scope: state.scope
+        }
+      }, '*');
+
+      // Hide the apply button and update UI
+      applyExactMatches.style.display = 'none';
+      state.bulkLinkResults.exactMatches = [];
+      renderBulkLinkResults();
+    });
+
+    // Render lookup result
+    function renderLookupResult() {
+      if (!state.lookupResult) {
+        lookupResult.innerHTML = '';
+        placeholderSection.style.display = 'none';
+        return;
+      }
+
+      if (state.lookupResult.found) {
+        placeholderSection.style.display = 'none';
+        const translations = state.lookupResult.translations;
+        lookupResult.innerHTML = `
+          <div class="lookup-result">
+            <div style="font-weight: 500; margin-bottom: 8px;">ID: ${escapeHtml(state.lookupResult.multilanId)}</div>
+            <div class="translations-preview">
+              ${Object.entries(translations).map(([lang, text]) => `
+                <div class="translation-row" style="align-items: center;">
+                  <span class="translation-lang">${lang.toUpperCase()}</span>
+                  <span class="translation-text" style="flex: 1;">${escapeHtml(text)}</span>
+                  <button class="copy-btn" data-text="${escapeHtml(text)}">Copy</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        // Add copy handlers
+        lookupResult.querySelectorAll('.copy-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const text = btn.dataset.text;
+            try {
+              await navigator.clipboard.writeText(text);
+              btn.textContent = 'Copied!';
+              btn.classList.add('copied');
+              setTimeout(() => {
+                btn.textContent = 'Copy';
+                btn.classList.remove('copied');
+              }, 1500);
+            } catch (e) {
+              alert('Failed to copy to clipboard');
+            }
+          });
+        });
+      } else {
+        placeholderSection.style.display = 'block';
+        lookupResult.innerHTML = `
+          <div class="lookup-result not-found">
+            <div style="color: #f59e0b; font-weight: 500;">ID not found: ${escapeHtml(state.lookupResult.multilanId)}</div>
+            <div style="font-size: 10px; margin-top: 4px; color: var(--figma-color-text-secondary);">
+              You can create a placeholder text below.
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Render bulk link results
+    function renderBulkLinkResults() {
+      if (!state.bulkLinkResults) return;
+
+      const { exactMatches, fuzzyMatches, unmatched } = state.bulkLinkResults;
+
+      // Summary
+      bulkLinkSummary.innerHTML = `
+        <div class="stat"><span class="stat-dot exact"></span> ${exactMatches.length} exact</div>
+        <div class="stat"><span class="stat-dot fuzzy"></span> ${fuzzyMatches.length} fuzzy</div>
+        <div class="stat"><span class="stat-dot unmatched"></span> ${unmatched.length} unmatched</div>
+      `;
+
+      // Show/hide apply button
+      applyExactMatches.style.display = exactMatches.length > 0 ? 'block' : 'none';
+
+      let content = '';
+
+      // Exact matches
+      if (exactMatches.length > 0) {
+        content += `
+          <div class="modal-section">
+            <h4>Exact Matches (will be auto-linked)</h4>
+            ${exactMatches.map(m => `
+              <div class="match-item">
+                <div class="match-item-text">${escapeHtml(m.text.slice(0, 50))}${m.text.length > 50 ? '...' : ''}</div>
+                <div class="match-item-id">→ ${escapeHtml(m.multilanId)}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      // Fuzzy matches
+      if (fuzzyMatches.length > 0) {
+        content += `
+          <div class="modal-section">
+            <h4>Possible Matches (review needed)</h4>
+            ${fuzzyMatches.map(m => `
+              <div class="match-item">
+                <div class="match-item-text">${escapeHtml(m.text.slice(0, 50))}${m.text.length > 50 ? '...' : ''}</div>
+                ${m.suggestions.slice(0, 2).map(s => `
+                  <div class="fuzzy-suggestion">
+                    <span>${escapeHtml(s.multilanId)}</span>
+                    <div class="fuzzy-actions">
+                      <button class="btn-accept" data-node="${m.nodeId}" data-id="${s.multilanId}">Link</button>
+                      <button class="btn-skip">Skip</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      // Unmatched
+      if (unmatched.length > 0) {
+        content += `
+          <div class="modal-section">
+            <h4>No Matches Found</h4>
+            ${unmatched.slice(0, 5).map(m => `
+              <div class="match-item">
+                <div class="match-item-text">${escapeHtml(m.text.slice(0, 50))}${m.text.length > 50 ? '...' : ''}</div>
+              </div>
+            `).join('')}
+            ${unmatched.length > 5 ? `<div style="font-size: 10px; color: var(--figma-color-text-secondary);">...and ${unmatched.length - 5} more</div>` : ''}
+          </div>
+        `;
+      }
+
+      if (!content) {
+        content = '<div class="empty-state">No unlinked text nodes found</div>';
+      }
+
+      bulkLinkContent.innerHTML = content;
+
+      // Add handlers for fuzzy match buttons
+      bulkLinkContent.querySelectorAll('.btn-accept').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const nodeId = btn.dataset.node;
+          const multilanId = btn.dataset.id;
+          parent.postMessage({
+            pluginMessage: {
+              type: 'confirm-fuzzy-link',
+              nodeId,
+              multilanId
+            }
+          }, '*');
+          // Remove this item from the UI
+          btn.closest('.match-item').remove();
+        });
+      });
+
+      bulkLinkContent.querySelectorAll('.btn-skip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.closest('.fuzzy-suggestion').remove();
+        });
+      });
+    }
+
     // Render text nodes list
     function renderTextList() {
       const filter = textSearch.value.toLowerCase();
@@ -513,14 +1235,16 @@
       }
 
       textList.innerHTML = filtered.map(node => {
-        const linkedClass = node.multilanId ? 'linked' : 'unlinked';
+        let itemClass = node.multilanId ? 'linked' : 'unlinked';
+        if (node.isPlaceholder) itemClass = 'placeholder';
         const translations = node.translations || {};
         const previewText = translations[state.currentLang] || node.characters;
+        const placeholderBadge = node.isPlaceholder ? '<span class="placeholder-badge">Placeholder</span>' : '';
 
         return `
-          <div class="text-item ${linkedClass}" data-id="${node.id}">
+          <div class="text-item ${itemClass}" data-id="${node.id}">
             <div class="text-item-header">
-              <span class="text-item-name">${escapeHtml(node.name)}</span>
+              <span class="text-item-name">${escapeHtml(node.name)}${placeholderBadge}</span>
               ${node.multilanId ? `<span class="text-item-id">${escapeHtml(node.multilanId)}</span>` : '<span class="text-item-id">Not linked</span>'}
             </div>
             <div class="text-item-content">${escapeHtml(previewText)}</div>
@@ -550,9 +1274,10 @@
 
       const node = state.selectedNode;
       const translations = node.translations || {};
+      const placeholderBadge = node.isPlaceholder ? '<span class="placeholder-badge" style="margin-left: 8px;">Placeholder</span>' : '';
 
       selectedNodeInfo.innerHTML = `
-        <h3>Selected Text</h3>
+        <h3>Selected Text${placeholderBadge}</h3>
         <div class="selected-node-text">"${escapeHtml(node.characters)}"</div>
         <div style="font-size: 10px; color: var(--figma-color-text-secondary);">
           Layer: ${escapeHtml(node.name)}
@@ -561,14 +1286,20 @@
           <div style="margin-top: 8px;">
             <span class="text-item-id">${escapeHtml(node.multilanId)}</span>
           </div>
-          <div class="translations-preview">
-            ${Object.entries(translations).map(([lang, text]) => `
-              <div class="translation-row">
-                <span class="translation-lang">${lang.toUpperCase()}</span>
-                <span class="translation-text">${escapeHtml(text)}</span>
-              </div>
-            `).join('')}
-          </div>
+          ${node.isPlaceholder ? `
+            <div style="margin-top: 8px; font-size: 10px; color: #f59e0b;">
+              This is placeholder text. Search below to link to a real translation.
+            </div>
+          ` : `
+            <div class="translations-preview">
+              ${Object.entries(translations).map(([lang, text]) => `
+                <div class="translation-row">
+                  <span class="translation-lang">${lang.toUpperCase()}</span>
+                  <span class="translation-text">${escapeHtml(text)}</span>
+                </div>
+              `).join('')}
+            </div>
+          `}
           ${state.canEdit ? `
             <div class="btn-row">
               <button class="btn btn-danger" onclick="unlinkNode('${node.id}')">Unlink</button>
@@ -693,6 +1424,38 @@
           if (msg.missing.length > 0) {
             statusText.textContent += ` (${msg.missing.length} missing translations)`;
           }
+          break;
+
+        case 'lookup-result':
+          state.lookupResult = {
+            multilanId: msg.multilanId,
+            translations: msg.translations,
+            found: msg.found
+          };
+          renderLookupResult();
+          break;
+
+        case 'bulk-auto-link-results':
+          state.bulkLinkResults = {
+            exactMatches: msg.exactMatches || [],
+            fuzzyMatches: msg.fuzzyMatches || [],
+            unmatched: msg.unmatched || []
+          };
+          renderBulkLinkResults();
+          bulkLinkModal.classList.add('active');
+          break;
+
+        case 'global-search-results':
+          state.globalSearchResults = msg.results || [];
+          renderGlobalSearchResults();
+          break;
+
+        case 'text-created':
+          statusText.textContent = `Created text node linked to ${msg.multilanId}`;
+          // Refresh text list
+          parent.postMessage({
+            pluginMessage: { type: 'refresh', scope: state.scope }
+          }, '*');
           break;
       }
     };

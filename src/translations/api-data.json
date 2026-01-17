@@ -70,5 +70,113 @@
       { "languageId": "nl", "wording": "Hallo {username}", "id": 31 },
       { "languageId": "de", "wording": "Hallo {username}", "id": 32 }
     ]
+  },
+  {
+    "id": 10009,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Save", "id": 33 },
+      { "languageId": "fr", "wording": "Enregistrer", "id": 34 },
+      { "languageId": "nl", "wording": "Opslaan", "id": 35 },
+      { "languageId": "de", "wording": "Speichern", "id": 36 }
+    ]
+  },
+  {
+    "id": 10010,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Delete", "id": 37 },
+      { "languageId": "fr", "wording": "Supprimer", "id": 38 },
+      { "languageId": "nl", "wording": "Verwijderen", "id": 39 },
+      { "languageId": "de", "wording": "Löschen", "id": 40 }
+    ]
+  },
+  {
+    "id": 10011,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Settings", "id": 41 },
+      { "languageId": "fr", "wording": "Paramètres", "id": 42 },
+      { "languageId": "nl", "wording": "Instellingen", "id": 43 },
+      { "languageId": "de", "wording": "Einstellungen", "id": 44 }
+    ]
+  },
+  {
+    "id": 10012,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Profile", "id": 45 },
+      { "languageId": "fr", "wording": "Profil", "id": 46 },
+      { "languageId": "nl", "wording": "Profiel", "id": 47 },
+      { "languageId": "de", "wording": "Profil", "id": 48 }
+    ]
+  },
+  {
+    "id": 10013,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Log out", "id": 49 },
+      { "languageId": "fr", "wording": "Déconnexion", "id": 50 },
+      { "languageId": "nl", "wording": "Uitloggen", "id": 51 },
+      { "languageId": "de", "wording": "Abmelden", "id": 52 }
+    ]
+  },
+  {
+    "id": 10014,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Search", "id": 53 },
+      { "languageId": "fr", "wording": "Rechercher", "id": 54 },
+      { "languageId": "nl", "wording": "Zoeken", "id": 55 },
+      { "languageId": "de", "wording": "Suchen", "id": 56 }
+    ]
+  },
+  {
+    "id": 10015,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Home", "id": 57 },
+      { "languageId": "fr", "wording": "Accueil", "id": 58 },
+      { "languageId": "nl", "wording": "Startpagina", "id": 59 },
+      { "languageId": "de", "wording": "Startseite", "id": 60 }
+    ]
+  },
+  {
+    "id": 10016,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Back", "id": 61 },
+      { "languageId": "fr", "wording": "Retour", "id": 62 },
+      { "languageId": "nl", "wording": "Terug", "id": 63 },
+      { "languageId": "de", "wording": "Zurück", "id": 64 }
+    ]
+  },
+  {
+    "id": 10017,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Next", "id": 65 },
+      { "languageId": "fr", "wording": "Suivant", "id": 66 },
+      { "languageId": "nl", "wording": "Volgende", "id": 67 },
+      { "languageId": "de", "wording": "Weiter", "id": 68 }
+    ]
+  },
+  {
+    "id": 10018,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Loading...", "id": 69 },
+      { "languageId": "fr", "wording": "Chargement...", "id": 70 },
+      { "languageId": "nl", "wording": "Laden...", "id": 71 },
+      { "languageId": "de", "wording": "Wird geladen...", "id": 72 }
+    ]
+  },
+  {
+    "id": 10019,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Error occurred", "id": 73 },
+      { "languageId": "fr", "wording": "Une erreur s'est produite", "id": 74 },
+      { "languageId": "nl", "wording": "Er is een fout opgetreden", "id": 75 },
+      { "languageId": "de", "wording": "Ein Fehler ist aufgetreten", "id": 76 }
+    ]
+  },
+  {
+    "id": 10020,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Success!", "id": 77 },
+      { "languageId": "fr", "wording": "Succès !", "id": 78 },
+      { "languageId": "nl", "wording": "Gelukt!", "id": 79 },
+      { "languageId": "de", "wording": "Erfolg!", "id": 80 }
+    ]
   }
 ]
