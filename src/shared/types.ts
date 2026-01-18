@@ -43,28 +43,42 @@ export interface SearchResult {
   score?: number;
 }
 
-// Bulk auto-link results
-export interface BulkMatchResult {
-  exactMatches: Array<{
-    nodeId: string;
-    nodeName: string;
-    text: string;
-    multilanId: string;
-  }>;
-  fuzzyMatches: Array<{
-    nodeId: string;
-    nodeName: string;
-    text: string;
-    suggestions: Array<SearchResult & { score: number }>;
-  }>;
-  unmatched: Array<{
-    nodeId: string;
-    nodeName: string;
-    text: string;
-  }>;
+// Bulk auto-link match item types
+export interface ExactMatch {
+  nodeId: string;
+  nodeName: string;
+  text: string;
+  multilanId: string;
 }
 
-// Plugin message types
+export interface FuzzyMatch {
+  nodeId: string;
+  nodeName: string;
+  text: string;
+  suggestions: Array<SearchResult & { score: number }>;
+}
+
+export interface UnmatchedItem {
+  nodeId: string;
+  nodeName: string;
+  text: string;
+}
+
+// Bulk auto-link results
+export interface BulkMatchResult {
+  exactMatches: ExactMatch[];
+  fuzzyMatches: FuzzyMatch[];
+  unmatched: UnmatchedItem[];
+}
+
+// UI state bulk link results
+export interface BulkLinkResults {
+  exactMatches: ExactMatch[];
+  fuzzyMatches: FuzzyMatch[];
+  unmatched: UnmatchedItem[];
+}
+
+// Plugin message types (UI -> Plugin)
 export type PluginMessageType =
   | "init"
   | "switch-language"
@@ -82,19 +96,7 @@ export type PluginMessageType =
   | "create-linked-text"
   | "close";
 
-export interface PluginMessage {
-  type: PluginMessageType;
-  language?: string;
-  scope?: "page" | "selection";
-  nodeId?: string;
-  multilanId?: string;
-  searchQuery?: string;
-  placeholders?: Record<string, string>;
-  text?: string;
-  confirmations?: Array<{ nodeId: string; multilanId: string }>;
-}
-
-// UI message types
+// UI message types (Plugin -> UI)
 export type UIMessageType =
   | "init"
   | "text-nodes-updated"
@@ -106,9 +108,31 @@ export type UIMessageType =
   | "search-results"
   | "text-created";
 
-export interface UIMessage {
-  type: UIMessageType;
-  [key: string]: unknown;
+// Combined message type for both directions
+export interface PluginMessage {
+  type: PluginMessageType | UIMessageType;
+  // UI -> Plugin fields
+  language?: Language;
+  scope?: "page" | "selection";
+  nodeId?: string;
+  multilanId?: string;
+  searchQuery?: string;
+  placeholders?: Record<string, string>;
+  text?: string;
+  confirmations?: Array<{ nodeId: string; multilanId: string }>;
+  // Plugin -> UI fields
+  canEdit?: boolean;
+  textNodes?: TextNodeInfo[];
+  selectedNode?: TextNodeInfo | null;
+  selectionTextNodes?: TextNodeInfo[];
+  translationCount?: number;
+  buildTimestamp?: string;
+  success?: number;
+  missing?: string[];
+  results?: SearchResult[];
+  exactMatches?: ExactMatch[];
+  fuzzyMatches?: FuzzyMatch[];
+  unmatched?: UnmatchedItem[];
 }
 
 // Constants

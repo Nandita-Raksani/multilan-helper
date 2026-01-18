@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+  <div id="app">
+    <!-- View Mode Banner (shown for non-editors) -->
+    <div id="viewModeBanner" class="view-mode-banner" style="display: none;">
+      View Mode - You can preview translations but cannot edit
+    </div>
+
+    <!-- Language Bar -->
+    <div class="lang-bar">
+      <button class="lang-btn" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="fr">FR</button>
+      <button class="lang-btn" data-lang="nl">NL</button>
+      <button class="lang-btn" data-lang="de">DE</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" data-tab="search">Search</div>
+      <div class="tab" data-tab="texts">Links</div>
+      <div class="tab" data-tab="settings">Settings</div>
+    </div>
+
+    <!-- Search Panel -->
+    <div id="searchPanel" class="panel active">
+      <!-- Selection Context Banner -->
+      <div id="searchSelectedNode" class="selected-node" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h4 style="margin: 0; font-size: 11px;">Selected</h4>
+          <span id="searchSelectedBadge" class="text-item-id"></span>
+        </div>
+        <div id="searchSelectedText" class="selected-node-text" style="margin-top: 4px;"></div>
+        <div id="searchSelectedActions" class="btn-row" style="margin-top: 8px;"></div>
+      </div>
+
+      <input type="text" class="search-panel-input" id="globalSearchInput" placeholder="Search by ID or text...">
+      <div class="search-hint">Search translations, then Copy, Link, or Create text nodes.</div>
+      <div id="globalSearchResultsCount" class="search-results-count"></div>
+      <div id="globalSearchResults"></div>
+
+      <!-- Placeholder Section (shown when ID not found) -->
+      <div id="searchPlaceholderSection" class="create-section" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--figma-color-border);">
+        <h4>No results? Create placeholder:</h4>
+        <p style="font-size: 10px; color: var(--figma-color-text-secondary); margin-bottom: 8px;">
+          Enter text manually and mark as placeholder for later translation.
+        </p>
+        <input type="text" class="search-box" id="searchPlaceholderText" placeholder="Enter placeholder text...">
+        <div class="btn-row">
+          <button class="btn btn-primary" id="searchMarkPlaceholderBtn" style="background: #f59e0b;">Mark as Placeholder</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Texts Panel -->
+    <div id="textsPanel" class="panel">
+      <div class="texts-header">
+        <div class="scope-toggle">
+          <button class="scope-btn active" data-scope="page">Entire Page</button>
+          <button class="scope-btn" data-scope="selection">Selection</button>
+        </div>
+        <button class="btn btn-secondary btn-auto-link" id="autoLinkBtn">Auto-Link All</button>
+      </div>
+      <input type="text" class="search-box" id="textSearch" placeholder="Filter texts...">
+      <div id="textList" class="text-list">
+        <div class="empty-state">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="panel">
+      <h3 style="margin-bottom: 12px;">Placeholder Values</h3>
+      <div id="placeholderSettings">
+        <div style="margin-bottom: 8px;">
+          <label style="display: block; margin-bottom: 4px;">username</label>
+          <input type="text" class="search-box" data-placeholder="username" value="John" style="margin-bottom: 0;">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label style="display: block; margin-bottom: 4px;">count</label>
+          <input type="text" class="search-box" data-placeholder="count" value="5" style="margin-bottom: 0;">
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Auto-Link Modal -->
+    <div id="bulkLinkModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Auto-Link Results</h3>
+        <div id="bulkLinkSummary" class="summary-stats"></div>
+        <div id="bulkLinkContent"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="closeBulkModal">Close</button>
+          <button class="btn btn-primary" id="applyExactMatches" style="display: none;">Apply Exact Matches</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span id="statusText">Ready</span>
+      <span id="buildTimestamp" style="float: right; opacity: 0.7;"></span>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
