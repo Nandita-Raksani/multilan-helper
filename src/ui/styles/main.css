@@ -166,7 +166,9 @@ body {
 .btn-link-node,
 .btn-unlink-node {
   font-size: 9px;
-  padding: 2px 8px;
+  padding: 4px 0;
+  min-width: 50px;
+  text-align: center;
   background: var(--figma-color-bg-brand);
   color: white;
   border: none;
