@@ -759,12 +759,12 @@ body {
 .search-result-id-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
 }
 
 .search-result-id-row .clickable-id {
   cursor: pointer;
+  margin-left: auto;
 }
 
 /* Status Badge - GitHub-style label */
