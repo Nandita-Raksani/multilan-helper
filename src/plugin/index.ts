@@ -29,6 +29,7 @@ import {
   isTextModified,
   clearMultilanId,
   clearExpectedText,
+  setVariableValues,
 } from "./services/nodeService";
 import {
   linkTextNode,
@@ -206,6 +207,8 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
                 node.characters = replacedText;
                 // Store expected text for modification detection
                 setExpectedText(node, replacedText);
+                // Store variable values for language switching
+                setVariableValues(node, msg.variables);
               }
             }
             figma.notify(`Linked to ${msg.multilanId}`);
@@ -412,6 +415,8 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         if (msg.variables && Object.keys(msg.variables).length > 0) {
           textNode.characters = textToCreate;
           setExpectedText(textNode, textToCreate);
+          // Store variable values for language switching
+          setVariableValues(textNode, msg.variables);
         }
 
         figma.notify(`Created text node: "${textNode.characters}" (${msg.multilanId})`);

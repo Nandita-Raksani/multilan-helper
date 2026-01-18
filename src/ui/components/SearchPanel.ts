@@ -119,7 +119,8 @@ export function renderGlobalSearchResults(): void {
   globalSearchResults.innerHTML = results.map(result => {
     const primaryText = result.translations[state.currentLang] || result.translations['en'] || Object.values(result.translations)[0];
     const isCurrentLink = isAlreadyLinked && state.selectedNode?.multilanId === result.multilanId;
-    const hasVariables = result.variables && result.variables.length > 0;
+    const hasVariables = result.variableOccurrences && result.variableOccurrences.length > 0;
+    const variableKeys = hasVariables ? result.variableOccurrences!.map(v => v.key) : [];
 
     // Initialize variable values for this result if not exists
     if (hasVariables && !variableValues.has(result.multilanId)) {
@@ -144,13 +145,13 @@ export function renderGlobalSearchResults(): void {
         ${hasVariables ? `
         <div class="variables-section" style="padding: 8px 0; border-top: 1px solid var(--figma-color-border);">
           <div style="font-size: 10px; color: var(--figma-color-text-secondary); margin-bottom: 6px;">Variables:</div>
-          ${result.variables!.map(varName => `
+          ${result.variableOccurrences!.map(varOcc => `
             <div class="variable-row" style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-              <label style="font-size: 11px; min-width: 60px; color: var(--figma-color-text);">${escapeHtml(varName)}:</label>
+              <label style="font-size: 11px; min-width: 80px; color: var(--figma-color-text);">${escapeHtml(varOcc.name)}${varOcc.isIndexed ? ` (${varOcc.index})` : ''}:</label>
               <input type="text"
                 class="variable-input"
                 data-multilan-id="${escapeHtml(result.multilanId)}"
-                data-var-name="${escapeHtml(varName)}"
+                data-var-key="${escapeHtml(varOcc.key)}"
                 placeholder="Enter value"
                 style="flex: 1; padding: 4px 8px; font-size: 11px; border: 1px solid var(--figma-color-border); border-radius: 4px; background: var(--figma-color-bg); color: var(--figma-color-text);"
               />
@@ -159,9 +160,9 @@ export function renderGlobalSearchResults(): void {
         </div>
         ` : ''}
         <div class="search-result-actions">
-          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? `data-has-variables="true" data-variable-names="${escapeHtml(result.variables!.join(','))}"` : ''} style="background: #10b981;">${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
+          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''} style="background: #10b981;">${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
           ${isCurrentLink ? `<span style="color: #10b981; font-size: 10px; padding: 6px 0;">Currently linked</span>` : ''}
-          <button class="btn-create-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? `data-has-variables="true" data-variable-names="${escapeHtml(result.variables!.join(','))}"` : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>
+          <button class="btn-create-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>
         </div>
       </div>
     `;
@@ -201,9 +202,9 @@ function attachSearchResultHandlers(): void {
   globalSearchResults.querySelectorAll<HTMLInputElement>('.variable-input').forEach(input => {
     input.addEventListener('input', (e) => {
       const multilanId = input.dataset.multilanId!;
-      const varName = input.dataset.varName!;
+      const varKey = input.dataset.varKey!;
       const values = variableValues.get(multilanId) || {};
-      values[varName] = input.value;
+      values[varKey] = input.value;
       variableValues.set(multilanId, values);
     });
   });
@@ -215,12 +216,12 @@ function attachSearchResultHandlers(): void {
       const multilanId = btn.dataset.id!;
       if (!state.selectedNode) return;
       const hasVariables = btn.dataset.hasVariables === 'true';
-      const variableNames = btn.dataset.variableNames?.split(',') || [];
+      const variableKeys = btn.dataset.variableKeys?.split(',') || [];
       const variables = hasVariables ? variableValues.get(multilanId) : undefined;
 
       // Validate all variables are filled
-      if (hasVariables && variableNames.length > 0) {
-        const missingVars = variableNames.filter(v => !variables?.[v]?.trim());
+      if (hasVariables && variableKeys.length > 0) {
+        const missingVars = variableKeys.filter(v => !variables?.[v]?.trim());
         if (missingVars.length > 0) {
           alert(`Please fill in all variables: ${missingVars.join(', ')}`);
           return;
@@ -238,12 +239,12 @@ function attachSearchResultHandlers(): void {
       const multilanId = btn.dataset.id!;
       const text = btn.dataset.text!;
       const hasVariables = btn.dataset.hasVariables === 'true';
-      const variableNames = btn.dataset.variableNames?.split(',') || [];
+      const variableKeys = btn.dataset.variableKeys?.split(',') || [];
       const variables = hasVariables ? variableValues.get(multilanId) : undefined;
 
       // Validate all variables are filled
-      if (hasVariables && variableNames.length > 0) {
-        const missingVars = variableNames.filter(v => !variables?.[v]?.trim());
+      if (hasVariables && variableKeys.length > 0) {
+        const missingVars = variableKeys.filter(v => !variables?.[v]?.trim());
         if (missingVars.length > 0) {
           alert(`Please fill in all variables: ${missingVars.join(', ')}`);
           return;

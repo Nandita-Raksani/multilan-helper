@@ -6,6 +6,7 @@ import {
   PLUGIN_DATA_KEY,
   PLACEHOLDER_KEY,
   EXPECTED_TEXT_KEY,
+  VARIABLE_VALUES_KEY,
 } from "../../shared/types";
 
 /**
@@ -92,6 +93,33 @@ export function isTextModified(node: TextNode): boolean {
   const expectedText = getExpectedText(node);
   if (!expectedText) return false;
   return node.characters !== expectedText;
+}
+
+/**
+ * Get stored variable values from a text node
+ */
+export function getVariableValues(node: TextNode): Record<string, string> | null {
+  const data = node.getPluginData(VARIABLE_VALUES_KEY);
+  if (!data) return null;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Set variable values on a text node
+ */
+export function setVariableValues(node: TextNode, values: Record<string, string>): void {
+  node.setPluginData(VARIABLE_VALUES_KEY, JSON.stringify(values));
+}
+
+/**
+ * Clear variable values from a text node
+ */
+export function clearVariableValues(node: TextNode): void {
+  node.setPluginData(VARIABLE_VALUES_KEY, "");
 }
 
 /**

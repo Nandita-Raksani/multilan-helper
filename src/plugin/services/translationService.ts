@@ -7,6 +7,7 @@ import {
   SearchResult,
   Language,
   SUPPORTED_LANGUAGES,
+  VariableOccurrence,
 } from "../../shared/types";
 
 /**
@@ -70,7 +71,7 @@ export function replacePlaceholders(
 }
 
 /**
- * Extract variable names from text with ###variable### format
+ * Extract variable names from text with ###variable### format (unique only)
  */
 export function extractVariables(text: string): string[] {
   const regex = /###(\w+)###/g;
@@ -85,14 +86,56 @@ export function extractVariables(text: string): string[] {
 }
 
 /**
- * Replace ###variable### patterns with values
+ * Extract all variable occurrences with indices for duplicate handling
+ */
+export function extractVariableOccurrences(text: string): VariableOccurrence[] {
+  const regex = /###(\w+)###/g;
+  const occurrences: VariableOccurrence[] = [];
+  const countMap: Record<string, number> = {};
+  let match;
+
+  // First pass: count occurrences of each variable
+  const tempRegex = /###(\w+)###/g;
+  while ((match = tempRegex.exec(text)) !== null) {
+    const name = match[1];
+    countMap[name] = (countMap[name] || 0) + 1;
+  }
+
+  // Second pass: build occurrences with indices
+  const indexMap: Record<string, number> = {};
+  while ((match = regex.exec(text)) !== null) {
+    const name = match[1];
+    indexMap[name] = (indexMap[name] || 0) + 1;
+    const index = indexMap[name];
+    const isIndexed = countMap[name] > 1;
+    const key = isIndexed ? `${name}_${index}` : name;
+
+    occurrences.push({ name, key, index, isIndexed });
+  }
+
+  return occurrences;
+}
+
+/**
+ * Replace ###variable### patterns with values (supports indexed keys)
  */
 export function replaceVariables(
   text: string,
   values: Record<string, string>
 ): string {
-  return text.replace(/###(\w+)###/g, (match, key) => {
-    return values[key] || match;
+  const indexMap: Record<string, number> = {};
+
+  return text.replace(/###(\w+)###/g, (match, name) => {
+    indexMap[name] = (indexMap[name] || 0) + 1;
+    const index = indexMap[name];
+
+    // Try indexed key first (e.g., "amount_2"), then fall back to base name
+    const indexedKey = `${name}_${index}`;
+    if (values[indexedKey] !== undefined) {
+      return values[indexedKey] || match;
+    }
+    // Fall back to non-indexed key for backward compatibility
+    return values[name] || match;
   });
 }
 
@@ -221,14 +264,29 @@ export function globalSearchTranslations(
     }
 
     if (bestScore > 0) {
-      // Extract variables from all translations
-      const allVariables: string[] = [];
+      // Extract variable occurrences from all translations
+      // Find max occurrence count for each variable name across all languages
+      const maxCountMap: Record<string, number> = {};
       for (const text of Object.values(langs)) {
-        const vars = extractVariables(text);
-        for (const v of vars) {
-          if (!allVariables.includes(v)) {
-            allVariables.push(v);
-          }
+        const countMap: Record<string, number> = {};
+        const regex = /###(\w+)###/g;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          const name = match[1];
+          countMap[name] = (countMap[name] || 0) + 1;
+        }
+        for (const [name, count] of Object.entries(countMap)) {
+          maxCountMap[name] = Math.max(maxCountMap[name] || 0, count);
+        }
+      }
+
+      // Build variable occurrences based on max counts
+      const variableOccurrences: VariableOccurrence[] = [];
+      for (const [name, maxCount] of Object.entries(maxCountMap)) {
+        for (let i = 1; i <= maxCount; i++) {
+          const isIndexed = maxCount > 1;
+          const key = isIndexed ? `${name}_${i}` : name;
+          variableOccurrences.push({ name, key, index: i, isIndexed });
         }
       }
 
@@ -236,16 +294,16 @@ export function globalSearchTranslations(
         multilanId,
         translations: langs,
         score: bestScore,
-        variables: allVariables.length > 0 ? allVariables : undefined,
+        variableOccurrences: variableOccurrences.length > 0 ? variableOccurrences : undefined,
       });
     }
   }
 
   results.sort((a, b) => b.score - a.score);
-  return results.slice(0, limit).map(({ multilanId, translations, variables }) => ({
+  return results.slice(0, limit).map(({ multilanId, translations, variableOccurrences }) => ({
     multilanId,
     translations,
-    variables,
+    variableOccurrences,
   }));
 }
 

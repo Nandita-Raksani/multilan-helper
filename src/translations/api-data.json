@@ -313,5 +313,14 @@
       { "languageId": "nl", "wording": "###percentage###% voltooid", "id": 139 },
       { "languageId": "de", "wording": "###percentage### % abgeschlossen", "id": 140 }
     ]
+  },
+  {
+    "id": 10055,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Hello ###name###, your order ###orderNumber### is ready for pickup.###orderNumber### ###orderNumber### ", "id": 125 },
+      { "languageId": "fr", "wording": "Bonjour ###name###, votre commande ###orderNumber### est prête à être retirée.###orderNumber### ###orderNumber### ", "id": 126 },
+      { "languageId": "nl", "wording": "Hallo ###name###, je bestelling ###orderNumber### is klaar om op te halen.###orderNumber### ###orderNumber### ", "id": 127 },
+      { "languageId": "de", "wording": "Hallo ###name###, Ihre Bestellung ###orderNumber### ist zur Abholung bereit.###orderNumber### ###orderNumber### ", "id": 128 }
+    ]
   }
 ]

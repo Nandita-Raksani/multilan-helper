@@ -20,10 +20,14 @@ import {
   loadNodeFont,
   setExpectedText,
   clearExpectedText,
+  getVariableValues,
+  setVariableValues,
+  clearVariableValues,
 } from "./nodeService";
 import {
   getTranslation,
   replacePlaceholders,
+  replaceVariables,
   buildTextToIdMap,
   searchTranslationsWithScore,
 } from "./translationService";
@@ -74,6 +78,7 @@ export async function unlinkTextNode(nodeId: string): Promise<boolean> {
 
   clearMultilanId(node);
   clearExpectedText(node);
+  clearVariableValues(node);
   return true;
 }
 
@@ -123,8 +128,14 @@ export async function switchLanguage(
       }
     }
 
-    // Replace placeholders
+    // Replace placeholders (existing {key} format)
     translation = replacePlaceholders(translation, placeholders);
+
+    // Replace variables (###variable### format) using stored values
+    const storedVariables = getVariableValues(node);
+    if (storedVariables) {
+      translation = replaceVariables(translation, storedVariables);
+    }
 
     // Load font before changing text
     try {
