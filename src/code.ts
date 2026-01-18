@@ -697,7 +697,14 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       {
+        figma.notify("Scanning for matches...");
         const result = bulkAutoLink(msg.scope || "page");
+        const totalFound = result.exactMatches.length + result.fuzzyMatches.length;
+        if (totalFound > 0) {
+          figma.notify(`Found ${result.exactMatches.length} exact + ${result.fuzzyMatches.length} fuzzy matches`);
+        } else {
+          figma.notify("No matches found for unlinked text nodes");
+        }
         figma.ui.postMessage({
           type: "bulk-auto-link-results",
           ...result
@@ -710,11 +717,14 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         figma.notify("You don't have edit permissions", { error: true });
         return;
       }
-      if (msg.confirmations) {
+      if (msg.confirmations && msg.confirmations.length > 0) {
+        figma.notify(`Linking ${msg.confirmations.length} nodes...`);
         const count = applyExactMatches(msg.confirmations);
-        figma.notify(`Auto-linked ${count} text nodes`);
+        figma.notify(`Successfully linked ${count} text nodes`);
         const textNodes = getAllTextNodesInfo(msg.scope || "page");
         figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
+      } else {
+        figma.notify("No matches to apply");
       }
       break;
 

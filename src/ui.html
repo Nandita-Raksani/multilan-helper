@@ -659,14 +659,13 @@
       <div class="tab active" data-tab="search">Search</div>
       <div class="tab" data-tab="texts">Texts</div>
       <div class="tab" data-tab="create">Create</div>
-      <div class="tab" data-tab="link">Link</div>
       <div class="tab" data-tab="settings">Settings</div>
     </div>
 
     <!-- Search Panel -->
     <div id="searchPanel" class="panel active">
       <input type="text" class="search-panel-input" id="globalSearchInput" placeholder="Search by multilanId or text...">
-      <div class="search-hint">Type to search all translations. Hover results to see multilanId.</div>
+      <div class="search-hint">Browse available translations by ID or text content.</div>
       <div id="globalSearchResultsCount" class="search-results-count"></div>
       <div id="globalSearchResults"></div>
     </div>
@@ -688,6 +687,15 @@
 
     <!-- Create Panel -->
     <div id="createPanel" class="panel">
+      <!-- Selected node info -->
+      <div id="createSelectedNode" class="selected-node" style="display: none; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h4 style="margin: 0;">Selected Node</h4>
+          <span id="createSelectedBadge" class="text-item-id"></span>
+        </div>
+        <div id="createSelectedText" class="selected-node-text" style="margin-top: 4px;"></div>
+      </div>
+
       <div class="create-section">
         <h4>Look up MultilanId</h4>
         <input type="text" class="search-box" id="multilanIdInput" placeholder="Enter multilanId (e.g., 12345)">
@@ -704,16 +712,6 @@
           <button class="btn btn-primary" id="markPlaceholderBtn" style="background: #f59e0b;">Mark as Placeholder</button>
         </div>
       </div>
-    </div>
-
-    <!-- Link Panel -->
-    <div id="linkPanel" class="panel">
-      <div id="selectedNodeInfo" class="selected-node">
-        <h3>Selected Text</h3>
-        <div class="empty-state">Select a text layer in Figma</div>
-      </div>
-      <input type="text" class="search-box" id="multilanSearch" placeholder="Search multilanId or text...">
-      <div id="searchResults" class="search-results"></div>
     </div>
 
     <!-- Settings Panel -->
@@ -758,7 +756,6 @@
       scope: 'page',
       textNodes: [],
       selectedNode: null,
-      searchResults: [],
       placeholders: {
         username: 'John',
         count: '5'
@@ -777,13 +774,14 @@
     const scopeBtns = document.querySelectorAll('.scope-btn');
     const textSearch = document.getElementById('textSearch');
     const textList = document.getElementById('textList');
-    const multilanSearch = document.getElementById('multilanSearch');
-    const searchResults = document.getElementById('searchResults');
-    const selectedNodeInfo = document.getElementById('selectedNodeInfo');
+    // Old Link panel elements removed - functionality merged into Search panel
     const statusText = document.getElementById('statusText');
     const viewModeBanner = document.getElementById('viewModeBanner');
 
     // Create panel elements
+    const createSelectedNode = document.getElementById('createSelectedNode');
+    const createSelectedBadge = document.getElementById('createSelectedBadge');
+    const createSelectedText = document.getElementById('createSelectedText');
     const multilanIdInput = document.getElementById('multilanIdInput');
     const lookupResult = document.getElementById('lookupResult');
     const placeholderSection = document.getElementById('placeholderSection');
@@ -863,22 +861,6 @@
       renderTextList();
     });
 
-    // MultilanId search
-    let searchTimeout;
-    multilanSearch.addEventListener('input', () => {
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        const query = multilanSearch.value.trim();
-        if (query.length >= 2) {
-          parent.postMessage({
-            pluginMessage: { type: 'search', searchQuery: query }
-          }, '*');
-        } else {
-          searchResults.innerHTML = '';
-        }
-      }, 300);
-    });
-
     // Placeholder settings
     document.querySelectorAll('[data-placeholder]').forEach(input => {
       input.addEventListener('input', () => {
@@ -931,30 +913,13 @@
               `).join('')}
             </div>
             <div class="search-result-actions">
-              <button class="btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}">Create Text Node</button>
               <button class="btn-copy-text" data-text="${escapeHtml(primaryText)}">Copy</button>
             </div>
           </div>
         `;
       }).join('');
 
-      // Add event handlers
-      globalSearchResults.querySelectorAll('.btn-create-text').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const multilanId = btn.dataset.id;
-          const text = btn.dataset.text;
-          parent.postMessage({
-            pluginMessage: {
-              type: 'create-linked-text',
-              multilanId,
-              text,
-              language: state.currentLang
-            }
-          }, '*');
-        });
-      });
-
+      // Add copy event handlers
       globalSearchResults.querySelectorAll('.btn-copy-text').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
@@ -1026,9 +991,13 @@
         alert('You do not have edit permissions');
         return;
       }
+      statusText.textContent = 'Scanning for matches...';
+      autoLinkBtn.disabled = true;
       parent.postMessage({
         pluginMessage: { type: 'bulk-auto-link', scope: state.scope }
       }, '*');
+      // Re-enable button after a short delay
+      setTimeout(() => { autoLinkBtn.disabled = false; }, 1000);
     });
 
     // Close bulk link modal
@@ -1063,6 +1032,27 @@
       renderBulkLinkResults();
     });
 
+    // Update selected node display in Create panel
+    function updateCreateSelectedNode() {
+      if (state.selectedNode) {
+        createSelectedNode.style.display = 'block';
+        createSelectedText.textContent = `"${state.selectedNode.characters}"`;
+        if (state.selectedNode.multilanId) {
+          createSelectedBadge.textContent = state.selectedNode.multilanId;
+          createSelectedBadge.style.background = '#10b981';
+        } else {
+          createSelectedBadge.textContent = 'Not linked';
+          createSelectedBadge.style.background = '#f59e0b';
+        }
+      } else {
+        createSelectedNode.style.display = 'none';
+      }
+      // Re-render lookup result to update Link button visibility
+      if (state.lookupResult) {
+        renderLookupResult();
+      }
+    }
+
     // Render lookup result
     function renderLookupResult() {
       if (!state.lookupResult) {
@@ -1071,12 +1061,17 @@
         return;
       }
 
+      const hasUnlinkedSelection = state.selectedNode && !state.selectedNode.multilanId;
+
       if (state.lookupResult.found) {
         placeholderSection.style.display = 'none';
         const translations = state.lookupResult.translations;
+        const multilanId = state.lookupResult.multilanId;
+        const primaryText = translations[state.currentLang] || translations['en'] || Object.values(translations)[0];
+
         lookupResult.innerHTML = `
           <div class="lookup-result">
-            <div style="font-weight: 500; margin-bottom: 8px;">ID: ${escapeHtml(state.lookupResult.multilanId)}</div>
+            <div style="font-weight: 500; margin-bottom: 8px;">ID: ${escapeHtml(multilanId)}</div>
             <div class="translations-preview">
               ${Object.entries(translations).map(([lang, text]) => `
                 <div class="translation-row" style="align-items: center;">
@@ -1085,6 +1080,10 @@
                   <button class="copy-btn" data-text="${escapeHtml(text)}">Copy</button>
                 </div>
               `).join('')}
+            </div>
+            <div class="btn-row" style="margin-top: 12px;">
+              <button class="btn btn-primary" id="createTextNodeBtn">Create Text Node</button>
+              ${hasUnlinkedSelection ? `<button class="btn btn-secondary" id="linkToSelectedBtn" style="background: #10b981; color: white;">Link to Selected</button>` : ''}
             </div>
           </div>
         `;
@@ -1106,6 +1105,36 @@
             }
           });
         });
+
+        // Add create text node handler
+        const createBtn = document.getElementById('createTextNodeBtn');
+        if (createBtn) {
+          createBtn.addEventListener('click', () => {
+            parent.postMessage({
+              pluginMessage: {
+                type: 'create-linked-text',
+                multilanId: multilanId,
+                text: primaryText,
+                language: state.currentLang
+              }
+            }, '*');
+          });
+        }
+
+        // Add link to selected handler
+        const linkBtn = document.getElementById('linkToSelectedBtn');
+        if (linkBtn) {
+          linkBtn.addEventListener('click', () => {
+            if (!state.selectedNode) return;
+            parent.postMessage({
+              pluginMessage: {
+                type: 'link-node',
+                nodeId: state.selectedNode.id,
+                multilanId: multilanId
+              }
+            }, '*');
+          });
+        }
       } else {
         placeholderSection.style.display = 'block';
         lookupResult.innerHTML = `
@@ -1262,101 +1291,6 @@
       });
     }
 
-    // Render selected node info
-    function renderSelectedNode() {
-      if (!state.selectedNode) {
-        selectedNodeInfo.innerHTML = `
-          <h3>Selected Text</h3>
-          <div class="empty-state">Select a text layer in Figma</div>
-        `;
-        return;
-      }
-
-      const node = state.selectedNode;
-      const translations = node.translations || {};
-      const placeholderBadge = node.isPlaceholder ? '<span class="placeholder-badge" style="margin-left: 8px;">Placeholder</span>' : '';
-
-      selectedNodeInfo.innerHTML = `
-        <h3>Selected Text${placeholderBadge}</h3>
-        <div class="selected-node-text">"${escapeHtml(node.characters)}"</div>
-        <div style="font-size: 10px; color: var(--figma-color-text-secondary);">
-          Layer: ${escapeHtml(node.name)}
-        </div>
-        ${node.multilanId ? `
-          <div style="margin-top: 8px;">
-            <span class="text-item-id">${escapeHtml(node.multilanId)}</span>
-          </div>
-          ${node.isPlaceholder ? `
-            <div style="margin-top: 8px; font-size: 10px; color: #f59e0b;">
-              This is placeholder text. Search below to link to a real translation.
-            </div>
-          ` : `
-            <div class="translations-preview">
-              ${Object.entries(translations).map(([lang, text]) => `
-                <div class="translation-row">
-                  <span class="translation-lang">${lang.toUpperCase()}</span>
-                  <span class="translation-text">${escapeHtml(text)}</span>
-                </div>
-              `).join('')}
-            </div>
-          `}
-          ${state.canEdit ? `
-            <div class="btn-row">
-              <button class="btn btn-danger" onclick="unlinkNode('${node.id}')">Unlink</button>
-            </div>
-          ` : ''}
-        ` : `
-          <div style="margin-top: 8px; color: #f59e0b;">Not linked to any multilanId</div>
-          ${state.canEdit ? '<div style="margin-top: 8px; font-size: 10px;">Search below to link this text</div>' : ''}
-        `}
-      `;
-    }
-
-    // Render search results
-    function renderSearchResults() {
-      if (state.searchResults.length === 0) {
-        searchResults.innerHTML = '<div class="empty-state">No results</div>';
-        return;
-      }
-
-      searchResults.innerHTML = state.searchResults.map(result => {
-        return `
-          <div class="search-result" data-id="${escapeHtml(result.multilanId)}">
-            <div class="search-result-id">${escapeHtml(result.multilanId)}</div>
-            <div class="translations-preview">
-              ${Object.entries(result.translations).slice(0, 2).map(([lang, text]) => `
-                <div class="translation-row">
-                  <span class="translation-lang">${lang.toUpperCase()}</span>
-                  <span class="translation-text">${escapeHtml(text)}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      // Add click handlers
-      searchResults.querySelectorAll('.search-result').forEach(item => {
-        item.addEventListener('click', () => {
-          if (!state.selectedNode) {
-            alert('Please select a text layer first');
-            return;
-          }
-          if (!state.canEdit) {
-            alert('You do not have edit permissions');
-            return;
-          }
-          parent.postMessage({
-            pluginMessage: {
-              type: 'link-node',
-              nodeId: state.selectedNode.id,
-              multilanId: item.dataset.id
-            }
-          }, '*');
-        });
-      });
-    }
-
     // Unlink node
     function unlinkNode(nodeId) {
       parent.postMessage({
@@ -1389,34 +1323,21 @@
 
           statusText.textContent = `${msg.translationCount} translations loaded`;
           renderTextList();
-          renderSelectedNode();
+          updateCreateSelectedNode();
           break;
 
         case 'text-nodes-updated':
           state.textNodes = msg.textNodes || [];
           if (msg.selectedNode !== undefined) {
             state.selectedNode = msg.selectedNode;
-            renderSelectedNode();
+            updateCreateSelectedNode();
           }
           renderTextList();
           break;
 
         case 'selection-changed':
           state.selectedNode = msg.selectedNode;
-          renderSelectedNode();
-
-          // Auto-search if node has text
-          if (state.selectedNode && !state.selectedNode.multilanId) {
-            multilanSearch.value = state.selectedNode.characters.slice(0, 30);
-            parent.postMessage({
-              pluginMessage: { type: 'search', searchQuery: state.selectedNode.characters }
-            }, '*');
-          }
-          break;
-
-        case 'search-results':
-          state.searchResults = msg.results || [];
-          renderSearchResults();
+          updateCreateSelectedNode();
           break;
 
         case 'language-switched':
