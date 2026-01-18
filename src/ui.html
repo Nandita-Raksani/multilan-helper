@@ -574,11 +574,29 @@
       z-index: 5;
     }
 
+    .search-result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .search-result-id {
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--figma-color-bg-brand);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
     .search-result-primary {
       font-size: 13px;
       font-weight: 500;
-      margin-bottom: 8px;
       color: var(--figma-color-text);
+      flex: 1;
     }
 
     .search-result-translations {
@@ -905,8 +923,10 @@
         const primaryText = result.translations[state.currentLang] || result.translations['en'] || Object.values(result.translations)[0];
         return `
           <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
-            <div class="multilanId-tooltip">ID: ${escapeHtml(result.multilanId)}</div>
-            <div class="search-result-primary">${escapeHtml(primaryText)}</div>
+            <div class="search-result-header">
+              <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
+              <span class="search-result-primary">${escapeHtml(primaryText)}</span>
+            </div>
             <div class="search-result-translations">
               ${Object.entries(result.translations).map(([lang, text]) => `
                 <span class="search-result-lang"><strong>${lang.toUpperCase()}</strong>${escapeHtml(text)}</span>

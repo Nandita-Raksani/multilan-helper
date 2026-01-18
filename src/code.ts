@@ -301,8 +301,8 @@ function searchTranslations(query: string): Array<{ multilanId: string; translat
 }
 
 // Link a text node to a multilanId
-function linkTextNode(nodeId: string, multilanId: string): boolean {
-  const node = figma.getNodeById(nodeId);
+async function linkTextNode(nodeId: string, multilanId: string): Promise<boolean> {
+  const node = await figma.getNodeByIdAsync(nodeId);
   if (!node || node.type !== "TEXT") return false;
 
   // Clear placeholder status if it was a placeholder (restores original styling)
@@ -315,8 +315,8 @@ function linkTextNode(nodeId: string, multilanId: string): boolean {
 }
 
 // Unlink a text node
-function unlinkTextNode(nodeId: string): boolean {
-  const node = figma.getNodeById(nodeId);
+async function unlinkTextNode(nodeId: string): Promise<boolean> {
+  const node = await figma.getNodeByIdAsync(nodeId);
   if (!node || node.type !== "TEXT") return false;
 
   // Also clear placeholder status if present
@@ -443,10 +443,10 @@ function searchTranslationsWithScore(
 }
 
 // Apply exact matches from bulk auto-link
-function applyExactMatches(matches: Array<{ nodeId: string; multilanId: string }>): number {
+async function applyExactMatches(matches: Array<{ nodeId: string; multilanId: string }>): Promise<number> {
   let count = 0;
   for (const match of matches) {
-    if (linkTextNode(match.nodeId, match.multilanId)) {
+    if (await linkTextNode(match.nodeId, match.multilanId)) {
       count++;
     }
   }
@@ -530,8 +530,8 @@ async function createLinkedTextNode(multilanId: string, text: string, lang: Lang
 }
 
 // Select a node in the canvas
-function selectNode(nodeId: string): void {
-  const node = figma.getNodeById(nodeId);
+async function selectNode(nodeId: string): Promise<void> {
+  const node = await figma.getNodeByIdAsync(nodeId);
   if (node && "type" in node) {
     figma.currentPage.selection = [node as SceneNode];
     figma.viewport.scrollAndZoomIntoView([node as SceneNode]);
@@ -619,7 +619,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.nodeId && msg.multilanId) {
-        const success = linkTextNode(msg.nodeId, msg.multilanId);
+        const success = await linkTextNode(msg.nodeId, msg.multilanId);
         if (success) {
           figma.notify(`Linked to ${msg.multilanId}`);
           // Refresh
@@ -636,7 +636,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.nodeId) {
-        const success = unlinkTextNode(msg.nodeId);
+        const success = await unlinkTextNode(msg.nodeId);
         if (success) {
           figma.notify("Unlinked");
           const textNodes = getAllTextNodesInfo("page");
@@ -648,7 +648,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "select-node":
       if (msg.nodeId) {
-        selectNode(msg.nodeId);
+        await selectNode(msg.nodeId);
       }
       break;
 
@@ -718,11 +718,28 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.confirmations && msg.confirmations.length > 0) {
-        figma.notify(`Linking ${msg.confirmations.length} nodes...`);
-        const count = applyExactMatches(msg.confirmations);
-        figma.notify(`Successfully linked ${count} text nodes`);
-        const textNodes = getAllTextNodesInfo(msg.scope || "page");
-        figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
+        try {
+          figma.notify(`Linking ${msg.confirmations.length} nodes...`);
+          let successCount = 0;
+          let failCount = 0;
+          for (const match of msg.confirmations) {
+            const success = await linkTextNode(match.nodeId, match.multilanId);
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
+          }
+          if (failCount > 0) {
+            figma.notify(`Linked ${successCount} nodes, ${failCount} failed`, { error: failCount > 0 });
+          } else {
+            figma.notify(`Successfully linked ${successCount} text nodes`);
+          }
+          const textNodes = getAllTextNodesInfo(msg.scope || "page");
+          figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
+        } catch (err) {
+          figma.notify(`Error linking nodes: ${err}`, { error: true });
+        }
       } else {
         figma.notify("No matches to apply");
       }
@@ -734,7 +751,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.nodeId && msg.multilanId) {
-        const success = linkTextNode(msg.nodeId, msg.multilanId);
+        const success = await linkTextNode(msg.nodeId, msg.multilanId);
         if (success) {
           figma.notify(`Linked to ${msg.multilanId}`);
         }
