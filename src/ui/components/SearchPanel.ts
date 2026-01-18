@@ -37,8 +37,7 @@ export function initSearchPanel(): void {
       return;
     }
 
-    const multilanId = searchQuery || `placeholder_${Date.now()}`;
-    pluginBridge.markAsPlaceholder(multilanId, text);
+    pluginBridge.markAsPlaceholder(text);
     searchPlaceholderText.value = '';
   });
 }
@@ -75,10 +74,7 @@ export function updateSearchSelectedNode(): void {
       });
 
       getElementById('searchMakePlaceholderBtn').addEventListener('click', () => {
-        pluginBridge.markAsPlaceholder(
-          state.selectedNode!.multilanId || `placeholder_${Date.now()}`,
-          state.selectedNode!.characters
-        );
+        pluginBridge.markAsPlaceholder(state.selectedNode!.characters);
       });
     } else {
       searchSelectedActions.innerHTML = '';

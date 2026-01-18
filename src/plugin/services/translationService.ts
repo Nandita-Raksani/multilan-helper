@@ -221,3 +221,45 @@ export function buildTextToIdMap(translationData: TranslationMap): Map<string, s
 
   return textToMultilanId;
 }
+
+/**
+ * Detect current language by comparing linked nodes' text with translations
+ * Returns the language that matches the most nodes
+ */
+export function detectLanguage(
+  translationData: TranslationMap,
+  linkedNodes: Array<{ multilanId: string; characters: string }>
+): Language {
+  const languageCounts: Record<Language, number> = {
+    en: 0,
+    fr: 0,
+    nl: 0,
+    de: 0,
+  };
+
+  for (const node of linkedNodes) {
+    const translations = translationData[node.multilanId];
+    if (!translations) continue;
+
+    // Check which language matches the current text
+    for (const lang of SUPPORTED_LANGUAGES) {
+      if (translations[lang] === node.characters) {
+        languageCounts[lang]++;
+        break; // Found a match, no need to check other languages
+      }
+    }
+  }
+
+  // Find the language with the most matches
+  let bestLang: Language = "en";
+  let bestCount = 0;
+
+  for (const lang of SUPPORTED_LANGUAGES) {
+    if (languageCounts[lang] > bestCount) {
+      bestCount = languageCounts[lang];
+      bestLang = lang;
+    }
+  }
+
+  return bestLang;
+}

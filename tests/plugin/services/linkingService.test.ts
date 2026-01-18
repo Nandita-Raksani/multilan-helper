@@ -209,17 +209,28 @@ describe("linkingService", () => {
   });
 
   describe("markAsPlaceholder", () => {
-    it("should mark node as placeholder with styling", async () => {
+    it("should mark node as placeholder with stars around text", async () => {
       const { markAsPlaceholder } = await import("../../../src/plugin/services/linkingService");
 
       const mockNode = createMockTextNode({ id: "node-1" });
-      (mockNode as unknown as { fills: unknown[] }).fills = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
 
-      await markAsPlaceholder(mockNode, "placeholder_123", "Placeholder text");
+      await markAsPlaceholder(mockNode, "Placeholder text");
 
-      expect(mockNode.setPluginData).toHaveBeenCalledWith(PLUGIN_DATA_KEY, "placeholder_123");
+      expect(mockNode.setPluginData).toHaveBeenCalledWith(PLUGIN_DATA_KEY, ""); // unlinked
       expect(mockNode.setPluginData).toHaveBeenCalledWith(PLACEHOLDER_KEY, "true");
-      expect(mockNode.characters).toBe("Placeholder text");
+      expect(mockNode.characters).toBe("*Placeholder text*");
+    });
+
+    it("should unlink existing linked node when marking as placeholder", async () => {
+      const { markAsPlaceholder } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({ id: "node-1" });
+      mockNode.setPluginData(PLUGIN_DATA_KEY, "10001"); // already linked
+
+      await markAsPlaceholder(mockNode, "New placeholder");
+
+      expect(mockNode.setPluginData).toHaveBeenCalledWith(PLUGIN_DATA_KEY, ""); // unlinked
+      expect(mockNode.characters).toBe("*New placeholder*");
     });
   });
 

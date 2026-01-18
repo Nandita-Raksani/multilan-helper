@@ -7,9 +7,7 @@ import {
   isPlaceholder,
   setPlaceholderStatus,
   buildTextNodeInfo,
-  storeOriginalFill,
-  restoreOriginalFill,
-  applyPlaceholderStyle,
+  wrapWithStars,
   clearPlaceholderStatus,
   getTextNodesInScope,
   getAllTextNodesInfo,
@@ -20,7 +18,7 @@ import {
   updateNodeText,
   createTextNode,
 } from "../../../src/plugin/services/nodeService";
-import { PLUGIN_DATA_KEY, PLACEHOLDER_KEY, ORIGINAL_FILL_KEY, PLACEHOLDER_COLOR } from "../../../src/shared/types";
+import { PLUGIN_DATA_KEY, PLACEHOLDER_KEY } from "../../../src/shared/types";
 
 describe("nodeService", () => {
   beforeEach(() => {
@@ -178,77 +176,31 @@ describe("nodeService", () => {
     });
   });
 
-  describe("storeOriginalFill", () => {
-    it("should store fills as JSON", () => {
-      const node = createMockTextNode();
-      const fills = [{ type: "SOLID", color: { r: 1, g: 0, b: 0 } }];
-      (node as unknown as { fills: unknown[] }).fills = fills;
-
-      storeOriginalFill(node);
-
-      expect(node.setPluginData).toHaveBeenCalledWith(ORIGINAL_FILL_KEY, JSON.stringify(fills));
+  describe("wrapWithStars", () => {
+    it("should wrap text with stars", () => {
+      const result = wrapWithStars("Hello");
+      expect(result).toBe("*Hello*");
     });
 
-    it("should not store if fills is empty", () => {
-      const node = createMockTextNode();
-      (node as unknown as { fills: unknown[] }).fills = [];
-
-      storeOriginalFill(node);
-
-      expect(node.setPluginData).not.toHaveBeenCalledWith(ORIGINAL_FILL_KEY, expect.anything());
-    });
-  });
-
-  describe("restoreOriginalFill", () => {
-    it("should restore fills from stored JSON", () => {
-      const node = createMockTextNode();
-      const fills = [{ type: "SOLID", color: { r: 1, g: 0, b: 0 } }];
-      node.setPluginData(ORIGINAL_FILL_KEY, JSON.stringify(fills));
-
-      restoreOriginalFill(node);
-
-      expect((node as unknown as { fills: unknown }).fills).toEqual(fills);
-      expect(node.setPluginData).toHaveBeenCalledWith(ORIGINAL_FILL_KEY, "");
+    it("should handle empty string", () => {
+      const result = wrapWithStars("");
+      expect(result).toBe("**");
     });
 
-    it("should handle missing original fill gracefully", () => {
-      const node = createMockTextNode();
-
-      expect(() => restoreOriginalFill(node)).not.toThrow();
-    });
-
-    it("should handle invalid JSON gracefully", () => {
-      const node = createMockTextNode();
-      node.setPluginData(ORIGINAL_FILL_KEY, "invalid-json");
-
-      expect(() => restoreOriginalFill(node)).not.toThrow();
-    });
-  });
-
-  describe("applyPlaceholderStyle", () => {
-    it("should store original fill and apply placeholder color", () => {
-      const node = createMockTextNode();
-      const originalFills = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
-      (node as unknown as { fills: unknown[] }).fills = originalFills;
-
-      applyPlaceholderStyle(node);
-
-      expect(node.setPluginData).toHaveBeenCalledWith(ORIGINAL_FILL_KEY, JSON.stringify(originalFills));
-      expect((node as unknown as { fills: unknown[] }).fills).toEqual([{ type: "SOLID", color: PLACEHOLDER_COLOR }]);
+    it("should handle text with special characters", () => {
+      const result = wrapWithStars("Hello World!");
+      expect(result).toBe("*Hello World!*");
     });
   });
 
   describe("clearPlaceholderStatus", () => {
-    it("should clear placeholder flag and restore original fill", () => {
+    it("should clear placeholder flag", () => {
       const node = createMockTextNode();
-      const originalFills = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
       node.setPluginData(PLACEHOLDER_KEY, "true");
-      node.setPluginData(ORIGINAL_FILL_KEY, JSON.stringify(originalFills));
 
       clearPlaceholderStatus(node);
 
       expect(node.setPluginData).toHaveBeenCalledWith(PLACEHOLDER_KEY, "");
-      expect((node as unknown as { fills: unknown[] }).fills).toEqual(originalFills);
     });
   });
 

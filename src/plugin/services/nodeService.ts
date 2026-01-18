@@ -5,8 +5,6 @@ import {
   TranslationEntry,
   PLUGIN_DATA_KEY,
   PLACEHOLDER_KEY,
-  ORIGINAL_FILL_KEY,
-  PLACEHOLDER_COLOR,
 } from "../../shared/types";
 
 /**
@@ -45,44 +43,17 @@ export function setPlaceholderStatus(node: TextNode, isPlaceholder: boolean): vo
 }
 
 /**
- * Store original fill color for later restoration
+ * Wrap text with stars for placeholder display
  */
-export function storeOriginalFill(node: TextNode): void {
-  const fills = node.fills;
-  if (Array.isArray(fills) && fills.length > 0) {
-    node.setPluginData(ORIGINAL_FILL_KEY, JSON.stringify(fills));
-  }
+export function wrapWithStars(text: string): string {
+  return `*${text}*`;
 }
 
 /**
- * Restore original fill color
- */
-export function restoreOriginalFill(node: TextNode): void {
-  const originalFill = node.getPluginData(ORIGINAL_FILL_KEY);
-  if (originalFill) {
-    try {
-      node.fills = JSON.parse(originalFill);
-    } catch {
-      // If parsing fails, leave current fill
-    }
-    node.setPluginData(ORIGINAL_FILL_KEY, "");
-  }
-}
-
-/**
- * Apply placeholder styling to a node
- */
-export function applyPlaceholderStyle(node: TextNode): void {
-  storeOriginalFill(node);
-  node.fills = [{ type: "SOLID", color: PLACEHOLDER_COLOR }];
-}
-
-/**
- * Clear placeholder status and restore original styling
+ * Clear placeholder status
  */
 export function clearPlaceholderStatus(node: TextNode): void {
   setPlaceholderStatus(node, false);
-  restoreOriginalFill(node);
 }
 
 /**

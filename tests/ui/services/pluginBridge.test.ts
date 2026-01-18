@@ -144,13 +144,12 @@ describe("pluginBridge", () => {
 
   describe("markAsPlaceholder", () => {
     it("should send mark-as-placeholder message", () => {
-      pluginBridge.markAsPlaceholder("placeholder_123", "Placeholder text");
+      pluginBridge.markAsPlaceholder("Placeholder text");
 
       expect(postMessageMock).toHaveBeenCalledWith(
         {
           pluginMessage: {
             type: "mark-as-placeholder",
-            multilanId: "placeholder_123",
             text: "Placeholder text",
           },
         },

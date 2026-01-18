@@ -14,7 +14,7 @@ import {
   isPlaceholder,
   clearPlaceholderStatus,
   setPlaceholderStatus,
-  applyPlaceholderStyle,
+  wrapWithStars,
   updateNodeText,
   loadNodeFont,
 } from "./nodeService";
@@ -58,22 +58,19 @@ export async function unlinkTextNode(nodeId: string): Promise<boolean> {
 }
 
 /**
- * Mark a node as placeholder with visual indicator
+ * Mark a node as placeholder with star markers
+ * Unlinks the node first if it was linked to a translation
  */
 export async function markAsPlaceholder(
   node: TextNode,
-  multilanId: string,
   text: string
 ): Promise<void> {
-  // Store the multilanId and placeholder flag
-  setMultilanId(node, multilanId);
+  // Clear any existing link - placeholder is not linked to a translation
+  clearMultilanId(node);
   setPlaceholderStatus(node, true);
 
-  // Apply placeholder styling (orange color)
-  applyPlaceholderStyle(node);
-
-  // Set the text content
-  await updateNodeText(node, text);
+  // Set the text content with stars around it
+  await updateNodeText(node, wrapWithStars(text));
 }
 
 /**

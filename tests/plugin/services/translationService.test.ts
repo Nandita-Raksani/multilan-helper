@@ -10,6 +10,7 @@ import {
   searchTranslationsWithScore,
   globalSearchTranslations,
   buildTextToIdMap,
+  detectLanguage,
 } from "../../../src/plugin/services/translationService";
 import { sampleApiData, sampleTranslationMap } from "../../setup";
 
@@ -224,6 +225,77 @@ describe("translationService", () => {
       };
       const map = buildTextToIdMap(dataWithDuplicates);
       expect(map.get("Test")).toBe("1"); // First occurrence
+    });
+  });
+
+  describe("detectLanguage", () => {
+    it("should detect English when nodes have English text", () => {
+      const linkedNodes = [
+        { multilanId: "10001", characters: "Submit" },
+        { multilanId: "10002", characters: "Cancel" },
+      ];
+      const result = detectLanguage(sampleTranslationMap, linkedNodes);
+      expect(result).toBe("en");
+    });
+
+    it("should detect French when nodes have French text", () => {
+      const linkedNodes = [
+        { multilanId: "10001", characters: "Soumettre" },
+        { multilanId: "10002", characters: "Annuler" },
+      ];
+      const result = detectLanguage(sampleTranslationMap, linkedNodes);
+      expect(result).toBe("fr");
+    });
+
+    it("should detect Dutch when nodes have Dutch text", () => {
+      const linkedNodes = [
+        { multilanId: "10001", characters: "Indienen" },
+        { multilanId: "10002", characters: "Annuleren" },
+      ];
+      const result = detectLanguage(sampleTranslationMap, linkedNodes);
+      expect(result).toBe("nl");
+    });
+
+    it("should detect German when nodes have German text", () => {
+      const linkedNodes = [
+        { multilanId: "10001", characters: "Einreichen" },
+        { multilanId: "10002", characters: "Abbrechen" },
+      ];
+      const result = detectLanguage(sampleTranslationMap, linkedNodes);
+      expect(result).toBe("de");
+    });
+
+    it("should return majority language when mixed", () => {
+      const linkedNodes = [
+        { multilanId: "10001", characters: "Soumettre" }, // French
+        { multilanId: "10002", characters: "Annuler" }, // French
+        { multilanId: "10003", characters: "OK" }, // English
+      ];
+      const result = detectLanguage(sampleTranslationMap, linkedNodes);
+      expect(result).toBe("fr");
+    });
+
+    it("should default to English when no linked nodes", () => {
+      const result = detectLanguage(sampleTranslationMap, []);
+      expect(result).toBe("en");
+    });
+
+    it("should default to English when no matches found", () => {
+      const linkedNodes = [
+        { multilanId: "10001", characters: "Unknown text" },
+        { multilanId: "10002", characters: "Another unknown" },
+      ];
+      const result = detectLanguage(sampleTranslationMap, linkedNodes);
+      expect(result).toBe("en");
+    });
+
+    it("should handle invalid multilanIds gracefully", () => {
+      const linkedNodes = [
+        { multilanId: "invalid", characters: "Submit" },
+        { multilanId: "10001", characters: "Submit" },
+      ];
+      const result = detectLanguage(sampleTranslationMap, linkedNodes);
+      expect(result).toBe("en");
     });
   });
 });

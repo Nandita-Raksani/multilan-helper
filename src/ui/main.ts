@@ -18,7 +18,8 @@ import {
   setViewMode,
   getCurrentTab,
   triggerSearch,
-  clearSearch
+  clearSearch,
+  setActiveLanguage
 } from './components';
 
 function handlePluginMessage(msg: PluginMessage): void {
@@ -27,11 +28,17 @@ function handlePluginMessage(msg: PluginMessage): void {
       store.setState({
         canEdit: msg.canEdit,
         textNodes: msg.textNodes || [],
-        selectedNode: msg.selectedNode || null
+        selectedNode: msg.selectedNode || null,
+        currentLang: msg.detectedLanguage || 'en'
       });
 
       if (!msg.canEdit) {
         setViewMode(true);
+      }
+
+      // Set the detected language in the UI
+      if (msg.detectedLanguage) {
+        setActiveLanguage(msg.detectedLanguage);
       }
 
       setStatus(`${msg.translationCount} translations loaded`);

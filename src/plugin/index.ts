@@ -15,12 +15,14 @@ import {
   isLanguage,
   globalSearchTranslations,
   searchTranslations,
+  detectLanguage,
 } from "./services/translationService";
 import {
   getAllTextNodesInfo,
   getSelectedTextNodeInfo,
   selectNode,
   getTextNodesInScope,
+  getMultilanId,
 } from "./services/nodeService";
 import {
   linkTextNode,
@@ -58,6 +60,17 @@ function initialize(): void {
   const textNodes = getAllTextNodesInfo("page", getTranslations);
   const selectedNode = getSelectedTextNodeInfo(getTranslations);
 
+  // Detect current language from linked nodes
+  const allNodes = getTextNodesInScope("page");
+  const linkedNodes = allNodes
+    .map((node) => {
+      const multilanId = getMultilanId(node);
+      return multilanId ? { multilanId, characters: node.characters } : null;
+    })
+    .filter((n): n is { multilanId: string; characters: string } => n !== null);
+
+  const detectedLanguage = detectLanguage(translationData, linkedNodes);
+
   figma.ui.postMessage({
     type: "init",
     canEdit: canEdit(),
@@ -66,6 +79,7 @@ function initialize(): void {
     selectedNode,
     translationCount: Object.keys(translationData).length,
     buildTimestamp: BUILD_TIMESTAMP,
+    detectedLanguage,
   });
 }
 
@@ -189,9 +203,9 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           return;
         }
         const textNode = selection[0] as TextNode;
-        if (msg.multilanId && msg.text) {
-          await markAsPlaceholder(textNode, msg.multilanId, msg.text);
-          figma.notify(`Marked as placeholder: ${msg.multilanId}`);
+        if (msg.text) {
+          await markAsPlaceholder(textNode, msg.text);
+          figma.notify("Marked as placeholder");
           const textNodes = getAllTextNodesInfo("page", getTranslations);
           const selectedNode = getSelectedTextNodeInfo(getTranslations);
           figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });

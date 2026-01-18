@@ -78,10 +78,9 @@ class PluginBridge {
     });
   }
 
-  markAsPlaceholder(multilanId: string, text: string): void {
+  markAsPlaceholder(text: string): void {
     this.send({
       type: 'mark-as-placeholder',
-      multilanId,
       text
     });
   }

@@ -127,6 +127,7 @@ export interface PluginMessage {
   selectionTextNodes?: TextNodeInfo[];
   translationCount?: number;
   buildTimestamp?: string;
+  detectedLanguage?: Language;
   success?: number;
   missing?: string[];
   results?: SearchResult[];
@@ -138,5 +139,3 @@ export interface PluginMessage {
 // Constants
 export const PLUGIN_DATA_KEY = "multilanId";
 export const PLACEHOLDER_KEY = "isPlaceholder";
-export const ORIGINAL_FILL_KEY = "originalFill";
-export const PLACEHOLDER_COLOR: RGB = { r: 0.96, g: 0.62, b: 0.04 };
