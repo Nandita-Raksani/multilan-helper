@@ -268,5 +268,50 @@
       { "languageId": "nl", "wording": "Wachtwoord vergeten?", "id": 119 },
       { "languageId": "de", "wording": "Passwort vergessen?", "id": 120 }
     ]
+  },
+  {
+    "id": 10050,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Welcome back, ###username###! You have ###count### new messages.", "id": 121 },
+      { "languageId": "fr", "wording": "Bon retour, ###username### ! Vous avez ###count### nouveaux messages.", "id": 122 },
+      { "languageId": "nl", "wording": "Welkom terug, ###username###! Je hebt ###count### nieuwe berichten.", "id": 123 },
+      { "languageId": "de", "wording": "Willkommen zurück, ###username###! Sie haben ###count### neue Nachrichten.", "id": 124 }
+    ]
+  },
+  {
+    "id": 10051,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Hello ###name###, your order ###orderNumber### is ready for pickup.", "id": 125 },
+      { "languageId": "fr", "wording": "Bonjour ###name###, votre commande ###orderNumber### est prête à être retirée.", "id": 126 },
+      { "languageId": "nl", "wording": "Hallo ###name###, je bestelling ###orderNumber### is klaar om op te halen.", "id": 127 },
+      { "languageId": "de", "wording": "Hallo ###name###, Ihre Bestellung ###orderNumber### ist zur Abholung bereit.", "id": 128 }
+    ]
+  },
+  {
+    "id": 10052,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "###itemCount### items in your cart", "id": 129 },
+      { "languageId": "fr", "wording": "###itemCount### articles dans votre panier", "id": 130 },
+      { "languageId": "nl", "wording": "###itemCount### artikelen in je winkelwagen", "id": 131 },
+      { "languageId": "de", "wording": "###itemCount### Artikel in Ihrem Warenkorb", "id": 132 }
+    ]
+  },
+  {
+    "id": 10053,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Logged in as ###email###", "id": 133 },
+      { "languageId": "fr", "wording": "Connecté en tant que ###email###", "id": 134 },
+      { "languageId": "nl", "wording": "Ingelogd als ###email###", "id": 135 },
+      { "languageId": "de", "wording": "Angemeldet als ###email###", "id": 136 }
+    ]
+  },
+  {
+    "id": 10054,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "###percentage###% complete", "id": 137 },
+      { "languageId": "fr", "wording": "###percentage### % terminé", "id": 138 },
+      { "languageId": "nl", "wording": "###percentage###% voltooid", "id": 139 },
+      { "languageId": "de", "wording": "###percentage### % abgeschlossen", "id": 140 }
+    ]
   }
 ]
