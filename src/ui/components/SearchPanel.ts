@@ -91,11 +91,15 @@ export function updateSearchSelectedNode(): void {
 
     const isLinked = state.selectedNode.multilanId;
     if (isLinked) {
-      searchSelectedBadge.innerHTML = `${state.selectedNode.multilanId} <button class="btn-copy-small" id="copySelectedId" title="Copy ID">Copy</button>`;
+      searchSelectedBadge.textContent = state.selectedNode.multilanId!;
       searchSelectedBadge.style.background = '#10b981';
+      searchSelectedBadge.style.cursor = 'pointer';
+      searchSelectedBadge.title = 'Click to copy';
     } else {
       searchSelectedBadge.textContent = 'Not linked';
       searchSelectedBadge.style.background = '#f59e0b';
+      searchSelectedBadge.style.cursor = 'default';
+      searchSelectedBadge.title = '';
     }
 
     // Show action buttons based on link status
@@ -113,16 +117,19 @@ export function updateSearchSelectedNode(): void {
         pluginBridge.markAsPlaceholder(state.selectedNode!.characters);
       });
 
-      // Copy ID button handler
-      getElementById('copySelectedId').addEventListener('click', (e) => {
-        e.stopPropagation();
+      // Click badge to copy ID
+      searchSelectedBadge.onclick = () => {
         const id = state.selectedNode!.multilanId!;
         if (copyToClipboard(id)) {
-          const btn = e.target as HTMLButtonElement;
-          showButtonFeedback(btn, 'Copy', 'Copied!');
+          const originalText = searchSelectedBadge.textContent;
+          searchSelectedBadge.textContent = 'Copied!';
+          setTimeout(() => {
+            searchSelectedBadge.textContent = originalText;
+          }, 1000);
         }
-      });
+      };
     } else {
+      searchSelectedBadge.onclick = null;
       searchSelectedActions.innerHTML = '';
     }
   } else {

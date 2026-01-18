@@ -63,8 +63,9 @@ describe("SearchPanel", () => {
       updateSearchSelectedNode();
 
       const badge = document.getElementById("searchSelectedBadge");
-      expect(badge?.textContent).toContain("10001");
+      expect(badge?.textContent).toBe("10001");
       expect(badge?.style.background).toBe("rgb(16, 185, 129)"); // #10b981
+      expect(badge?.style.cursor).toBe("pointer");
     });
 
     it("should show 'Not linked' badge for unlinked node", () => {
