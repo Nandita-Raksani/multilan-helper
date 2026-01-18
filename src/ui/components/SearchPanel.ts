@@ -9,20 +9,20 @@ let searchTimeout: ReturnType<typeof setTimeout>;
 // Track variable values per multilanId
 const variableValues: Map<string, Record<string, string>> = new Map();
 
-// Status badge configuration
-const STATUS_CONFIG: Record<MultilanStatus, { color: string; label: string }> = {
-  FINAL: { color: '#10b981', label: 'Final' },
-  DRAFT: { color: '#f59e0b', label: 'Draft' },
-  IN_TRANSLATION: { color: '#3b82f6', label: 'In Translation' },
-  FOUR_EYES_CHECK: { color: '#8b5cf6', label: 'Review' },
-  TO_TRANSLATE_INTERNALLY: { color: '#f97316', label: 'To Translate (Int)' },
-  TO_TRANSLATE_EXTERNALLY: { color: '#ef4444', label: 'To Translate (Ext)' },
+// Status badge configuration - light bg with colored text (like GitHub labels)
+const STATUS_CONFIG: Record<MultilanStatus, { bg: string; text: string; label: string }> = {
+  FINAL: { bg: 'rgba(16, 185, 129, 0.15)', text: '#059669', label: 'Final' },
+  DRAFT: { bg: 'rgba(245, 158, 11, 0.15)', text: '#d97706', label: 'Draft' },
+  IN_TRANSLATION: { bg: 'rgba(59, 130, 246, 0.15)', text: '#2563eb', label: 'In Translation' },
+  FOUR_EYES_CHECK: { bg: 'rgba(139, 92, 246, 0.15)', text: '#7c3aed', label: 'Review' },
+  TO_TRANSLATE_INTERNALLY: { bg: 'rgba(249, 115, 22, 0.15)', text: '#ea580c', label: 'To Translate' },
+  TO_TRANSLATE_EXTERNALLY: { bg: 'rgba(239, 68, 68, 0.15)', text: '#dc2626', label: 'To Translate' },
 };
 
 function getStatusBadge(status?: MultilanStatus): string {
   if (!status) return '';
-  const config = STATUS_CONFIG[status] || { color: '#6b7280', label: status };
-  return `<span class="status-badge" style="background: ${config.color};">${config.label}</span>`;
+  const config = STATUS_CONFIG[status] || { bg: 'rgba(107, 114, 128, 0.15)', text: '#6b7280', label: status };
+  return `<span class="status-badge" style="background: ${config.bg}; color: ${config.text};">${config.label}</span>`;
 }
 
 function formatDate(dateStr?: string): string {
