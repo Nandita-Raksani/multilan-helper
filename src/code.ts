@@ -121,20 +121,6 @@ function getMultilanId(node: TextNode): string | null {
 // Set multilanId on a text node
 function setMultilanId(node: TextNode, multilanId: string): void {
   node.setPluginData(PLUGIN_DATA_KEY, multilanId);
-  // Update node name to include multilanId for visibility in Layers panel
-  updateNodeNameWithId(node, multilanId);
-}
-
-// Update node name to show multilanId (visible on hover in Layers panel)
-function updateNodeNameWithId(node: TextNode, multilanId: string): void {
-  // Remove any existing [id] suffix first
-  const baseName = node.name.replace(/\s*\[\d+\]$/, "");
-  node.name = `${baseName} [${multilanId}]`;
-}
-
-// Remove multilanId from node name
-function removeIdFromNodeName(node: TextNode): void {
-  node.name = node.name.replace(/\s*\[\d+\]$/, "");
 }
 
 // Get translation for a multilanId and language
@@ -346,9 +332,6 @@ async function unlinkTextNode(nodeId: string): Promise<boolean> {
   if (isPlaceholder(node)) {
     clearPlaceholderStatus(node);
   }
-
-  // Remove multilanId from node name
-  removeIdFromNodeName(node);
 
   node.setPluginData(PLUGIN_DATA_KEY, "");
   return true;
@@ -591,9 +574,11 @@ function initialize(): void {
 // Handle selection change
 figma.on("selectionchange", () => {
   const selectedNode = getSelectedTextNodeInfo();
+  const selectionTextNodes = getAllTextNodesInfo("selection");
   figma.ui.postMessage({
     type: "selection-changed",
-    selectedNode
+    selectedNode,
+    selectionTextNodes
   });
 });
 
@@ -619,7 +604,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           type: "language-switched",
           ...result
         });
-        figma.notify(`Switched to ${msg.language.toUpperCase()}: ${result.success} texts updated`);
 
         // Refresh text nodes list
         const textNodes = getAllTextNodesInfo(msg.scope || "page");

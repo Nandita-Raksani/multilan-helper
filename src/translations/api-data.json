@@ -178,5 +178,95 @@
       { "languageId": "nl", "wording": "Gelukt!", "id": 79 },
       { "languageId": "de", "wording": "Erfolg!", "id": 80 }
     ]
+  },
+  {
+    "id": 10021,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Submit form", "id": 81 },
+      { "languageId": "fr", "wording": "Soumettre le formulaire", "id": 82 },
+      { "languageId": "nl", "wording": "Formulier indienen", "id": 83 },
+      { "languageId": "de", "wording": "Formular absenden", "id": 84 }
+    ]
+  },
+  {
+    "id": 10022,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Send", "id": 85 },
+      { "languageId": "fr", "wording": "Envoyer", "id": 86 },
+      { "languageId": "nl", "wording": "Verzenden", "id": 87 },
+      { "languageId": "de", "wording": "Senden", "id": 88 }
+    ]
+  },
+  {
+    "id": 10023,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Confirm", "id": 89 },
+      { "languageId": "fr", "wording": "Confirmer", "id": 90 },
+      { "languageId": "nl", "wording": "Bevestigen", "id": 91 },
+      { "languageId": "de", "wording": "Bestätigen", "id": 92 }
+    ]
+  },
+  {
+    "id": 10024,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Apply", "id": 93 },
+      { "languageId": "fr", "wording": "Appliquer", "id": 94 },
+      { "languageId": "nl", "wording": "Toepassen", "id": 95 },
+      { "languageId": "de", "wording": "Anwenden", "id": 96 }
+    ]
+  },
+  {
+    "id": 10025,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Edit", "id": 97 },
+      { "languageId": "fr", "wording": "Modifier", "id": 98 },
+      { "languageId": "nl", "wording": "Bewerken", "id": 99 },
+      { "languageId": "de", "wording": "Bearbeiten", "id": 100 }
+    ]
+  },
+  {
+    "id": 10026,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Add new", "id": 101 },
+      { "languageId": "fr", "wording": "Ajouter", "id": 102 },
+      { "languageId": "nl", "wording": "Nieuw toevoegen", "id": 103 },
+      { "languageId": "de", "wording": "Neu hinzufügen", "id": 104 }
+    ]
+  },
+  {
+    "id": 10027,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Create account", "id": 105 },
+      { "languageId": "fr", "wording": "Créer un compte", "id": 106 },
+      { "languageId": "nl", "wording": "Account aanmaken", "id": 107 },
+      { "languageId": "de", "wording": "Konto erstellen", "id": 108 }
+    ]
+  },
+  {
+    "id": 10028,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Sign in", "id": 109 },
+      { "languageId": "fr", "wording": "Se connecter", "id": 110 },
+      { "languageId": "nl", "wording": "Inloggen", "id": 111 },
+      { "languageId": "de", "wording": "Anmelden", "id": 112 }
+    ]
+  },
+  {
+    "id": 10029,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Sign up", "id": 113 },
+      { "languageId": "fr", "wording": "S'inscrire", "id": 114 },
+      { "languageId": "nl", "wording": "Registreren", "id": 115 },
+      { "languageId": "de", "wording": "Registrieren", "id": 116 }
+    ]
+  },
+  {
+    "id": 10030,
+    "multilanTextList": [
+      { "languageId": "en", "wording": "Forgot password?", "id": 117 },
+      { "languageId": "fr", "wording": "Mot de passe oublié ?", "id": 118 },
+      { "languageId": "nl", "wording": "Wachtwoord vergeten?", "id": 119 },
+      { "languageId": "de", "wording": "Passwort vergessen?", "id": 120 }
+    ]
   }
 ]
