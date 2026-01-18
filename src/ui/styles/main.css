@@ -214,7 +214,9 @@ body {
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 8px;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .translations-preview {
