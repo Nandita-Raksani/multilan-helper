@@ -609,10 +609,6 @@ body {
 }
 
 .search-result-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
   margin-bottom: 8px;
 }
 
@@ -760,6 +756,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .search-result-id-row .clickable-id {
