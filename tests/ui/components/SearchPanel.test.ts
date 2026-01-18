@@ -154,7 +154,7 @@ describe("SearchPanel", () => {
       store.setState({ globalSearchResults: sampleSearchResults });
       renderGlobalSearchResults();
 
-      const header = document.querySelector(".search-result-id");
+      const header = document.querySelector(".clickable-id");
       expect(header?.textContent).toBe("10001");
     });
 

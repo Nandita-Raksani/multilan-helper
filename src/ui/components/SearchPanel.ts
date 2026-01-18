@@ -182,8 +182,8 @@ export function renderGlobalSearchResults(): void {
       <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}" ${tooltipText ? `data-tooltip="${escapeHtml(tooltipText)}"` : ''}>
         <div class="search-result-header">
           <div class="search-result-id-row">
-            <span class="search-result-id clickable-id" data-id="${escapeHtml(result.multilanId)}" title="Click to copy">${escapeHtml(result.multilanId)}</span>
             ${getStatusBadge(result.metadata?.status)}
+            <span class="btn-sm btn-sm-success clickable-id" data-id="${escapeHtml(result.multilanId)}" title="Click to copy">${escapeHtml(result.multilanId)}</span>
           </div>
         </div>
         <div class="translations-preview">
