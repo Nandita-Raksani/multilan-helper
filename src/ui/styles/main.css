@@ -212,6 +212,7 @@ body {
   flex-direction: column;
   gap: 4px;
   margin-top: 8px;
+  margin-bottom: 8px;
   width: 100%;
 }
 
@@ -620,14 +621,10 @@ body {
   font-weight: 600;
   background: var(--figma-color-bg-brand);
   color: white;
-  padding: 0 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   flex-shrink: 0;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
   cursor: pointer;
-  line-height: 1;
 }
 
 .search-result-id:hover {
@@ -719,21 +716,19 @@ body {
 /* Search Result ID Row with metadata */
 .search-result-id-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: baseline;
+  gap: 8px;
 }
 
-/* Status Badge */
+/* Status Badge - subtle tag style */
 .status-badge {
-  font-size: 10px;
-  font-weight: 500;
-  color: white;
-  padding: 0 8px;
-  border-radius: 4px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  line-height: 1;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  opacity: 0.9;
 }
 
 /* Source Language Tag */
