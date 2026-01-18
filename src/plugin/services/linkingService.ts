@@ -1,0 +1,247 @@
+// Linking service - handles linking/unlinking operations
+
+import {
+  TranslationMap,
+  BulkMatchResult,
+  Language,
+} from "../../shared/types";
+import {
+  getTextNodeById,
+  getTextNodesInScope,
+  getMultilanId,
+  setMultilanId,
+  clearMultilanId,
+  isPlaceholder,
+  clearPlaceholderStatus,
+  setPlaceholderStatus,
+  applyPlaceholderStyle,
+  updateNodeText,
+  loadNodeFont,
+} from "./nodeService";
+import {
+  getTranslation,
+  replacePlaceholders,
+  buildTextToIdMap,
+  searchTranslationsWithScore,
+} from "./translationService";
+
+/**
+ * Link a text node to a multilanId
+ */
+export async function linkTextNode(nodeId: string, multilanId: string): Promise<boolean> {
+  const node = await getTextNodeById(nodeId);
+  if (!node) return false;
+
+  // Clear placeholder status if it was a placeholder (restores original styling)
+  if (isPlaceholder(node)) {
+    clearPlaceholderStatus(node);
+  }
+
+  setMultilanId(node, multilanId);
+  return true;
+}
+
+/**
+ * Unlink a text node
+ */
+export async function unlinkTextNode(nodeId: string): Promise<boolean> {
+  const node = await getTextNodeById(nodeId);
+  if (!node) return false;
+
+  // Also clear placeholder status if present
+  if (isPlaceholder(node)) {
+    clearPlaceholderStatus(node);
+  }
+
+  clearMultilanId(node);
+  return true;
+}
+
+/**
+ * Mark a node as placeholder with visual indicator
+ */
+export async function markAsPlaceholder(
+  node: TextNode,
+  multilanId: string,
+  text: string
+): Promise<void> {
+  // Store the multilanId and placeholder flag
+  setMultilanId(node, multilanId);
+  setPlaceholderStatus(node, true);
+
+  // Apply placeholder styling (orange color)
+  applyPlaceholderStyle(node);
+
+  // Set the text content
+  await updateNodeText(node, text);
+}
+
+/**
+ * Switch language for all linked text nodes in scope
+ */
+export async function switchLanguage(
+  translationData: TranslationMap,
+  lang: Language,
+  scope: "page" | "selection",
+  placeholders: Record<string, string>
+): Promise<{ success: number; missing: string[]; overflow: string[] }> {
+  const nodes = getTextNodesInScope(scope);
+  let success = 0;
+  const missing: string[] = [];
+  const overflow: string[] = [];
+
+  for (const node of nodes) {
+    const multilanId = getMultilanId(node);
+    if (!multilanId) continue;
+
+    let translation = getTranslation(translationData, multilanId, lang);
+
+    if (!translation) {
+      // Fallback to English
+      translation = getTranslation(translationData, multilanId, "en");
+      if (translation) {
+        missing.push(node.id);
+      } else {
+        continue;
+      }
+    }
+
+    // Replace placeholders
+    translation = replacePlaceholders(translation, placeholders);
+
+    // Load font before changing text
+    try {
+      await loadNodeFont(node);
+    } catch (fontErr) {
+      console.error(`Failed to load font for node ${node.id}:`, fontErr);
+      continue;
+    }
+
+    const originalWidth = node.width;
+    node.characters = translation;
+
+    // Check for overflow (text got wider)
+    if (node.width > originalWidth * 1.2) {
+      overflow.push(node.id);
+    }
+
+    success++;
+  }
+
+  return { success, missing, overflow };
+}
+
+/**
+ * Bulk auto-link: find matches for unlinked text nodes
+ */
+export function bulkAutoLink(
+  translationData: TranslationMap,
+  scope: "page" | "selection"
+): BulkMatchResult {
+  const nodes = getTextNodesInScope(scope);
+  const result: BulkMatchResult = {
+    exactMatches: [],
+    fuzzyMatches: [],
+    unmatched: [],
+  };
+
+  // Build a reverse lookup for exact matching
+  const textToMultilanId = buildTextToIdMap(translationData);
+
+  for (const node of nodes) {
+    // Skip already linked nodes (unless they're placeholders)
+    const currentId = getMultilanId(node);
+    if (currentId && !isPlaceholder(node)) continue;
+
+    const text = node.characters.trim();
+    if (!text) continue;
+
+    // Pass 1: Exact match
+    const exactMatch = textToMultilanId.get(text);
+    if (exactMatch) {
+      result.exactMatches.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        text,
+        multilanId: exactMatch,
+      });
+      continue;
+    }
+
+    // Pass 2: Fuzzy match
+    const fuzzyResults = searchTranslationsWithScore(translationData, text);
+    if (fuzzyResults.length > 0 && fuzzyResults[0].score >= 0.3) {
+      result.fuzzyMatches.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        text,
+        suggestions: fuzzyResults.slice(0, 3),
+      });
+    } else {
+      result.unmatched.push({
+        nodeId: node.id,
+        nodeName: node.name,
+        text,
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Apply exact matches from bulk auto-link
+ */
+export async function applyExactMatches(
+  matches: Array<{ nodeId: string; multilanId: string }>
+): Promise<number> {
+  let count = 0;
+  for (const match of matches) {
+    if (await linkTextNode(match.nodeId, match.multilanId)) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Create a new text node linked to a multilanId
+ */
+export async function createLinkedTextNode(
+  translationData: TranslationMap,
+  multilanId: string,
+  text: string,
+  lang: Language
+): Promise<TextNode> {
+  // Get the translation for the specified language
+  const translation = getTranslation(translationData, multilanId, lang) || text;
+
+  // Create text node
+  const textNode = figma.createText();
+
+  // Load default font
+  await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+
+  // Set text
+  textNode.characters = translation;
+
+  // Link to multilanId
+  setMultilanId(textNode, multilanId);
+
+  // Position near viewport center or current selection
+  const selection = figma.currentPage.selection;
+  if (selection.length > 0) {
+    const bounds = selection[0];
+    textNode.x = bounds.x + bounds.width + 20;
+    textNode.y = bounds.y;
+  } else {
+    textNode.x = figma.viewport.center.x;
+    textNode.y = figma.viewport.center.y;
+  }
+
+  // Select the new node
+  figma.currentPage.selection = [textNode];
+  figma.viewport.scrollAndZoomIntoView([textNode]);
+
+  return textNode;
+}

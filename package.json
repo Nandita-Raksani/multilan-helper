@@ -1,19 +1,24 @@
 {
   "name": "figma-plugin",
   "version": "1.0.0",
-  "description": "A Figma plugin",
+  "description": "A Figma plugin for managing multilingual translations",
   "scripts": {
-    "build": "esbuild src/code.ts --bundle --outfile=dist/code.js --target=es2017",
-    "build:watch": "esbuild src/code.ts --bundle --outfile=dist/code.js --target=es2017 --watch",
+    "build": "esbuild src/plugin/index.ts --bundle --outfile=dist/code.js --target=es2017",
+    "build:watch": "esbuild src/plugin/index.ts --bundle --outfile=dist/code.js --target=es2017 --watch",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.121.0",
+    "@vitest/coverage-v8": "^2.0.0",
     "esbuild": "^0.27.2",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.53.0"
+    "typescript-eslint": "^8.53.0",
+    "vitest": "^2.0.0"
   }
 }
