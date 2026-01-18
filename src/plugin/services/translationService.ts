@@ -1,7 +1,7 @@
 // Translation service - handles all translation-related operations
+// Note: buildTranslationMap and buildMetadataMap have been moved to adapters layer
 
 import {
-  ApiMultilan,
   TranslationMap,
   TranslationEntry,
   SearchResult,
@@ -11,47 +11,6 @@ import {
   MetadataMap,
   MultilanMetadata,
 } from "../../shared/types";
-
-/**
- * Build a translation map from API format
- */
-export function buildTranslationMap(data: ApiMultilan[]): TranslationMap {
-  const map: TranslationMap = {};
-
-  for (const item of data) {
-    const multilanId = String(item.id);
-    map[multilanId] = {};
-
-    for (const text of item.multilanTextList) {
-      map[multilanId][text.languageId] = text.wording;
-    }
-  }
-
-  return map;
-}
-
-/**
- * Build a metadata map from API format
- */
-export function buildMetadataMap(data: ApiMultilan[]): MetadataMap {
-  const map: MetadataMap = {};
-
-  for (const item of data) {
-    const multilanId = String(item.id);
-    // Get source language from first text entry (they all have the same source)
-    const sourceLanguageId = item.multilanTextList[0]?.sourceLanguageId;
-
-    map[multilanId] = {
-      status: item.status,
-      createdAt: item.createdAt,
-      modifiedAt: item.modifiedAt,
-      modifiedBy: item.modifiedBy,
-      sourceLanguageId,
-    };
-  }
-
-  return map;
-}
 
 /**
  * Get metadata for a multilanId

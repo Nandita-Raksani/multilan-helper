@@ -3,15 +3,13 @@
 
 import apiData from "../translations/api-data.json";
 import {
-  ApiMultilan,
   TranslationMap,
   PluginMessage,
   Language,
   SUPPORTED_LANGUAGES,
 } from "../shared/types";
+import { createAdapter } from "../adapters";
 import {
-  buildTranslationMap,
-  buildMetadataMap,
   getAllTranslations,
   isLanguage,
   globalSearchTranslations,
@@ -44,9 +42,10 @@ import {
 // Build timestamp - update this when translations are updated
 const BUILD_TIMESTAMP = "2026-01-18 12:00";
 
-// Build translation data from API format
-const translationData: TranslationMap = buildTranslationMap(apiData as ApiMultilan[]);
-const metadataData = buildMetadataMap(apiData as ApiMultilan[]);
+// Create adapter for translation data (hexagonal architecture)
+const adapter = createAdapter(apiData);
+const translationData: TranslationMap = adapter.getTranslationMap();
+const metadataData = adapter.getMetadataMap();
 
 // Helper to get translations for a multilanId
 const getTranslations = (multilanId: string) => getAllTranslations(translationData, multilanId);

@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  buildTranslationMap,
-  buildMetadataMap,
   getMetadata,
   getTranslation,
   getAllTranslations,
@@ -17,77 +15,25 @@ import {
   buildTextToIdMap,
   detectLanguage,
 } from "../../../src/plugin/services/translationService";
+import { CurrentApiAdapter } from "../../../src/adapters/implementations/currentApiAdapter";
 import { sampleApiData, sampleTranslationMap } from "../../setup";
 
+// Note: buildTranslationMap and buildMetadataMap tests have been moved to
+// tests/adapters/currentApiAdapter.test.ts as part of the hexagonal architecture
+
 describe("translationService", () => {
-  describe("buildTranslationMap", () => {
-    it("should convert API format to internal format", () => {
-      const result = buildTranslationMap(sampleApiData);
-
-      expect(result["10001"]).toEqual({
-        en: "Submit",
-        fr: "Soumettre",
-        nl: "Indienen",
-        de: "Einreichen",
-      });
-      expect(result["10002"]).toEqual({
-        en: "Cancel",
-        fr: "Annuler",
-        nl: "Annuleren",
-        de: "Abbrechen",
-      });
-    });
-
-    it("should handle empty array", () => {
-      const result = buildTranslationMap([]);
-      expect(result).toEqual({});
-    });
-
-    it("should convert numeric IDs to strings", () => {
-      const result = buildTranslationMap(sampleApiData);
-      expect(Object.keys(result)).toContain("10001");
-      expect(Object.keys(result)).not.toContain(10001);
-    });
-  });
-
-  describe("buildMetadataMap", () => {
-    it("should build metadata map from API data", () => {
-      const result = buildMetadataMap(sampleApiData);
-      expect(result["10001"]).toEqual({
-        status: "FINAL",
-        createdAt: "2024-01-15T10:30:00Z",
-        modifiedAt: "2024-01-20T14:45:00Z",
-        modifiedBy: "john.doe",
-        sourceLanguageId: "en",
-      });
-    });
-
-    it("should handle empty array", () => {
-      const result = buildMetadataMap([]);
-      expect(result).toEqual({});
-    });
-
-    it("should handle missing sourceLanguageId", () => {
-      const dataWithNoSource = [{
-        id: 99999,
-        status: "DRAFT" as const,
-        multilanTextList: [{ languageId: "en", wording: "Test" }],
-      }];
-      const result = buildMetadataMap(dataWithNoSource);
-      expect(result["99999"].sourceLanguageId).toBeUndefined();
-    });
-  });
-
   describe("getMetadata", () => {
     it("should return metadata for valid multilanId", () => {
-      const metadataMap = buildMetadataMap(sampleApiData);
+      const adapter = new CurrentApiAdapter(sampleApiData);
+      const metadataMap = adapter.getMetadataMap();
       const result = getMetadata(metadataMap, "10001");
       expect(result).not.toBeNull();
       expect(result?.status).toBe("FINAL");
     });
 
     it("should return null for non-existent multilanId", () => {
-      const metadataMap = buildMetadataMap(sampleApiData);
+      const adapter = new CurrentApiAdapter(sampleApiData);
+      const metadataMap = adapter.getMetadataMap();
       const result = getMetadata(metadataMap, "99999");
       expect(result).toBeNull();
     });
@@ -392,7 +338,8 @@ describe("translationService", () => {
     });
 
     it("should include metadata when provided", () => {
-      const metadataMap = buildMetadataMap(sampleApiData);
+      const adapter = new CurrentApiAdapter(sampleApiData);
+      const metadataMap = adapter.getMetadataMap();
       const results = globalSearchTranslations(sampleTranslationMap, "10001", 30, metadataMap);
       expect(results[0].metadata).toBeDefined();
       expect(results[0].metadata?.status).toBe("FINAL");

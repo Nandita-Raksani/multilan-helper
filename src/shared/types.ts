@@ -13,22 +13,8 @@ export type MultilanStatus =
   | "DRAFT"
   | "FOUR_EYES_CHECK";
 
-// API format (from backend)
-export interface MultilanText {
-  languageId: string;
-  wording: string;
-  id: number;
-  sourceLanguageId?: string;
-}
-
-export interface ApiMultilan {
-  id: number;
-  multilanTextList: MultilanText[];
-  status?: MultilanStatus;
-  createdAt?: string;
-  modifiedAt?: string;
-  modifiedBy?: string;
-}
+// Note: API format types (MultilanText, ApiMultilan) have been moved to
+// src/adapters/types/currentApi.types.ts as part of the hexagonal architecture
 
 // Metadata for a multilan entry
 export interface MultilanMetadata {
