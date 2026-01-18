@@ -761,13 +761,14 @@ body {
 }
 
 /* Inline status badge (not clickable) */
+/* Not linked badge - subtle style like status badges */
 .status-badge-inline {
   font-size: 10px;
   font-weight: 500;
-  padding: 5px 10px;
-  border-radius: 4px;
-  background: #f59e0b;
-  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
 }
 
 .search-results-count {
