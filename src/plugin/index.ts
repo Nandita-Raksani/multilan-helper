@@ -25,6 +25,7 @@ import {
   getTextNodesInScope,
   getMultilanId,
   setExpectedText,
+  getExpectedText,
   isTextModified,
   clearMultilanId,
   clearExpectedText,
@@ -69,10 +70,30 @@ function autoUnlinkModifiedNodes(scope: "page" | "selection"): number {
     const multilanId = getMultilanId(node);
     if (!multilanId) continue;
 
+    // Check if text was modified from expected
     if (isTextModified(node)) {
       clearMultilanId(node);
       clearExpectedText(node);
       unlinkedCount++;
+      continue;
+    }
+
+    // For nodes without expectedText (linked before this feature),
+    // check if current text matches any translation for this multilanId
+    const expectedText = getExpectedText(node);
+    if (!expectedText) {
+      const translations = getTranslations(multilanId);
+      if (translations) {
+        const currentText = node.characters;
+        const matchesAnyTranslation = Object.values(translations).some(
+          (text) => text === currentText
+        );
+        if (!matchesAnyTranslation) {
+          // Text doesn't match any translation, unlink it
+          clearMultilanId(node);
+          unlinkedCount++;
+        }
+      }
     }
   }
 

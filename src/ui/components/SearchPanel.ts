@@ -159,9 +159,9 @@ export function renderGlobalSearchResults(): void {
         </div>
         ` : ''}
         <div class="search-result-actions">
-          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? 'data-has-variables="true"' : ''} style="background: #10b981;">${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
+          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? `data-has-variables="true" data-variable-names="${escapeHtml(result.variables!.join(','))}"` : ''} style="background: #10b981;">${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
           ${isCurrentLink ? `<span style="color: #10b981; font-size: 10px; padding: 6px 0;">Currently linked</span>` : ''}
-          <button class="btn-create-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? 'data-has-variables="true"' : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>
+          <button class="btn-create-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? `data-has-variables="true" data-variable-names="${escapeHtml(result.variables!.join(','))}"` : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>
         </div>
       </div>
     `;
@@ -215,7 +215,18 @@ function attachSearchResultHandlers(): void {
       const multilanId = btn.dataset.id!;
       if (!state.selectedNode) return;
       const hasVariables = btn.dataset.hasVariables === 'true';
+      const variableNames = btn.dataset.variableNames?.split(',') || [];
       const variables = hasVariables ? variableValues.get(multilanId) : undefined;
+
+      // Validate all variables are filled
+      if (hasVariables && variableNames.length > 0) {
+        const missingVars = variableNames.filter(v => !variables?.[v]?.trim());
+        if (missingVars.length > 0) {
+          alert(`Please fill in all variables: ${missingVars.join(', ')}`);
+          return;
+        }
+      }
+
       pluginBridge.linkNode(state.selectedNode.id, multilanId, state.currentLang, variables);
     });
   });
@@ -227,7 +238,18 @@ function attachSearchResultHandlers(): void {
       const multilanId = btn.dataset.id!;
       const text = btn.dataset.text!;
       const hasVariables = btn.dataset.hasVariables === 'true';
+      const variableNames = btn.dataset.variableNames?.split(',') || [];
       const variables = hasVariables ? variableValues.get(multilanId) : undefined;
+
+      // Validate all variables are filled
+      if (hasVariables && variableNames.length > 0) {
+        const missingVars = variableNames.filter(v => !variables?.[v]?.trim());
+        if (missingVars.length > 0) {
+          alert(`Please fill in all variables: ${missingVars.join(', ')}`);
+          return;
+        }
+      }
+
       pluginBridge.createLinkedText(multilanId, text, state.currentLang, variables);
     });
   });
