@@ -145,12 +145,32 @@
       color: var(--figma-color-text);
     }
 
+    .text-item-id-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     .text-item-id {
       font-size: 10px;
       color: var(--figma-color-text-secondary);
       background: var(--figma-color-bg-secondary);
       padding: 2px 6px;
       border-radius: 4px;
+    }
+
+    .btn-copy-node-id {
+      font-size: 9px;
+      padding: 2px 6px;
+      background: transparent;
+      color: var(--figma-color-text-secondary);
+      border: 1px solid var(--figma-color-border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-copy-node-id:hover {
+      background: var(--figma-color-bg-secondary);
     }
 
     .text-item-unlinked {
@@ -960,7 +980,7 @@
         return `
           <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
             <div class="search-result-header">
-              <span class="search-result-primary">ID: ${escapeHtml(result.multilanId)}</span>
+              <span class="search-result-primary">${escapeHtml(result.multilanId)}</span>
               <button class="btn-copy-id" data-id="${escapeHtml(result.multilanId)}">Copy ID</button>
             </div>
             <div class="translations-preview">
@@ -1337,12 +1357,13 @@
         const previewText = translations[state.currentLang] || node.characters;
         const placeholderBadge = node.isPlaceholder ? '<span class="placeholder-badge">Placeholder</span>' : '';
         const linkButton = !node.multilanId ? `<button class="btn-link-node" data-id="${node.id}" data-text="${escapeHtml(node.characters)}">Link</button>` : '';
+        const copyIdButton = node.multilanId ? `<button class="btn-copy-node-id" data-id="${escapeHtml(node.multilanId)}" title="Copy ID">Copy</button>` : '';
 
         return `
           <div class="text-item ${itemClass}" data-id="${node.id}">
             <div class="text-item-header">
               <span class="text-item-name">${escapeHtml(node.name)}${placeholderBadge}</span>
-              ${node.multilanId ? `<span class="text-item-id">${escapeHtml(node.multilanId)}</span>` : `<span class="text-item-unlinked">Not linked ${linkButton}</span>`}
+              ${node.multilanId ? `<span class="text-item-id-group"><span class="text-item-id">${escapeHtml(node.multilanId)}</span>${copyIdButton}</span>` : `<span class="text-item-unlinked">Not linked ${linkButton}</span>`}
             </div>
             <div class="text-item-content">${escapeHtml(previewText)}</div>
           </div>
@@ -1352,8 +1373,8 @@
       // Add click handlers for selecting nodes
       textList.querySelectorAll('.text-item').forEach(item => {
         item.addEventListener('click', (e) => {
-          // Don't select if clicking the link button
-          if (e.target.classList.contains('btn-link-node')) return;
+          // Don't select if clicking buttons
+          if (e.target.classList.contains('btn-link-node') || e.target.classList.contains('btn-copy-node-id')) return;
           parent.postMessage({
             pluginMessage: { type: 'select-node', nodeId: item.dataset.id }
           }, '*');
@@ -1378,6 +1399,20 @@
           // Pre-fill the multilanId input with the text to search
           multilanIdInput.value = text.slice(0, 30);
           multilanIdInput.dispatchEvent(new Event('input'));
+        });
+      });
+
+      // Add click handlers for copy ID buttons
+      textList.querySelectorAll('.btn-copy-node-id').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.id;
+          if (copyToClipboard(id)) {
+            btn.textContent = 'Copied!';
+            setTimeout(() => {
+              btn.textContent = 'Copy';
+            }, 1500);
+          }
         });
       });
     }
