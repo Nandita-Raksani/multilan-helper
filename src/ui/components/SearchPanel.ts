@@ -177,7 +177,7 @@ function attachSearchResultHandlers(): void {
       e.stopPropagation();
       const multilanId = btn.dataset.id!;
       if (!state.selectedNode) return;
-      pluginBridge.linkNode(state.selectedNode.id, multilanId);
+      pluginBridge.linkNode(state.selectedNode.id, multilanId, state.currentLang);
     });
   });
 

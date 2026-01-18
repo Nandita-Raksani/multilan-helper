@@ -86,8 +86,8 @@ describe("pluginBridge", () => {
   });
 
   describe("linkNode", () => {
-    it("should send link-node message", () => {
-      pluginBridge.linkNode("node-123", "10001");
+    it("should send link-node message with language", () => {
+      pluginBridge.linkNode("node-123", "10001", "fr");
 
       expect(postMessageMock).toHaveBeenCalledWith(
         {
@@ -95,6 +95,7 @@ describe("pluginBridge", () => {
             type: "link-node",
             nodeId: "node-123",
             multilanId: "10001",
+            language: "fr",
           },
         },
         "*"

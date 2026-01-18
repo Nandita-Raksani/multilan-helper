@@ -47,11 +47,12 @@ class PluginBridge {
     });
   }
 
-  linkNode(nodeId: string, multilanId: string): void {
+  linkNode(nodeId: string, multilanId: string, language: Language): void {
     this.send({
       type: 'link-node',
       nodeId,
-      multilanId
+      multilanId,
+      language
     });
   }
 

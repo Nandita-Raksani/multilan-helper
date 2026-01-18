@@ -27,20 +27,32 @@ import {
 } from "./translationService";
 
 /**
- * Link a text node to a multilanId
+ * Link a text node to a multilanId and optionally update text with translation
  */
-export async function linkTextNode(nodeId: string, multilanId: string): Promise<boolean> {
+export async function linkTextNode(
+  nodeId: string,
+  multilanId: string,
+  translationData?: TranslationMap,
+  language?: Language
+): Promise<boolean> {
   const node = await getTextNodeById(nodeId);
   if (!node) return false;
 
   // Clear placeholder status and remove stars if it was a placeholder
   if (isPlaceholder(node)) {
     clearPlaceholderStatus(node);
-    const textWithoutStars = unwrapStars(node.characters);
-    await updateNodeText(node, textWithoutStars);
   }
 
   setMultilanId(node, multilanId);
+
+  // Update text with translation if translation data is provided
+  if (translationData && language) {
+    const translation = getTranslation(translationData, multilanId, language);
+    if (translation) {
+      await updateNodeText(node, translation);
+    }
+  }
+
   return true;
 }
 

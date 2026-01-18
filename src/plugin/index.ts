@@ -140,7 +140,12 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.nodeId && msg.multilanId) {
-        const success = await linkTextNode(msg.nodeId, msg.multilanId);
+        const success = await linkTextNode(
+          msg.nodeId,
+          msg.multilanId,
+          translationData,
+          msg.language
+        );
         if (success) {
           figma.notify(`Linked to ${msg.multilanId}`);
           // Refresh
