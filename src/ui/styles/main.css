@@ -534,20 +534,12 @@ body {
 /* Auto-link button row */
 .texts-header {
   display: flex;
-  align-items: center;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.texts-header .scope-toggle {
+.texts-header .scope-btn {
   flex: 1;
-  margin-bottom: 0;
-}
-
-.btn-auto-link {
-  padding: 6px 10px;
-  font-size: 10px;
-  white-space: nowrap;
 }
 
 /* Search Panel */
