@@ -610,14 +610,16 @@ body {
 }
 
 .search-result-id {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   background: var(--figma-color-bg-brand);
   color: white;
-  padding: 3px 8px;
+  padding: 0 8px;
   border-radius: 4px;
   flex-shrink: 0;
-  line-height: 1;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .search-result-primary {
@@ -629,12 +631,16 @@ body {
 
 .btn-copy-id {
   font-size: 10px;
-  padding: 4px 10px;
+  padding: 0 10px;
+  height: 22px;
   background: var(--figma-color-bg-secondary);
   color: var(--figma-color-text);
   border: 1px solid var(--figma-color-border);
   border-radius: 4px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .btn-copy-id:hover {
@@ -707,14 +713,14 @@ body {
 
 /* Status Badge */
 .status-badge {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
   color: white;
-  padding: 3px 6px;
+  padding: 0 8px;
   border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  line-height: 1;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Source Language Tag */
@@ -728,11 +734,41 @@ body {
   line-height: 1;
 }
 
-/* Tooltip styling for search result cards */
-.search-result-card[title] {
-  cursor: default;
+/* Small copy button inside badges */
+.btn-copy-small {
+  font-size: 9px;
+  padding: 2px 6px;
+  margin-left: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
 }
 
-.search-result-card[title]:hover {
-  cursor: pointer;
+.btn-copy-small:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Custom tooltip for faster display */
+.search-result-card {
+  position: relative;
+}
+
+.search-result-card[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 10px;
+  white-space: pre-line;
+  z-index: 100;
+  margin-bottom: 4px;
+  max-width: 250px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }

@@ -91,7 +91,7 @@ export function updateSearchSelectedNode(): void {
 
     const isLinked = state.selectedNode.multilanId;
     if (isLinked) {
-      searchSelectedBadge.textContent = state.selectedNode.multilanId!;
+      searchSelectedBadge.innerHTML = `${state.selectedNode.multilanId} <button class="btn-copy-small" id="copySelectedId" title="Copy ID">Copy</button>`;
       searchSelectedBadge.style.background = '#10b981';
     } else {
       searchSelectedBadge.textContent = 'Not linked';
@@ -111,6 +111,16 @@ export function updateSearchSelectedNode(): void {
 
       getElementById('searchMakePlaceholderBtn').addEventListener('click', () => {
         pluginBridge.markAsPlaceholder(state.selectedNode!.characters);
+      });
+
+      // Copy ID button handler
+      getElementById('copySelectedId').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = state.selectedNode!.multilanId!;
+        if (copyToClipboard(id)) {
+          const btn = e.target as HTMLButtonElement;
+          showButtonFeedback(btn, 'Copy', 'Copied!');
+        }
       });
     } else {
       searchSelectedActions.innerHTML = '';
@@ -162,7 +172,7 @@ export function renderGlobalSearchResults(): void {
     }
 
     return `
-      <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}" ${tooltipText ? `title="${escapeHtml(tooltipText)}"` : ''}>
+      <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}" ${tooltipText ? `data-tooltip="${escapeHtml(tooltipText)}"` : ''}>
         <div class="search-result-header">
           <div class="search-result-id-row">
             <span class="search-result-id">${escapeHtml(result.multilanId)}</span>

@@ -63,7 +63,7 @@ describe("SearchPanel", () => {
       updateSearchSelectedNode();
 
       const badge = document.getElementById("searchSelectedBadge");
-      expect(badge?.textContent).toBe("10001");
+      expect(badge?.textContent).toContain("10001");
       expect(badge?.style.background).toBe("rgb(16, 185, 129)"); // #10b981
     });
 
