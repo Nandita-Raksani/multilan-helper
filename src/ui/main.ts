@@ -104,11 +104,12 @@ function handlePluginMessage(msg: PluginMessage): void {
     }
 
     case 'language-switched': {
-      let statusMsg = `Updated ${msg.success} texts`;
+      // Only show status when there's something noteworthy
       if (msg.missing && msg.missing.length > 0) {
-        statusMsg += ` (${msg.missing.length} missing translations)`;
+        setStatus(`${msg.missing.length} missing translations (using English fallback)`);
+      } else if (msg.success === 0) {
+        setStatus('No linked texts to update');
       }
-      setStatus(statusMsg);
       break;
     }
 
