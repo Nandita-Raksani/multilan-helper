@@ -38,7 +38,6 @@ import {
   markAsPlaceholder,
   switchLanguage,
   bulkAutoLink,
-  applyExactMatches,
   createLinkedTextNode,
 } from "./services/linkingService";
 

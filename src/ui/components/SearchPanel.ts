@@ -4,8 +4,6 @@ import { pluginBridge } from '../services/pluginBridge';
 import { getElementById } from '../utils/dom';
 import { escapeHtml, copyToClipboard, showButtonFeedback, debounce } from '../utils/dom';
 
-let searchTimeout: ReturnType<typeof setTimeout>;
-
 // Track variable values per multilanId
 const variableValues: Map<string, Record<string, string>> = new Map();
 
@@ -227,7 +225,7 @@ function attachSearchResultHandlers(): void {
 
   // Variable input handlers
   globalSearchResults.querySelectorAll<HTMLInputElement>('.variable-input').forEach(input => {
-    input.addEventListener('input', (e) => {
+    input.addEventListener('input', () => {
       const multilanId = input.dataset.multilanId!;
       const varKey = input.dataset.varKey!;
       const values = variableValues.get(multilanId) || {};

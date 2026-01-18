@@ -60,27 +60,36 @@ export function setupFigmaMock() {
 export const sampleApiData = [
   {
     id: 10001,
+    status: "FINAL" as const,
+    createdAt: "2024-01-15T10:30:00Z",
+    modifiedAt: "2024-01-20T14:45:00Z",
+    modifiedBy: "john.doe",
     multilanTextList: [
-      { languageId: "en", wording: "Submit", id: 1 },
-      { languageId: "fr", wording: "Soumettre", id: 2 },
-      { languageId: "nl", wording: "Indienen", id: 3 },
-      { languageId: "de", wording: "Einreichen", id: 4 },
+      { languageId: "en", wording: "Submit", id: 1, sourceLanguageId: "en" },
+      { languageId: "fr", wording: "Soumettre", id: 2, sourceLanguageId: "en" },
+      { languageId: "nl", wording: "Indienen", id: 3, sourceLanguageId: "en" },
+      { languageId: "de", wording: "Einreichen", id: 4, sourceLanguageId: "en" },
     ],
   },
   {
     id: 10002,
+    status: "DRAFT" as const,
+    createdAt: "2024-02-01T09:00:00Z",
+    modifiedAt: "2024-02-05T11:30:00Z",
+    modifiedBy: "jane.smith",
     multilanTextList: [
-      { languageId: "en", wording: "Cancel", id: 5 },
-      { languageId: "fr", wording: "Annuler", id: 6 },
-      { languageId: "nl", wording: "Annuleren", id: 7 },
-      { languageId: "de", wording: "Abbrechen", id: 8 },
+      { languageId: "en", wording: "Cancel", id: 5, sourceLanguageId: "en" },
+      { languageId: "fr", wording: "Annuler", id: 6, sourceLanguageId: "en" },
+      { languageId: "nl", wording: "Annuleren", id: 7, sourceLanguageId: "en" },
+      { languageId: "de", wording: "Abbrechen", id: 8, sourceLanguageId: "en" },
     ],
   },
   {
     id: 10003,
+    status: "IN_TRANSLATION" as const,
     multilanTextList: [
-      { languageId: "en", wording: "Hello ###username###", id: 9 },
-      { languageId: "fr", wording: "Bonjour ###username###", id: 10 },
+      { languageId: "en", wording: "Hello ###username###", id: 9, sourceLanguageId: "en" },
+      { languageId: "fr", wording: "Bonjour ###username###", id: 10, sourceLanguageId: "en" },
     ],
   },
 ];

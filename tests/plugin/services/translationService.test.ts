@@ -1,10 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
   buildTranslationMap,
+  buildMetadataMap,
+  getMetadata,
   getTranslation,
   getAllTranslations,
   isLanguage,
   replacePlaceholders,
+  extractVariables,
+  extractVariableOccurrences,
+  replaceVariables,
   calculateMatchScore,
   searchTranslations,
   searchTranslationsWithScore,
@@ -42,6 +47,49 @@ describe("translationService", () => {
       const result = buildTranslationMap(sampleApiData);
       expect(Object.keys(result)).toContain("10001");
       expect(Object.keys(result)).not.toContain(10001);
+    });
+  });
+
+  describe("buildMetadataMap", () => {
+    it("should build metadata map from API data", () => {
+      const result = buildMetadataMap(sampleApiData);
+      expect(result["10001"]).toEqual({
+        status: "FINAL",
+        createdAt: "2024-01-15T10:30:00Z",
+        modifiedAt: "2024-01-20T14:45:00Z",
+        modifiedBy: "john.doe",
+        sourceLanguageId: "en",
+      });
+    });
+
+    it("should handle empty array", () => {
+      const result = buildMetadataMap([]);
+      expect(result).toEqual({});
+    });
+
+    it("should handle missing sourceLanguageId", () => {
+      const dataWithNoSource = [{
+        id: 99999,
+        status: "DRAFT" as const,
+        multilanTextList: [{ languageId: "en", wording: "Test" }],
+      }];
+      const result = buildMetadataMap(dataWithNoSource);
+      expect(result["99999"].sourceLanguageId).toBeUndefined();
+    });
+  });
+
+  describe("getMetadata", () => {
+    it("should return metadata for valid multilanId", () => {
+      const metadataMap = buildMetadataMap(sampleApiData);
+      const result = getMetadata(metadataMap, "10001");
+      expect(result).not.toBeNull();
+      expect(result?.status).toBe("FINAL");
+    });
+
+    it("should return null for non-existent multilanId", () => {
+      const metadataMap = buildMetadataMap(sampleApiData);
+      const result = getMetadata(metadataMap, "99999");
+      expect(result).toBeNull();
     });
   });
 
@@ -129,6 +177,92 @@ describe("translationService", () => {
     });
   });
 
+  describe("extractVariables", () => {
+    it("should extract single variable", () => {
+      const result = extractVariables("Hello ###username###!");
+      expect(result).toEqual(["username"]);
+    });
+
+    it("should extract multiple variables", () => {
+      const result = extractVariables("Hello ###username###, you have ###count### messages");
+      expect(result).toEqual(["username", "count"]);
+    });
+
+    it("should return unique variables only", () => {
+      const result = extractVariables("###name### and ###name### again");
+      expect(result).toEqual(["name"]);
+    });
+
+    it("should return empty array for text without variables", () => {
+      const result = extractVariables("Hello World");
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("extractVariableOccurrences", () => {
+    it("should extract single variable occurrence", () => {
+      const result = extractVariableOccurrences("Hello ###username###!");
+      expect(result).toEqual([
+        { name: "username", key: "username", index: 1, isIndexed: false },
+      ]);
+    });
+
+    it("should index duplicate variables", () => {
+      const result = extractVariableOccurrences("###amount### + ###amount### = total");
+      expect(result).toEqual([
+        { name: "amount", key: "amount_1", index: 1, isIndexed: true },
+        { name: "amount", key: "amount_2", index: 2, isIndexed: true },
+      ]);
+    });
+
+    it("should handle mixed unique and duplicate variables", () => {
+      const result = extractVariableOccurrences("###name###: ###val### to ###val###");
+      expect(result).toEqual([
+        { name: "name", key: "name", index: 1, isIndexed: false },
+        { name: "val", key: "val_1", index: 1, isIndexed: true },
+        { name: "val", key: "val_2", index: 2, isIndexed: true },
+      ]);
+    });
+
+    it("should return empty array for text without variables", () => {
+      const result = extractVariableOccurrences("Hello World");
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("replaceVariables", () => {
+    it("should replace single variable", () => {
+      const result = replaceVariables("Hello ###username###!", { username: "John" });
+      expect(result).toBe("Hello John!");
+    });
+
+    it("should replace multiple different variables", () => {
+      const result = replaceVariables("###greeting### ###name###!", {
+        greeting: "Hello",
+        name: "World",
+      });
+      expect(result).toBe("Hello World!");
+    });
+
+    it("should replace indexed duplicate variables", () => {
+      const result = replaceVariables("###amount### + ###amount### = total", {
+        amount_1: "10",
+        amount_2: "20",
+      });
+      expect(result).toBe("10 + 20 = total");
+    });
+
+    it("should fall back to base name for non-indexed values", () => {
+      const result = replaceVariables("Hello ###name###!", { name: "World" });
+      expect(result).toBe("Hello World!");
+    });
+
+    it("should keep unmatched variables as-is", () => {
+      const result = replaceVariables("Hello ###unknown###!", {});
+      expect(result).toBe("Hello ###unknown###!");
+    });
+  });
+
   describe("calculateMatchScore", () => {
     it("should return 1 for exact match", () => {
       expect(calculateMatchScore("Submit", "Submit")).toBe(1);
@@ -206,6 +340,77 @@ describe("translationService", () => {
     it("should search across all languages", () => {
       const results = globalSearchTranslations(sampleTranslationMap, "Soumettre");
       expect(results.some((r) => r.multilanId === "10001")).toBe(true);
+    });
+
+    it("should include variable occurrences for translations with variables", () => {
+      const dataWithVariables = {
+        "20001": {
+          en: "Hello ###username###!",
+          fr: "Bonjour ###username###!",
+        },
+      };
+      const results = globalSearchTranslations(dataWithVariables, "Hello");
+      expect(results[0].variableOccurrences).toEqual([
+        { name: "username", key: "username", index: 1, isIndexed: false },
+      ]);
+    });
+
+    it("should handle indexed variables across languages", () => {
+      const dataWithDuplicates = {
+        "20002": {
+          en: "###amount### + ###amount### = ###total###",
+          fr: "###amount### + ###amount### = ###total###",
+        },
+      };
+      const results = globalSearchTranslations(dataWithDuplicates, "20002");
+      expect(results[0].variableOccurrences).toContainEqual(
+        { name: "amount", key: "amount_1", index: 1, isIndexed: true }
+      );
+      expect(results[0].variableOccurrences).toContainEqual(
+        { name: "amount", key: "amount_2", index: 2, isIndexed: true }
+      );
+      expect(results[0].variableOccurrences).toContainEqual(
+        { name: "total", key: "total", index: 1, isIndexed: false }
+      );
+    });
+
+    it("should use max variable count across languages", () => {
+      const dataWithDifferentCounts = {
+        "20003": {
+          en: "###item### only",
+          fr: "###item### et ###item###", // 2 occurrences in French
+        },
+      };
+      const results = globalSearchTranslations(dataWithDifferentCounts, "20003");
+      // Should use max count (2 from French)
+      expect(results[0].variableOccurrences).toContainEqual(
+        { name: "item", key: "item_1", index: 1, isIndexed: true }
+      );
+      expect(results[0].variableOccurrences).toContainEqual(
+        { name: "item", key: "item_2", index: 2, isIndexed: true }
+      );
+    });
+
+    it("should include metadata when provided", () => {
+      const metadataMap = buildMetadataMap(sampleApiData);
+      const results = globalSearchTranslations(sampleTranslationMap, "10001", 30, metadataMap);
+      expect(results[0].metadata).toBeDefined();
+      expect(results[0].metadata?.status).toBe("FINAL");
+    });
+
+    it("should not include metadata when not provided", () => {
+      const results = globalSearchTranslations(sampleTranslationMap, "10001");
+      expect(results[0].metadata).toBeUndefined();
+    });
+
+    it("should limit results", () => {
+      const results = globalSearchTranslations(sampleTranslationMap, "a", 1);
+      expect(results.length).toBeLessThanOrEqual(1);
+    });
+
+    it("should return empty variableOccurrences for translations without variables", () => {
+      const results = globalSearchTranslations(sampleTranslationMap, "10001");
+      expect(results[0].variableOccurrences).toBeUndefined();
     });
   });
 

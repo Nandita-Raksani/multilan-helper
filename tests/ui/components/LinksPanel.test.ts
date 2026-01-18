@@ -202,5 +202,94 @@ describe("LinksPanel", () => {
       const linkedItem = document.querySelector('[data-id="node-1"]');
       expect(linkedItem?.querySelector(".text-item-content")?.textContent).toBe("Soumettre");
     });
+
+    it("should select node and trigger search when text item clicked", async () => {
+      vi.useFakeTimers();
+      store.setState({ textNodes: sampleTextNodes });
+      initLinksPanel();
+      renderTextList();
+
+      const textItem = document.querySelector('[data-id="node-1"]') as HTMLDivElement;
+      textItem.click();
+
+      // Should send select-node message
+      expect(postMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginMessage: expect.objectContaining({
+            type: "select-node",
+            nodeId: "node-1",
+          }),
+        }),
+        "*"
+      );
+
+      // Advance timers for the setTimeout
+      vi.advanceTimersByTime(60);
+
+      // Should send global-search message
+      expect(postMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginMessage: expect.objectContaining({
+            type: "global-search",
+          }),
+        }),
+        "*"
+      );
+
+      vi.useRealTimers();
+    });
+
+    it("should select node and search when link button clicked", async () => {
+      vi.useFakeTimers();
+      store.setState({ textNodes: sampleTextNodes });
+      initLinksPanel();
+      renderTextList();
+
+      const linkBtn = document.querySelector('[data-id="node-2"] .btn-link-node') as HTMLButtonElement;
+      linkBtn.click();
+
+      // Should send select-node message
+      expect(postMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginMessage: expect.objectContaining({
+            type: "select-node",
+            nodeId: "node-2",
+          }),
+        }),
+        "*"
+      );
+
+      // Advance timers for the setTimeout
+      vi.advanceTimersByTime(60);
+
+      // Should send global-search message
+      expect(postMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginMessage: expect.objectContaining({
+            type: "global-search",
+          }),
+        }),
+        "*"
+      );
+
+      vi.useRealTimers();
+    });
+
+    it("should not trigger text item click handler when button is clicked", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      initLinksPanel();
+      renderTextList();
+
+      postMessageMock.mockClear();
+
+      const unlinkBtn = document.querySelector('[data-id="node-1"] .btn-unlink-node') as HTMLButtonElement;
+      unlinkBtn.click();
+
+      // Should only send unlink-node message, not select-node
+      const calls = postMessageMock.mock.calls;
+      const messageTypes = calls.map(call => call[0]?.pluginMessage?.type);
+      expect(messageTypes).toContain("unlink-node");
+      expect(messageTypes).not.toContain("select-node");
+    });
   });
 });

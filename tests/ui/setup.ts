@@ -181,6 +181,19 @@ export const sampleSearchResults = [
 ];
 
 /**
+ * Sample search results with variables for tests
+ */
+export const sampleSearchResultsWithVariables = [
+  {
+    multilanId: "20001",
+    translations: { en: "Hello ###username###!", fr: "Bonjour ###username###!" },
+    variableOccurrences: [
+      { name: "username", key: "username", index: 1, isIndexed: false },
+    ],
+  },
+];
+
+/**
  * Sample bulk link results for tests
  */
 export const sampleBulkLinkResults = {

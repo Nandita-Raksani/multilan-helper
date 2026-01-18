@@ -80,7 +80,6 @@ function handlePluginMessage(msg: PluginMessage): void {
       break;
 
     case 'selection-changed': {
-      const prevSelectedNode = store.getState().selectedNode;
       store.setState({ selectedNode: msg.selectedNode || null });
       updateSearchSelectedNode();
 

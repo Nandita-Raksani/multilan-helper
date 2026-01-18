@@ -15,13 +15,11 @@ import {
   clearPlaceholderStatus,
   setPlaceholderStatus,
   wrapWithStars,
-  unwrapStars,
   updateNodeText,
   loadNodeFont,
   setExpectedText,
   clearExpectedText,
   getVariableValues,
-  setVariableValues,
   clearVariableValues,
 } from "./nodeService";
 import {

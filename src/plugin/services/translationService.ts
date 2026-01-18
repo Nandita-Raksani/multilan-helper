@@ -281,7 +281,6 @@ export function globalSearchTranslations(
   metadataMap?: MetadataMap
 ): SearchResult[] {
   const results: Array<SearchResult & { score: number }> = [];
-  const lowerQuery = query.toLowerCase();
 
   for (const [multilanId, langs] of Object.entries(translationData)) {
     let bestScore = 0;
