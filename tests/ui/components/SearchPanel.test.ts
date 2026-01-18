@@ -207,17 +207,17 @@ describe("SearchPanel", () => {
       expect(createBtns.length).toBe(2);
     });
 
-    it("should handle Copy ID button click", () => {
+    it("should handle clickable ID click to copy", () => {
       store.setState({ globalSearchResults: sampleSearchResults });
       initSearchPanel();
       renderGlobalSearchResults();
 
       document.execCommand = vi.fn().mockReturnValue(true);
 
-      const copyIdBtn = document.querySelector(".btn-copy-id") as HTMLButtonElement;
-      copyIdBtn.click();
+      const clickableId = document.querySelector(".clickable-id") as HTMLSpanElement;
+      clickableId.click();
 
-      expect(copyIdBtn.textContent).toBe("Copied!");
+      expect(clickableId.textContent).toBe("Copied!");
     });
 
     it("should handle Link button click", () => {

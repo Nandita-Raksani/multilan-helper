@@ -182,10 +182,9 @@ export function renderGlobalSearchResults(): void {
       <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}" ${tooltipText ? `data-tooltip="${escapeHtml(tooltipText)}"` : ''}>
         <div class="search-result-header">
           <div class="search-result-id-row">
-            <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
+            <span class="search-result-id clickable-id" data-id="${escapeHtml(result.multilanId)}" title="Click to copy">${escapeHtml(result.multilanId)}</span>
             ${getStatusBadge(result.metadata?.status)}
           </div>
-          <button class="btn-copy-id" data-id="${escapeHtml(result.multilanId)}">Copy ID</button>
         </div>
         <div class="translations-preview">
           ${Object.entries(result.translations).map(([lang, text]) => `
@@ -230,13 +229,17 @@ function attachSearchResultHandlers(): void {
   const globalSearchResults = getElementById<HTMLDivElement>('globalSearchResults');
   const state = store.getState();
 
-  // Copy ID handlers
-  globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-copy-id').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  // Clickable ID handlers
+  globalSearchResults.querySelectorAll<HTMLSpanElement>('.clickable-id').forEach(span => {
+    span.addEventListener('click', (e) => {
       e.stopPropagation();
-      const id = btn.dataset.id!;
+      const id = span.dataset.id!;
       if (copyToClipboard(id)) {
-        showButtonFeedback(btn, 'Copy ID', 'Copied!');
+        const originalText = span.textContent;
+        span.textContent = 'Copied!';
+        setTimeout(() => {
+          span.textContent = originalText;
+        }, 1000);
       }
     });
   });

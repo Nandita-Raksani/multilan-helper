@@ -216,6 +216,7 @@ body {
 
 .translation-row {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
   font-size: 10px;
 }
@@ -224,11 +225,13 @@ body {
   width: 24px;
   font-weight: 600;
   color: var(--figma-color-text-secondary);
+  flex-shrink: 0;
 }
 
 .translation-text {
   flex: 1;
   color: var(--figma-color-text);
+  word-break: break-word;
 }
 
 /* Search Results */
@@ -387,10 +390,10 @@ body {
   border: 1px solid var(--figma-color-border);
   border-radius: 4px;
   cursor: pointer;
-  margin-left: 8px;
   color: var(--figma-color-text-secondary);
   opacity: 0.7;
   transition: all 0.15s;
+  flex-shrink: 0;
 }
 
 .copy-btn:hover {
@@ -570,7 +573,6 @@ body {
   border: 1px solid var(--figma-color-border);
   border-radius: 8px;
   margin-bottom: 8px;
-  cursor: pointer;
   transition: all 0.15s;
   position: relative;
 }
@@ -620,6 +622,11 @@ body {
   height: 22px;
   display: inline-flex;
   align-items: center;
+  cursor: pointer;
+}
+
+.search-result-id:hover {
+  opacity: 0.9;
 }
 
 .search-result-primary {
