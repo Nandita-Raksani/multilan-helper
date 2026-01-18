@@ -54,7 +54,7 @@ const getTranslations = (multilanId: string) => getAllTranslations(translationDa
 
 // Show UI
 figma.showUI(__html__, {
-  width: 370,
+  width: 420,
   height: 480,
   themeColors: true,
 });
