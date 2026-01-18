@@ -610,13 +610,14 @@ body {
 }
 
 .search-result-id {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   background: var(--figma-color-bg-brand);
   color: white;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   flex-shrink: 0;
+  line-height: 1;
 }
 
 .search-result-primary {
@@ -702,7 +703,6 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
 }
 
 /* Status Badge */
@@ -710,10 +710,11 @@ body {
   font-size: 9px;
   font-weight: 500;
   color: white;
-  padding: 2px 6px;
-  border-radius: 3px;
+  padding: 3px 6px;
+  border-radius: 4px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  line-height: 1;
 }
 
 /* Source Language Tag */
@@ -722,8 +723,9 @@ body {
   font-weight: 600;
   color: var(--figma-color-text-secondary);
   background: var(--figma-color-bg-secondary);
-  padding: 2px 5px;
-  border-radius: 3px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  line-height: 1;
 }
 
 /* Tooltip styling for search result cards */

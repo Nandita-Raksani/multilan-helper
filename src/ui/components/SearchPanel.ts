@@ -155,7 +155,6 @@ export function renderGlobalSearchResults(): void {
     const hasVariables = result.variableOccurrences && result.variableOccurrences.length > 0;
     const variableKeys = hasVariables ? result.variableOccurrences!.map(v => v.key) : [];
     const tooltipText = getMetadataTooltip(result);
-    const sourceLanguage = result.metadata?.sourceLanguageId?.toUpperCase();
 
     // Initialize variable values for this result if not exists
     if (hasVariables && !variableValues.has(result.multilanId)) {
@@ -167,7 +166,6 @@ export function renderGlobalSearchResults(): void {
         <div class="search-result-header">
           <div class="search-result-id-row">
             <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
-            ${sourceLanguage ? `<span class="source-lang-tag">${sourceLanguage}→</span>` : ''}
             ${getStatusBadge(result.metadata?.status)}
           </div>
           <button class="btn-copy-id" data-id="${escapeHtml(result.multilanId)}">Copy ID</button>
