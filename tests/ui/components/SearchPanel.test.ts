@@ -64,7 +64,7 @@ describe("SearchPanel", () => {
 
       const badge = document.getElementById("searchSelectedBadge");
       expect(badge?.textContent).toBe("10001");
-      expect(badge?.style.background).toBe("rgb(16, 185, 129)"); // #10b981
+      expect(badge?.className).toContain("btn-sm-success");
       expect(badge?.style.cursor).toBe("pointer");
     });
 
@@ -74,7 +74,7 @@ describe("SearchPanel", () => {
 
       const badge = document.getElementById("searchSelectedBadge");
       expect(badge?.textContent).toBe("Not linked");
-      expect(badge?.style.background).toBe("rgb(245, 158, 11)"); // #f59e0b
+      expect(badge?.className).toContain("status-badge-inline");
     });
 
     it("should show unlink button for linked node", () => {

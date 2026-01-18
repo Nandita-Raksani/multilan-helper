@@ -92,12 +92,12 @@ export function updateSearchSelectedNode(): void {
     const isLinked = state.selectedNode.multilanId;
     if (isLinked) {
       searchSelectedBadge.textContent = state.selectedNode.multilanId!;
-      searchSelectedBadge.style.background = '#10b981';
+      searchSelectedBadge.className = 'btn-sm btn-sm-success';
       searchSelectedBadge.style.cursor = 'pointer';
       searchSelectedBadge.title = 'Click to copy';
     } else {
       searchSelectedBadge.textContent = 'Not linked';
-      searchSelectedBadge.style.background = '#f59e0b';
+      searchSelectedBadge.className = 'status-badge-inline';
       searchSelectedBadge.style.cursor = 'default';
       searchSelectedBadge.title = '';
     }

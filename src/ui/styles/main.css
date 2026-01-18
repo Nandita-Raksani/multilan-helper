@@ -739,6 +739,16 @@ body {
   padding: 5px 0;
 }
 
+/* Inline status badge (not clickable) */
+.status-badge-inline {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: #f59e0b;
+  color: white;
+}
+
 .search-results-count {
   font-size: 10px;
   color: var(--figma-color-text-secondary);
