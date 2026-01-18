@@ -6,6 +6,9 @@ import { escapeHtml, copyToClipboard, showButtonFeedback, debounce } from '../ut
 
 let searchTimeout: ReturnType<typeof setTimeout>;
 
+// Track variable values per multilanId
+const variableValues: Map<string, Record<string, string>> = new Map();
+
 export function initSearchPanel(): void {
   const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
   const searchMarkPlaceholderBtn = getElementById<HTMLButtonElement>('searchMarkPlaceholderBtn');
@@ -116,6 +119,12 @@ export function renderGlobalSearchResults(): void {
   globalSearchResults.innerHTML = results.map(result => {
     const primaryText = result.translations[state.currentLang] || result.translations['en'] || Object.values(result.translations)[0];
     const isCurrentLink = isAlreadyLinked && state.selectedNode?.multilanId === result.multilanId;
+    const hasVariables = result.variables && result.variables.length > 0;
+
+    // Initialize variable values for this result if not exists
+    if (hasVariables && !variableValues.has(result.multilanId)) {
+      variableValues.set(result.multilanId, {});
+    }
 
     return `
       <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
@@ -132,10 +141,27 @@ export function renderGlobalSearchResults(): void {
             </div>
           `).join('')}
         </div>
+        ${hasVariables ? `
+        <div class="variables-section" style="padding: 8px 0; border-top: 1px solid var(--figma-color-border);">
+          <div style="font-size: 10px; color: var(--figma-color-text-secondary); margin-bottom: 6px;">Variables:</div>
+          ${result.variables!.map(varName => `
+            <div class="variable-row" style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <label style="font-size: 11px; min-width: 60px; color: var(--figma-color-text);">${escapeHtml(varName)}:</label>
+              <input type="text"
+                class="variable-input"
+                data-multilan-id="${escapeHtml(result.multilanId)}"
+                data-var-name="${escapeHtml(varName)}"
+                placeholder="Enter value"
+                style="flex: 1; padding: 4px 8px; font-size: 11px; border: 1px solid var(--figma-color-border); border-radius: 4px; background: var(--figma-color-bg); color: var(--figma-color-text);"
+              />
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
         <div class="search-result-actions">
-          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" style="background: #10b981;">Link</button>` : ''}
-          ${isCurrentLink ? `<span style="color: #10b981; font-size: 10px; padding: 6px 0;">✓ Currently linked</span>` : ''}
-          <button class="btn-create-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}">Create</button>
+          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? 'data-has-variables="true"' : ''} style="background: #10b981;">${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
+          ${isCurrentLink ? `<span style="color: #10b981; font-size: 10px; padding: 6px 0;">Currently linked</span>` : ''}
+          <button class="btn-create-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? 'data-has-variables="true"' : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>
         </div>
       </div>
     `;
@@ -171,13 +197,26 @@ function attachSearchResultHandlers(): void {
     });
   });
 
+  // Variable input handlers
+  globalSearchResults.querySelectorAll<HTMLInputElement>('.variable-input').forEach(input => {
+    input.addEventListener('input', (e) => {
+      const multilanId = input.dataset.multilanId!;
+      const varName = input.dataset.varName!;
+      const values = variableValues.get(multilanId) || {};
+      values[varName] = input.value;
+      variableValues.set(multilanId, values);
+    });
+  });
+
   // Link button handlers
   globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-link-result').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const multilanId = btn.dataset.id!;
       if (!state.selectedNode) return;
-      pluginBridge.linkNode(state.selectedNode.id, multilanId, state.currentLang);
+      const hasVariables = btn.dataset.hasVariables === 'true';
+      const variables = hasVariables ? variableValues.get(multilanId) : undefined;
+      pluginBridge.linkNode(state.selectedNode.id, multilanId, state.currentLang, variables);
     });
   });
 
@@ -187,7 +226,9 @@ function attachSearchResultHandlers(): void {
       e.stopPropagation();
       const multilanId = btn.dataset.id!;
       const text = btn.dataset.text!;
-      pluginBridge.createLinkedText(multilanId, text, state.currentLang);
+      const hasVariables = btn.dataset.hasVariables === 'true';
+      const variables = hasVariables ? variableValues.get(multilanId) : undefined;
+      pluginBridge.createLinkedText(multilanId, text, state.currentLang, variables);
     });
   });
 }

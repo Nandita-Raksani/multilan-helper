@@ -18,6 +18,8 @@ import {
   unwrapStars,
   updateNodeText,
   loadNodeFont,
+  setExpectedText,
+  clearExpectedText,
 } from "./nodeService";
 import {
   getTranslation,
@@ -50,6 +52,8 @@ export async function linkTextNode(
     const translation = getTranslation(translationData, multilanId, language);
     if (translation) {
       await updateNodeText(node, translation);
+      // Store the expected text to detect modifications
+      setExpectedText(node, translation);
     }
   }
 
@@ -69,6 +73,7 @@ export async function unlinkTextNode(nodeId: string): Promise<boolean> {
   }
 
   clearMultilanId(node);
+  clearExpectedText(node);
   return true;
 }
 
@@ -131,6 +136,9 @@ export async function switchLanguage(
 
     const originalWidth = node.width;
     node.characters = translation;
+
+    // Update expected text for modification detection
+    setExpectedText(node, translation);
 
     // Check for overflow (text got wider)
     if (node.width > originalWidth * 1.2) {
@@ -239,6 +247,9 @@ export async function createLinkedTextNode(
 
   // Link to multilanId
   setMultilanId(textNode, multilanId);
+
+  // Store expected text for modification detection
+  setExpectedText(textNode, translation);
 
   // Position near viewport center or current selection
   const selection = figma.currentPage.selection;

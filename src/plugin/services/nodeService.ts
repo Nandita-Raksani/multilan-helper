@@ -5,6 +5,7 @@ import {
   TranslationEntry,
   PLUGIN_DATA_KEY,
   PLACEHOLDER_KEY,
+  EXPECTED_TEXT_KEY,
 } from "../../shared/types";
 
 /**
@@ -61,6 +62,36 @@ export function unwrapStars(text: string): string {
  */
 export function clearPlaceholderStatus(node: TextNode): void {
   setPlaceholderStatus(node, false);
+}
+
+/**
+ * Get expected text from a text node
+ */
+export function getExpectedText(node: TextNode): string | null {
+  return node.getPluginData(EXPECTED_TEXT_KEY) || null;
+}
+
+/**
+ * Set expected text on a text node
+ */
+export function setExpectedText(node: TextNode, text: string): void {
+  node.setPluginData(EXPECTED_TEXT_KEY, text);
+}
+
+/**
+ * Clear expected text from a text node
+ */
+export function clearExpectedText(node: TextNode): void {
+  node.setPluginData(EXPECTED_TEXT_KEY, "");
+}
+
+/**
+ * Check if a linked node's text has been modified from expected
+ */
+export function isTextModified(node: TextNode): boolean {
+  const expectedText = getExpectedText(node);
+  if (!expectedText) return false;
+  return node.characters !== expectedText;
 }
 
 /**

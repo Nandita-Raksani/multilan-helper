@@ -70,6 +70,33 @@ export function replacePlaceholders(
 }
 
 /**
+ * Extract variable names from text with ###variable### format
+ */
+export function extractVariables(text: string): string[] {
+  const regex = /###(\w+)###/g;
+  const variables: string[] = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (!variables.includes(match[1])) {
+      variables.push(match[1]);
+    }
+  }
+  return variables;
+}
+
+/**
+ * Replace ###variable### patterns with values
+ */
+export function replaceVariables(
+  text: string,
+  values: Record<string, string>
+): string {
+  return text.replace(/###(\w+)###/g, (match, key) => {
+    return values[key] || match;
+  });
+}
+
+/**
  * Calculate match score between query and text
  */
 export function calculateMatchScore(query: string, text: string): number {
@@ -194,14 +221,31 @@ export function globalSearchTranslations(
     }
 
     if (bestScore > 0) {
-      results.push({ multilanId, translations: langs, score: bestScore });
+      // Extract variables from all translations
+      const allVariables: string[] = [];
+      for (const text of Object.values(langs)) {
+        const vars = extractVariables(text);
+        for (const v of vars) {
+          if (!allVariables.includes(v)) {
+            allVariables.push(v);
+          }
+        }
+      }
+
+      results.push({
+        multilanId,
+        translations: langs,
+        score: bestScore,
+        variables: allVariables.length > 0 ? allVariables : undefined,
+      });
     }
   }
 
   results.sort((a, b) => b.score - a.score);
-  return results.slice(0, limit).map(({ multilanId, translations }) => ({
+  return results.slice(0, limit).map(({ multilanId, translations, variables }) => ({
     multilanId,
     translations,
+    variables,
   }));
 }
 

@@ -41,6 +41,7 @@ export interface SearchResult {
   multilanId: string;
   translations: TranslationEntry;
   score?: number;
+  variables?: string[];
 }
 
 // Bulk auto-link match item types
@@ -118,6 +119,7 @@ export interface PluginMessage {
   multilanId?: string;
   searchQuery?: string;
   placeholders?: Record<string, string>;
+  variables?: Record<string, string>;
   text?: string;
   confirmations?: Array<{ nodeId: string; multilanId: string }>;
   // Plugin -> UI fields
@@ -139,3 +141,4 @@ export interface PluginMessage {
 // Constants
 export const PLUGIN_DATA_KEY = "multilanId";
 export const PLACEHOLDER_KEY = "isPlaceholder";
+export const EXPECTED_TEXT_KEY = "expectedText";

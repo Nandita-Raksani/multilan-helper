@@ -16,6 +16,7 @@ import {
   globalSearchTranslations,
   searchTranslations,
   detectLanguage,
+  replaceVariables,
 } from "./services/translationService";
 import {
   getAllTextNodesInfo,
@@ -23,6 +24,10 @@ import {
   selectNode,
   getTextNodesInScope,
   getMultilanId,
+  setExpectedText,
+  isTextModified,
+  clearMultilanId,
+  clearExpectedText,
 } from "./services/nodeService";
 import {
   linkTextNode,
@@ -55,8 +60,33 @@ function canEdit(): boolean {
   return figma.editorType === "figma";
 }
 
+// Auto-unlink nodes that have been modified from their expected text
+function autoUnlinkModifiedNodes(scope: "page" | "selection"): number {
+  const nodes = getTextNodesInScope(scope);
+  let unlinkedCount = 0;
+
+  for (const node of nodes) {
+    const multilanId = getMultilanId(node);
+    if (!multilanId) continue;
+
+    if (isTextModified(node)) {
+      clearMultilanId(node);
+      clearExpectedText(node);
+      unlinkedCount++;
+    }
+  }
+
+  return unlinkedCount;
+}
+
 // Initialize: send initial data to UI
 function initialize(): void {
+  // Auto-unlink nodes that have been modified by designers
+  const unlinkedCount = autoUnlinkModifiedNodes("page");
+  if (unlinkedCount > 0) {
+    figma.notify(`Auto-unlinked ${unlinkedCount} modified node${unlinkedCount > 1 ? 's' : ''}`);
+  }
+
   const textNodes = getAllTextNodesInfo("page", getTranslations);
   const selectedNode = getSelectedTextNodeInfo(getTranslations);
 
@@ -140,18 +170,42 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.nodeId && msg.multilanId) {
-        const success = await linkTextNode(
-          msg.nodeId,
-          msg.multilanId,
-          translationData,
-          msg.language
-        );
-        if (success) {
-          figma.notify(`Linked to ${msg.multilanId}`);
-          // Refresh
-          const textNodes = getAllTextNodesInfo("page", getTranslations);
-          const selectedNode = getSelectedTextNodeInfo(getTranslations);
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
+        // If variables are provided, we need to handle text replacement manually
+        if (msg.variables && Object.keys(msg.variables).length > 0) {
+          // Link without automatic text update
+          const success = await linkTextNode(msg.nodeId, msg.multilanId);
+          if (success) {
+            // Get translation and replace variables
+            const node = figma.getNodeById(msg.nodeId) as TextNode;
+            if (node && msg.language) {
+              const translation = getAllTranslations(translationData, msg.multilanId);
+              if (translation && translation[msg.language]) {
+                const replacedText = replaceVariables(translation[msg.language], msg.variables);
+                await figma.loadFontAsync(node.fontName as FontName);
+                node.characters = replacedText;
+                // Store expected text for modification detection
+                setExpectedText(node, replacedText);
+              }
+            }
+            figma.notify(`Linked to ${msg.multilanId}`);
+            const textNodes = getAllTextNodesInfo("page", getTranslations);
+            const selectedNode = getSelectedTextNodeInfo(getTranslations);
+            figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
+          }
+        } else {
+          const success = await linkTextNode(
+            msg.nodeId,
+            msg.multilanId,
+            translationData,
+            msg.language
+          );
+          if (success) {
+            figma.notify(`Linked to ${msg.multilanId}`);
+            // Refresh
+            const textNodes = getAllTextNodesInfo("page", getTranslations);
+            const selectedNode = getSelectedTextNodeInfo(getTranslations);
+            figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
+          }
         }
       }
       break;
@@ -179,7 +233,13 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       break;
 
     case "refresh": {
-      const textNodes = getAllTextNodesInfo(msg.scope || "page", getTranslations);
+      // Auto-unlink nodes that have been modified by designers
+      const scope = msg.scope || "page";
+      const unlinkedCount = autoUnlinkModifiedNodes(scope);
+      if (unlinkedCount > 0) {
+        figma.notify(`Auto-unlinked ${unlinkedCount} modified node${unlinkedCount > 1 ? 's' : ''}`);
+      }
+      const textNodes = getAllTextNodesInfo(scope, getTranslations);
       figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
       break;
     }
@@ -308,12 +368,31 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.multilanId && msg.text) {
+        let textToCreate = msg.text;
+        const lang = (msg.language as Language) || "en";
+
+        // If variables are provided, replace them in the translation
+        if (msg.variables && Object.keys(msg.variables).length > 0) {
+          const translation = getAllTranslations(translationData, msg.multilanId);
+          if (translation && translation[lang]) {
+            textToCreate = replaceVariables(translation[lang], msg.variables);
+          }
+        }
+
         const textNode = await createLinkedTextNode(
           translationData,
           msg.multilanId,
-          msg.text,
-          (msg.language as Language) || "en"
+          textToCreate,
+          lang
         );
+
+        // If we used variable replacement, update the node text and expected text
+        // (createLinkedTextNode uses getTranslation which returns the original)
+        if (msg.variables && Object.keys(msg.variables).length > 0) {
+          textNode.characters = textToCreate;
+          setExpectedText(textNode, textToCreate);
+        }
+
         figma.notify(`Created text node: "${textNode.characters}" (${msg.multilanId})`);
         figma.ui.postMessage({
           type: "text-created",

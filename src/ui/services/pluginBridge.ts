@@ -47,12 +47,13 @@ class PluginBridge {
     });
   }
 
-  linkNode(nodeId: string, multilanId: string, language: Language): void {
+  linkNode(nodeId: string, multilanId: string, language: Language, variables?: Record<string, string>): void {
     this.send({
       type: 'link-node',
       nodeId,
       multilanId,
-      language
+      language,
+      variables
     });
   }
 
@@ -70,12 +71,13 @@ class PluginBridge {
     });
   }
 
-  createLinkedText(multilanId: string, text: string, language: Language): void {
+  createLinkedText(multilanId: string, text: string, language: Language, variables?: Record<string, string>): void {
     this.send({
       type: 'create-linked-text',
       multilanId,
       text,
-      language
+      language,
+      variables
     });
   }
 
