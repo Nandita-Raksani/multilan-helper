@@ -696,3 +696,41 @@ body {
   color: var(--figma-color-text-secondary);
   margin-bottom: 8px;
 }
+
+/* Search Result ID Row with metadata */
+.search-result-id-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Status Badge */
+.status-badge {
+  font-size: 9px;
+  font-weight: 500;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Source Language Tag */
+.source-lang-tag {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--figma-color-text-secondary);
+  background: var(--figma-color-bg-secondary);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+/* Tooltip styling for search result cards */
+.search-result-card[title] {
+  cursor: default;
+}
+
+.search-result-card[title]:hover {
+  cursor: pointer;
+}

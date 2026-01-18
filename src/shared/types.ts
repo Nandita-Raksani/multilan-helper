@@ -4,16 +4,39 @@
 export const SUPPORTED_LANGUAGES = ["en", "fr", "nl", "de"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
+// Translation status values
+export type MultilanStatus =
+  | "TO_TRANSLATE_INTERNALLY"
+  | "TO_TRANSLATE_EXTERNALLY"
+  | "IN_TRANSLATION"
+  | "FINAL"
+  | "DRAFT"
+  | "FOUR_EYES_CHECK";
+
 // API format (from backend)
 export interface MultilanText {
   languageId: string;
   wording: string;
   id: number;
+  sourceLanguageId?: string;
 }
 
 export interface ApiMultilan {
   id: number;
   multilanTextList: MultilanText[];
+  status?: MultilanStatus;
+  createdAt?: string;
+  modifiedAt?: string;
+  modifiedBy?: string;
+}
+
+// Metadata for a multilan entry
+export interface MultilanMetadata {
+  status?: MultilanStatus;
+  createdAt?: string;
+  modifiedAt?: string;
+  modifiedBy?: string;
+  sourceLanguageId?: string;
 }
 
 // Internal translation format
@@ -23,6 +46,11 @@ export interface TranslationEntry {
 
 export interface TranslationMap {
   [multilanId: string]: TranslationEntry;
+}
+
+// Metadata map for storing metadata per multilanId
+export interface MetadataMap {
+  [multilanId: string]: MultilanMetadata;
 }
 
 // Text node information for UI
@@ -50,6 +78,7 @@ export interface SearchResult {
   translations: TranslationEntry;
   score?: number;
   variableOccurrences?: VariableOccurrence[];
+  metadata?: MultilanMetadata;
 }
 
 // Bulk auto-link match item types

@@ -11,6 +11,7 @@ import {
 } from "../shared/types";
 import {
   buildTranslationMap,
+  buildMetadataMap,
   getAllTranslations,
   isLanguage,
   globalSearchTranslations,
@@ -46,6 +47,7 @@ const BUILD_TIMESTAMP = "2026-01-18 12:00";
 
 // Build translation data from API format
 const translationData: TranslationMap = buildTranslationMap(apiData as ApiMultilan[]);
+const metadataData = buildMetadataMap(apiData as ApiMultilan[]);
 
 // Helper to get translations for a multilanId
 const getTranslations = (multilanId: string) => getAllTranslations(translationData, multilanId);
@@ -377,7 +379,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "global-search":
       if (msg.searchQuery) {
-        const results = globalSearchTranslations(translationData, msg.searchQuery);
+        const results = globalSearchTranslations(translationData, msg.searchQuery, 30, metadataData);
         figma.ui.postMessage({
           type: "global-search-results",
           results,

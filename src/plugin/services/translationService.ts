@@ -8,6 +8,8 @@ import {
   Language,
   SUPPORTED_LANGUAGES,
   VariableOccurrence,
+  MetadataMap,
+  MultilanMetadata,
 } from "../../shared/types";
 
 /**
@@ -26,6 +28,39 @@ export function buildTranslationMap(data: ApiMultilan[]): TranslationMap {
   }
 
   return map;
+}
+
+/**
+ * Build a metadata map from API format
+ */
+export function buildMetadataMap(data: ApiMultilan[]): MetadataMap {
+  const map: MetadataMap = {};
+
+  for (const item of data) {
+    const multilanId = String(item.id);
+    // Get source language from first text entry (they all have the same source)
+    const sourceLanguageId = item.multilanTextList[0]?.sourceLanguageId;
+
+    map[multilanId] = {
+      status: item.status,
+      createdAt: item.createdAt,
+      modifiedAt: item.modifiedAt,
+      modifiedBy: item.modifiedBy,
+      sourceLanguageId,
+    };
+  }
+
+  return map;
+}
+
+/**
+ * Get metadata for a multilanId
+ */
+export function getMetadata(
+  metadataMap: MetadataMap,
+  multilanId: string
+): MultilanMetadata | null {
+  return metadataMap[multilanId] || null;
 }
 
 /**
@@ -242,7 +277,8 @@ export function searchTranslationsWithScore(
 export function globalSearchTranslations(
   translationData: TranslationMap,
   query: string,
-  limit: number = 30
+  limit: number = 30,
+  metadataMap?: MetadataMap
 ): SearchResult[] {
   const results: Array<SearchResult & { score: number }> = [];
   const lowerQuery = query.toLowerCase();
@@ -290,20 +326,25 @@ export function globalSearchTranslations(
         }
       }
 
+      // Get metadata if available
+      const metadata = metadataMap ? metadataMap[multilanId] : undefined;
+
       results.push({
         multilanId,
         translations: langs,
         score: bestScore,
         variableOccurrences: variableOccurrences.length > 0 ? variableOccurrences : undefined,
+        metadata,
       });
     }
   }
 
   results.sort((a, b) => b.score - a.score);
-  return results.slice(0, limit).map(({ multilanId, translations, variableOccurrences }) => ({
+  return results.slice(0, limit).map(({ multilanId, translations, variableOccurrences, metadata }) => ({
     multilanId,
     translations,
     variableOccurrences,
+    metadata,
   }));
 }
 

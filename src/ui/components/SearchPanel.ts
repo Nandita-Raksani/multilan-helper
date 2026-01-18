@@ -1,4 +1,4 @@
-import type { SearchResult } from '../../shared/types';
+import type { SearchResult, MultilanStatus } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
 import { getElementById } from '../utils/dom';
@@ -8,6 +8,39 @@ let searchTimeout: ReturnType<typeof setTimeout>;
 
 // Track variable values per multilanId
 const variableValues: Map<string, Record<string, string>> = new Map();
+
+// Status badge configuration
+const STATUS_CONFIG: Record<MultilanStatus, { color: string; label: string }> = {
+  FINAL: { color: '#10b981', label: 'Final' },
+  DRAFT: { color: '#f59e0b', label: 'Draft' },
+  IN_TRANSLATION: { color: '#3b82f6', label: 'In Translation' },
+  FOUR_EYES_CHECK: { color: '#8b5cf6', label: 'Review' },
+  TO_TRANSLATE_INTERNALLY: { color: '#f97316', label: 'To Translate (Int)' },
+  TO_TRANSLATE_EXTERNALLY: { color: '#ef4444', label: 'To Translate (Ext)' },
+};
+
+function getStatusBadge(status?: MultilanStatus): string {
+  if (!status) return '';
+  const config = STATUS_CONFIG[status] || { color: '#6b7280', label: status };
+  return `<span class="status-badge" style="background: ${config.color};">${config.label}</span>`;
+}
+
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return 'Unknown';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function getMetadataTooltip(result: SearchResult): string {
+  if (!result.metadata) return '';
+  const { createdAt, modifiedAt, modifiedBy, sourceLanguageId } = result.metadata;
+  const lines = [];
+  if (sourceLanguageId) lines.push(`Source: ${sourceLanguageId.toUpperCase()}`);
+  if (createdAt) lines.push(`Created: ${formatDate(createdAt)}`);
+  if (modifiedAt) lines.push(`Modified: ${formatDate(modifiedAt)}`);
+  if (modifiedBy) lines.push(`By: ${modifiedBy}`);
+  return lines.join('\n');
+}
 
 export function initSearchPanel(): void {
   const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
@@ -121,6 +154,8 @@ export function renderGlobalSearchResults(): void {
     const isCurrentLink = isAlreadyLinked && state.selectedNode?.multilanId === result.multilanId;
     const hasVariables = result.variableOccurrences && result.variableOccurrences.length > 0;
     const variableKeys = hasVariables ? result.variableOccurrences!.map(v => v.key) : [];
+    const tooltipText = getMetadataTooltip(result);
+    const sourceLanguage = result.metadata?.sourceLanguageId?.toUpperCase();
 
     // Initialize variable values for this result if not exists
     if (hasVariables && !variableValues.has(result.multilanId)) {
@@ -128,9 +163,13 @@ export function renderGlobalSearchResults(): void {
     }
 
     return `
-      <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
+      <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}" ${tooltipText ? `title="${escapeHtml(tooltipText)}"` : ''}>
         <div class="search-result-header">
-          <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
+          <div class="search-result-id-row">
+            <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
+            ${sourceLanguage ? `<span class="source-lang-tag">${sourceLanguage}→</span>` : ''}
+            ${getStatusBadge(result.metadata?.status)}
+          </div>
           <button class="btn-copy-id" data-id="${escapeHtml(result.multilanId)}">Copy ID</button>
         </div>
         <div class="translations-preview">
