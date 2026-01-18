@@ -8,6 +8,7 @@ import {
   setPlaceholderStatus,
   buildTextNodeInfo,
   wrapWithStars,
+  unwrapStars,
   clearPlaceholderStatus,
   getTextNodesInScope,
   getAllTextNodesInfo,
@@ -190,6 +191,28 @@ describe("nodeService", () => {
     it("should handle text with special characters", () => {
       const result = wrapWithStars("Hello World!");
       expect(result).toBe("*Hello World!*");
+    });
+  });
+
+  describe("unwrapStars", () => {
+    it("should remove stars from wrapped text", () => {
+      const result = unwrapStars("*Hello*");
+      expect(result).toBe("Hello");
+    });
+
+    it("should handle text without stars", () => {
+      const result = unwrapStars("Hello");
+      expect(result).toBe("Hello");
+    });
+
+    it("should handle empty stars", () => {
+      const result = unwrapStars("**");
+      expect(result).toBe("");
+    });
+
+    it("should only remove leading and trailing stars", () => {
+      const result = unwrapStars("*Hello * World*");
+      expect(result).toBe("Hello * World");
     });
   });
 

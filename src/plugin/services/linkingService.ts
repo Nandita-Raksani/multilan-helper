@@ -15,6 +15,7 @@ import {
   clearPlaceholderStatus,
   setPlaceholderStatus,
   wrapWithStars,
+  unwrapStars,
   updateNodeText,
   loadNodeFont,
 } from "./nodeService";
@@ -32,9 +33,11 @@ export async function linkTextNode(nodeId: string, multilanId: string): Promise<
   const node = await getTextNodeById(nodeId);
   if (!node) return false;
 
-  // Clear placeholder status if it was a placeholder (restores original styling)
+  // Clear placeholder status and remove stars if it was a placeholder
   if (isPlaceholder(node)) {
     clearPlaceholderStatus(node);
+    const textWithoutStars = unwrapStars(node.characters);
+    await updateNodeText(node, textWithoutStars);
   }
 
   setMultilanId(node, multilanId);

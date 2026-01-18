@@ -50,6 +50,13 @@ export function wrapWithStars(text: string): string {
 }
 
 /**
+ * Remove stars from placeholder text
+ */
+export function unwrapStars(text: string): string {
+  return text.replace(/^\*|\*$/g, "");
+}
+
+/**
  * Clear placeholder status
  */
 export function clearPlaceholderStatus(node: TextNode): void {
