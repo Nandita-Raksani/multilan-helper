@@ -3,6 +3,9 @@
 
 declare const __html__: string;
 
+// Build timestamp - update this when translations are updated
+const BUILD_TIMESTAMP = "2026-01-18 12:00";
+
 import apiData from "./translations/api-data.json";
 
 // Types - API format
@@ -247,7 +250,27 @@ async function switchLanguage(
     translation = replacePlaceholders(translation, placeholders);
 
     // Load font before changing text
-    await figma.loadFontAsync(node.fontName as FontName);
+    // Handle mixed fonts by loading all unique fonts used in the node
+    try {
+      if (node.fontName === figma.mixed) {
+        // Collect unique fonts to avoid loading duplicates
+        const fontsToLoad = new Set<string>();
+        const len = node.characters.length;
+        for (let i = 0; i < len; i++) {
+          const fontName = node.getRangeFontName(i, i + 1) as FontName;
+          fontsToLoad.add(JSON.stringify(fontName));
+        }
+        // Load each unique font
+        for (const fontStr of fontsToLoad) {
+          await figma.loadFontAsync(JSON.parse(fontStr) as FontName);
+        }
+      } else {
+        await figma.loadFontAsync(node.fontName as FontName);
+      }
+    } catch (fontErr) {
+      console.error(`Failed to load font for node ${node.id}:`, fontErr);
+      continue; // Skip this node if font loading fails
+    }
 
     const originalWidth = node.width;
     node.characters = translation;
@@ -560,7 +583,8 @@ function initialize(): void {
     languages: SUPPORTED_LANGUAGES,
     textNodes,
     selectedNode,
-    translationCount: Object.keys(translationData).length
+    translationCount: Object.keys(translationData).length,
+    buildTimestamp: BUILD_TIMESTAMP
   });
 }
 
@@ -754,6 +778,9 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         const success = await linkTextNode(msg.nodeId, msg.multilanId);
         if (success) {
           figma.notify(`Linked to ${msg.multilanId}`);
+          // Refresh text nodes list to update UI
+          const textNodes = getAllTextNodesInfo(msg.scope || "page");
+          figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
         }
       }
       break;

@@ -763,6 +763,7 @@
     <!-- Status Bar -->
     <div class="status-bar">
       <span id="statusText">Ready</span>
+      <span id="buildTimestamp" style="float: right; opacity: 0.7;"></span>
     </div>
   </div>
 
@@ -924,8 +925,8 @@
         return `
           <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
             <div class="search-result-header">
-              <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
               <span class="search-result-primary">${escapeHtml(primaryText)}</span>
+              <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
             </div>
             <div class="search-result-translations">
               ${Object.entries(result.translations).map(([lang, text]) => `
@@ -941,16 +942,15 @@
 
       // Add copy event handlers
       globalSearchResults.querySelectorAll('.btn-copy-text').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const text = btn.dataset.text;
-          try {
-            await navigator.clipboard.writeText(text);
+          if (copyToClipboard(text)) {
             btn.textContent = 'Copied!';
             setTimeout(() => {
               btn.textContent = 'Copy';
             }, 1500);
-          } catch (err) {
+          } else {
             alert('Failed to copy');
           }
         });
@@ -1110,17 +1110,16 @@
 
         // Add copy handlers
         lookupResult.querySelectorAll('.copy-btn').forEach(btn => {
-          btn.addEventListener('click', async () => {
+          btn.addEventListener('click', () => {
             const text = btn.dataset.text;
-            try {
-              await navigator.clipboard.writeText(text);
+            if (copyToClipboard(text)) {
               btn.textContent = 'Copied!';
               btn.classList.add('copied');
               setTimeout(() => {
                 btn.textContent = 'Copy';
                 btn.classList.remove('copied');
               }, 1500);
-            } catch (e) {
+            } else {
               alert('Failed to copy to clipboard');
             }
           });
@@ -1318,6 +1317,24 @@
       }, '*');
     }
 
+    // Copy to clipboard (works in Figma iframe)
+    function copyToClipboard(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        return true;
+      } catch (err) {
+        return false;
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+
     // Escape HTML
     function escapeHtml(text) {
       const div = document.createElement('div');
@@ -1342,6 +1359,9 @@
           }
 
           statusText.textContent = `${msg.translationCount} translations loaded`;
+          if (msg.buildTimestamp) {
+            document.getElementById('buildTimestamp').textContent = `Updated: ${msg.buildTimestamp}`;
+          }
           renderTextList();
           updateCreateSelectedNode();
           break;
