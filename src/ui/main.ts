@@ -1,4 +1,5 @@
-import type { PluginMessage } from '../shared/types';
+import type { Language, PluginMessage } from '../shared/types';
+import { SUPPORTED_LANGUAGES } from '../shared/types';
 import { store } from './state/store';
 import { pluginBridge } from './services/pluginBridge';
 import {
@@ -22,24 +23,42 @@ import {
   setActiveLanguage
 } from './components';
 
+/**
+ * Get user's preferred language from browser settings
+ * Maps browser locale to our supported languages
+ */
+function getBrowserLanguage(): Language {
+  const browserLang = navigator.language || (navigator as { userLanguage?: string }).userLanguage || 'en';
+  const langCode = browserLang.split('-')[0].toLowerCase();
+
+  if (SUPPORTED_LANGUAGES.includes(langCode as Language)) {
+    return langCode as Language;
+  }
+  return 'en';
+}
+
 function handlePluginMessage(msg: PluginMessage): void {
   switch (msg.type) {
-    case 'init':
+    case 'init': {
+      // Use detected language if nodes exist, otherwise use browser preference
+      const browserLang = getBrowserLanguage();
+      const hasLinkedNodes = msg.textNodes?.some(n => n.multilanId) || false;
+      const initialLang = hasLinkedNodes && msg.detectedLanguage
+        ? msg.detectedLanguage
+        : browserLang;
+
       store.setState({
         canEdit: msg.canEdit,
         textNodes: msg.textNodes || [],
         selectedNode: msg.selectedNode || null,
-        currentLang: msg.detectedLanguage || 'en'
+        currentLang: initialLang
       });
 
       if (!msg.canEdit) {
         setViewMode(true);
       }
 
-      // Set the detected language in the UI
-      if (msg.detectedLanguage) {
-        setActiveLanguage(msg.detectedLanguage);
-      }
+      setActiveLanguage(initialLang);
 
       setStatus(`${msg.translationCount} translations loaded`);
       if (msg.buildTimestamp) {
@@ -48,6 +67,7 @@ function handlePluginMessage(msg: PluginMessage): void {
       renderTextList();
       updateSearchSelectedNode();
       break;
+    }
 
     case 'text-nodes-updated':
       store.setState({
