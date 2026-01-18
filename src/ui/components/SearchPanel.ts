@@ -44,7 +44,6 @@ function getMetadataTooltip(result: SearchResult): string {
 
 export function initSearchPanel(): void {
   const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
-  const searchMarkPlaceholderBtn = getElementById<HTMLButtonElement>('searchMarkPlaceholderBtn');
 
   // Global search input
   globalSearchInput.addEventListener('input', debounce(() => {
@@ -56,26 +55,6 @@ export function initSearchPanel(): void {
       renderGlobalSearchResults();
     }
   }, 200));
-
-  // Mark as placeholder button
-  searchMarkPlaceholderBtn.addEventListener('click', () => {
-    const searchPlaceholderText = getElementById<HTMLInputElement>('searchPlaceholderText');
-    const text = searchPlaceholderText.value.trim();
-    const searchQuery = globalSearchInput.value.trim();
-    const state = store.getState();
-
-    if (!text) {
-      alert('Please enter placeholder text');
-      return;
-    }
-    if (!state.selectedNode) {
-      alert('Please select a text layer in Figma first');
-      return;
-    }
-
-    pluginBridge.markAsPlaceholder(text);
-    searchPlaceholderText.value = '';
-  });
 }
 
 export function updateSearchSelectedNode(): void {
@@ -106,15 +85,10 @@ export function updateSearchSelectedNode(): void {
     if (isLinked) {
       searchSelectedActions.innerHTML = `
         <button class="btn-sm btn-sm-outline" id="searchUnlinkBtn">Unlink</button>
-        <button class="btn-sm btn-sm-warning" id="searchMakePlaceholderBtn">Make placeholder</button>
       `;
 
       getElementById('searchUnlinkBtn').addEventListener('click', () => {
         pluginBridge.unlinkNode(state.selectedNode!.id);
-      });
-
-      getElementById('searchMakePlaceholderBtn').addEventListener('click', () => {
-        pluginBridge.markAsPlaceholder(state.selectedNode!.characters);
       });
 
       // Click badge to copy ID
@@ -149,21 +123,17 @@ export function renderGlobalSearchResults(): void {
 
   const globalSearchResults = getElementById<HTMLDivElement>('globalSearchResults');
   const globalSearchResultsCount = getElementById<HTMLDivElement>('globalSearchResultsCount');
-  const searchPlaceholderSection = getElementById<HTMLDivElement>('searchPlaceholderSection');
 
   if (results.length === 0) {
     globalSearchResultsCount.textContent = '';
     if (searchQuery) {
       globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
-      searchPlaceholderSection.style.display = hasSelection ? 'block' : 'none';
     } else {
       globalSearchResults.innerHTML = '<div class="empty-state">Start typing to search translations</div>';
-      searchPlaceholderSection.style.display = 'none';
     }
     return;
   }
 
-  searchPlaceholderSection.style.display = 'none';
   globalSearchResultsCount.textContent = `${results.length} result${results.length > 1 ? 's' : ''} found`;
 
   globalSearchResults.innerHTML = results.map(result => {

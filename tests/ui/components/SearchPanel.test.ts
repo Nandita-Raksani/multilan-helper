@@ -85,14 +85,6 @@ describe("SearchPanel", () => {
       expect(actions?.querySelector("#searchUnlinkBtn")).not.toBeNull();
     });
 
-    it("should show make placeholder button for linked node", () => {
-      store.setState({ selectedNode: sampleTextNodes[0] });
-      updateSearchSelectedNode();
-
-      const actions = document.getElementById("searchSelectedActions");
-      expect(actions?.querySelector("#searchMakePlaceholderBtn")).not.toBeNull();
-    });
-
     it("should handle unlink button click", () => {
       store.setState({ selectedNode: sampleTextNodes[0] });
       initSearchPanel();
@@ -262,26 +254,6 @@ describe("SearchPanel", () => {
       );
     });
 
-    it("should show placeholder section when no results and has selection", () => {
-      store.setState({
-        globalSearchResults: [],
-        selectedNode: sampleTextNodes[1],
-      });
-      const input = document.getElementById("globalSearchInput") as HTMLInputElement;
-      input.value = "nonexistent";
-      renderGlobalSearchResults();
-
-      const placeholderSection = document.getElementById("searchPlaceholderSection");
-      expect(placeholderSection?.style.display).toBe("block");
-    });
-
-    it("should hide placeholder section when results exist", () => {
-      store.setState({ globalSearchResults: sampleSearchResults });
-      renderGlobalSearchResults();
-
-      const placeholderSection = document.getElementById("searchPlaceholderSection");
-      expect(placeholderSection?.style.display).toBe("none");
-    });
   });
 
   describe("setSearchQuery", () => {
@@ -348,54 +320,5 @@ describe("SearchPanel", () => {
       vi.useRealTimers();
     });
 
-    it("should handle mark as placeholder button", () => {
-      store.setState({ selectedNode: sampleTextNodes[1] });
-      initSearchPanel();
-
-      const placeholderInput = document.getElementById("searchPlaceholderText") as HTMLInputElement;
-      placeholderInput.value = "My placeholder";
-
-      const markBtn = document.getElementById("searchMarkPlaceholderBtn") as HTMLButtonElement;
-      markBtn.click();
-
-      expect(postMessageMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pluginMessage: expect.objectContaining({
-            type: "mark-as-placeholder",
-            text: "My placeholder",
-          }),
-        }),
-        "*"
-      );
-    });
-
-    it("should alert when no placeholder text entered", () => {
-      store.setState({ selectedNode: sampleTextNodes[1] });
-      initSearchPanel();
-
-      const alertMock = vi.fn();
-      vi.stubGlobal("alert", alertMock);
-
-      const markBtn = document.getElementById("searchMarkPlaceholderBtn") as HTMLButtonElement;
-      markBtn.click();
-
-      expect(alertMock).toHaveBeenCalledWith("Please enter placeholder text");
-    });
-
-    it("should alert when no node selected for placeholder", () => {
-      store.setState({ selectedNode: null });
-      initSearchPanel();
-
-      const alertMock = vi.fn();
-      vi.stubGlobal("alert", alertMock);
-
-      const placeholderInput = document.getElementById("searchPlaceholderText") as HTMLInputElement;
-      placeholderInput.value = "My placeholder";
-
-      const markBtn = document.getElementById("searchMarkPlaceholderBtn") as HTMLButtonElement;
-      markBtn.click();
-
-      expect(alertMock).toHaveBeenCalledWith("Please select a text layer in Figma first");
-    });
   });
 });
