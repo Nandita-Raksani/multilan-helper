@@ -1,0 +1,222 @@
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { setupUIFixture, mockParentPostMessage, sampleTextNodes } from "../setup";
+import { store } from "../../../src/ui/state/store";
+import { initLinksPanel, renderTextList } from "../../../src/ui/components/LinksPanel";
+
+describe("LinksPanel", () => {
+  let postMessageMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    setupUIFixture();
+    postMessageMock = mockParentPostMessage();
+    store.setState({
+      canEdit: true,
+      currentLang: "en",
+      scope: "page",
+      textNodes: [],
+      selectedNode: null,
+      placeholders: { username: "John", count: "5" },
+      bulkLinkResults: null,
+      globalSearchResults: [],
+      allTranslations: [],
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  describe("initLinksPanel", () => {
+    it("should set up scope toggle handlers", () => {
+      initLinksPanel();
+
+      const selectionBtn = document.querySelector('[data-scope="selection"]') as HTMLButtonElement;
+      selectionBtn.click();
+
+      expect(store.getState().scope).toBe("selection");
+      expect(selectionBtn.classList.contains("active")).toBe(true);
+    });
+
+    it("should send refresh message on scope change", () => {
+      initLinksPanel();
+
+      const selectionBtn = document.querySelector('[data-scope="selection"]') as HTMLButtonElement;
+      selectionBtn.click();
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginMessage: expect.objectContaining({
+            type: "refresh",
+            scope: "selection",
+          }),
+        }),
+        "*"
+      );
+    });
+
+    it("should set up auto-link button handler", () => {
+      initLinksPanel();
+
+      const autoLinkBtn = document.getElementById("autoLinkBtn") as HTMLButtonElement;
+      autoLinkBtn.click();
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginMessage: expect.objectContaining({
+            type: "bulk-auto-link",
+            scope: "page",
+          }),
+        }),
+        "*"
+      );
+    });
+
+    it("should prevent auto-link in view mode", () => {
+      store.setState({ canEdit: false });
+      initLinksPanel();
+
+      // Mock alert
+      const alertMock = vi.fn();
+      vi.stubGlobal("alert", alertMock);
+
+      const autoLinkBtn = document.getElementById("autoLinkBtn") as HTMLButtonElement;
+      autoLinkBtn.click();
+
+      expect(alertMock).toHaveBeenCalledWith("You do not have edit permissions");
+    });
+
+    it("should filter text list on search input", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      initLinksPanel();
+      renderTextList();
+
+      const searchInput = document.getElementById("textSearch") as HTMLInputElement;
+      searchInput.value = "Submit";
+      searchInput.dispatchEvent(new Event("input"));
+
+      const textList = document.getElementById("textList");
+      expect(textList?.querySelectorAll(".text-item").length).toBe(1);
+    });
+  });
+
+  describe("renderTextList", () => {
+    it("should render text nodes", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      renderTextList();
+
+      const textList = document.getElementById("textList");
+      const items = textList?.querySelectorAll(".text-item");
+
+      expect(items?.length).toBe(3);
+    });
+
+    it("should show empty state when no nodes", () => {
+      store.setState({ textNodes: [] });
+      renderTextList();
+
+      const textList = document.getElementById("textList");
+      expect(textList?.textContent).toContain("No text layers found");
+    });
+
+    it("should apply linked class to linked nodes", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      renderTextList();
+
+      const linkedItem = document.querySelector('[data-id="node-1"]');
+      expect(linkedItem?.classList.contains("linked")).toBe(true);
+    });
+
+    it("should apply unlinked class to unlinked nodes", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      renderTextList();
+
+      const unlinkedItem = document.querySelector('[data-id="node-2"]');
+      expect(unlinkedItem?.classList.contains("unlinked")).toBe(true);
+    });
+
+    it("should apply placeholder class to placeholder nodes", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      renderTextList();
+
+      const placeholderItem = document.querySelector('[data-id="node-3"]');
+      expect(placeholderItem?.classList.contains("placeholder")).toBe(true);
+    });
+
+    it("should show link button for unlinked nodes", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      renderTextList();
+
+      const unlinkedItem = document.querySelector('[data-id="node-2"]');
+      expect(unlinkedItem?.querySelector(".btn-link-node")).not.toBeNull();
+    });
+
+    it("should show unlink button for linked nodes", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      renderTextList();
+
+      const linkedItem = document.querySelector('[data-id="node-1"]');
+      expect(linkedItem?.querySelector(".btn-unlink-node")).not.toBeNull();
+    });
+
+    it("should show placeholder badge for placeholder nodes", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      renderTextList();
+
+      const placeholderItem = document.querySelector('[data-id="node-3"]');
+      expect(placeholderItem?.querySelector(".placeholder-badge")).not.toBeNull();
+    });
+
+    it("should handle unlink button click", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      initLinksPanel();
+      renderTextList();
+
+      const unlinkBtn = document.querySelector('[data-id="node-1"] .btn-unlink-node') as HTMLButtonElement;
+      unlinkBtn.click();
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginMessage: expect.objectContaining({
+            type: "unlink-node",
+            nodeId: "node-1",
+          }),
+        }),
+        "*"
+      );
+    });
+
+    it("should filter by name", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      initLinksPanel();
+      renderTextList();
+
+      const searchInput = document.getElementById("textSearch") as HTMLInputElement;
+      searchInput.value = "Button";
+      searchInput.dispatchEvent(new Event("input"));
+
+      const items = document.querySelectorAll(".text-item");
+      expect(items.length).toBe(2); // Submit Button, Cancel Button
+    });
+
+    it("should filter by multilanId", () => {
+      store.setState({ textNodes: sampleTextNodes });
+      initLinksPanel();
+      renderTextList();
+
+      const searchInput = document.getElementById("textSearch") as HTMLInputElement;
+      searchInput.value = "10001";
+      searchInput.dispatchEvent(new Event("input"));
+
+      const items = document.querySelectorAll(".text-item");
+      expect(items.length).toBe(1);
+    });
+
+    it("should show translation text for current language", () => {
+      store.setState({ textNodes: sampleTextNodes, currentLang: "fr" });
+      renderTextList();
+
+      const linkedItem = document.querySelector('[data-id="node-1"]');
+      expect(linkedItem?.querySelector(".text-item-content")?.textContent).toBe("Soumettre");
+    });
+  });
+});

@@ -191,4 +191,237 @@ describe("linkingService", () => {
       expect(count).toBe(0);
     });
   });
+
+  describe("unlinkTextNode with placeholder", () => {
+    it("should clear placeholder status when unlinking placeholder node", async () => {
+      const { unlinkTextNode } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({ id: "node-1" });
+      mockNode.setPluginData(PLUGIN_DATA_KEY, "10001");
+      mockNode.setPluginData(PLACEHOLDER_KEY, "true");
+      mockFigma.getNodeByIdAsync.mockResolvedValue(mockNode);
+
+      await unlinkTextNode("node-1");
+
+      expect(mockNode.setPluginData).toHaveBeenCalledWith(PLACEHOLDER_KEY, "");
+      expect(mockNode.setPluginData).toHaveBeenCalledWith(PLUGIN_DATA_KEY, "");
+    });
+  });
+
+  describe("markAsPlaceholder", () => {
+    it("should mark node as placeholder with styling", async () => {
+      const { markAsPlaceholder } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({ id: "node-1" });
+      (mockNode as unknown as { fills: unknown[] }).fills = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
+
+      await markAsPlaceholder(mockNode, "placeholder_123", "Placeholder text");
+
+      expect(mockNode.setPluginData).toHaveBeenCalledWith(PLUGIN_DATA_KEY, "placeholder_123");
+      expect(mockNode.setPluginData).toHaveBeenCalledWith(PLACEHOLDER_KEY, "true");
+      expect(mockNode.characters).toBe("Placeholder text");
+    });
+  });
+
+  describe("switchLanguage", () => {
+    it("should update linked nodes with translations", async () => {
+      const { switchLanguage } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({
+        id: "node-1",
+        characters: "Submit",
+      });
+      mockNode.setPluginData(PLUGIN_DATA_KEY, "10001");
+      (mockNode as unknown as { width: number }).width = 100;
+
+      mockFigma.currentPage.findAll.mockReturnValue([mockNode]);
+
+      const result = await switchLanguage(sampleTranslationMap, "fr", "page", {});
+
+      expect(result.success).toBe(1);
+      expect(mockNode.characters).toBe("Soumettre");
+    });
+
+    it("should skip unlinked nodes", async () => {
+      const { switchLanguage } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({
+        id: "node-1",
+        characters: "Some text",
+      });
+
+      mockFigma.currentPage.findAll.mockReturnValue([mockNode]);
+
+      const result = await switchLanguage(sampleTranslationMap, "fr", "page", {});
+
+      expect(result.success).toBe(0);
+    });
+
+    it("should fallback to English and report missing", async () => {
+      const { switchLanguage } = await import("../../../src/plugin/services/linkingService");
+
+      // Use a translation that only has English
+      const limitedTranslations = {
+        "99999": { en: "English only" },
+      };
+
+      const mockNode = createMockTextNode({
+        id: "node-1",
+        characters: "Test",
+      });
+      mockNode.setPluginData(PLUGIN_DATA_KEY, "99999");
+      (mockNode as unknown as { width: number }).width = 100;
+
+      mockFigma.currentPage.findAll.mockReturnValue([mockNode]);
+
+      const result = await switchLanguage(limitedTranslations, "fr", "page", {});
+
+      expect(result.success).toBe(1);
+      expect(result.missing).toContain("node-1");
+      expect(mockNode.characters).toBe("English only");
+    });
+
+    it("should replace placeholders in translations", async () => {
+      const { switchLanguage } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({
+        id: "node-1",
+        characters: "Hello {username}",
+      });
+      mockNode.setPluginData(PLUGIN_DATA_KEY, "10003");
+      (mockNode as unknown as { width: number }).width = 100;
+
+      mockFigma.currentPage.findAll.mockReturnValue([mockNode]);
+
+      const result = await switchLanguage(sampleTranslationMap, "en", "page", { username: "Alice" });
+
+      expect(result.success).toBe(1);
+      expect(mockNode.characters).toBe("Hello Alice");
+    });
+
+    it("should handle font loading errors gracefully", async () => {
+      const { switchLanguage } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({
+        id: "node-1",
+        characters: "Submit",
+      });
+      mockNode.setPluginData(PLUGIN_DATA_KEY, "10001");
+
+      mockFigma.currentPage.findAll.mockReturnValue([mockNode]);
+      mockFigma.loadFontAsync.mockRejectedValue(new Error("Font not found"));
+
+      const result = await switchLanguage(sampleTranslationMap, "fr", "page", {});
+
+      // Should skip node with font error
+      expect(result.success).toBe(0);
+    });
+  });
+
+  describe("createLinkedTextNode", () => {
+    it("should create a text node linked to multilanId", async () => {
+      const { createLinkedTextNode } = await import("../../../src/plugin/services/linkingService");
+
+      const result = await createLinkedTextNode(sampleTranslationMap, "10001", "Submit", "en");
+
+      expect(figma.createText).toHaveBeenCalled();
+      expect(result.characters).toBe("Submit");
+      expect(result.setPluginData).toHaveBeenCalledWith(PLUGIN_DATA_KEY, "10001");
+    });
+
+    it("should use translation for specified language", async () => {
+      const { createLinkedTextNode } = await import("../../../src/plugin/services/linkingService");
+
+      const result = await createLinkedTextNode(sampleTranslationMap, "10001", "Submit", "fr");
+
+      expect(result.characters).toBe("Soumettre");
+    });
+
+    it("should position near selection if present", async () => {
+      const { createLinkedTextNode } = await import("../../../src/plugin/services/linkingService");
+
+      const mockSelection = { x: 100, y: 50, width: 80, height: 20 };
+      (mockFigma.currentPage.selection as unknown) = [mockSelection];
+
+      const result = await createLinkedTextNode(sampleTranslationMap, "10001", "Submit", "en");
+
+      expect(result.x).toBe(200); // 100 + 80 + 20
+      expect(result.y).toBe(50);
+    });
+
+    it("should position at viewport center if no selection", async () => {
+      const { createLinkedTextNode } = await import("../../../src/plugin/services/linkingService");
+
+      (mockFigma.currentPage.selection as unknown) = [];
+
+      const result = await createLinkedTextNode(sampleTranslationMap, "10001", "Submit", "en");
+
+      expect(result.x).toBe(0); // viewport.center.x
+      expect(result.y).toBe(0); // viewport.center.y
+    });
+
+    it("should select and scroll to the new node", async () => {
+      const { createLinkedTextNode } = await import("../../../src/plugin/services/linkingService");
+
+      const result = await createLinkedTextNode(sampleTranslationMap, "10001", "Submit", "en");
+
+      expect(mockFigma.currentPage.selection).toContain(result);
+      expect(mockFigma.viewport.scrollAndZoomIntoView).toHaveBeenCalledWith([result]);
+    });
+  });
+
+  describe("bulkAutoLink edge cases", () => {
+    it("should skip empty text nodes", async () => {
+      const { bulkAutoLink } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({
+        id: "node-1",
+        name: "Empty",
+        characters: "   ",
+      });
+
+      mockFigma.currentPage.findAll.mockReturnValue([mockNode]);
+
+      const result = bulkAutoLink(sampleTranslationMap, "page");
+
+      expect(result.exactMatches.length).toBe(0);
+      expect(result.fuzzyMatches.length).toBe(0);
+      expect(result.unmatched.length).toBe(0);
+    });
+
+    it("should include placeholder nodes for relinking", async () => {
+      const { bulkAutoLink } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({
+        id: "node-1",
+        name: "Button",
+        characters: "Submit",
+      });
+      mockNode.setPluginData(PLUGIN_DATA_KEY, "old-id");
+      mockNode.setPluginData(PLACEHOLDER_KEY, "true");
+
+      mockFigma.currentPage.findAll.mockReturnValue([mockNode]);
+
+      const result = bulkAutoLink(sampleTranslationMap, "page");
+
+      expect(result.exactMatches.length).toBe(1);
+    });
+
+    it("should use selection scope when specified", async () => {
+      const { bulkAutoLink } = await import("../../../src/plugin/services/linkingService");
+
+      const mockNode = createMockTextNode({
+        id: "selected-node",
+        name: "Button",
+        characters: "Submit",
+      });
+
+      (mockFigma.currentPage.selection as unknown) = [mockNode];
+
+      const result = bulkAutoLink(sampleTranslationMap, "selection");
+
+      expect(result.exactMatches.length).toBe(1);
+      expect(result.exactMatches[0].nodeId).toBe("selected-node");
+    });
+  });
 });

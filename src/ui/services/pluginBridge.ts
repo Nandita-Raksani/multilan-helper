@@ -6,11 +6,11 @@ class PluginBridge {
   private handlers: Set<MessageHandler> = new Set();
 
   constructor() {
-    window.onmessage = (event) => {
-      const msg = event.data.pluginMessage;
+    window.addEventListener('message', (event) => {
+      const msg = event.data?.pluginMessage;
       if (!msg) return;
       this.handlers.forEach(handler => handler(msg));
-    };
+    });
   }
 
   subscribe(handler: MessageHandler): () => void {
