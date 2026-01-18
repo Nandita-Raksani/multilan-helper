@@ -65,10 +65,10 @@
   {
     "id": 10008,
     "multilanTextList": [
-      { "languageId": "en", "wording": "Hello {username}", "id": 29 },
-      { "languageId": "fr", "wording": "Bonjour {username}", "id": 30 },
-      { "languageId": "nl", "wording": "Hallo {username}", "id": 31 },
-      { "languageId": "de", "wording": "Hallo {username}", "id": 32 }
+      { "languageId": "en", "wording": "Hello ###username###", "id": 29 },
+      { "languageId": "fr", "wording": "Bonjour ###username###", "id": 30 },
+      { "languageId": "nl", "wording": "Hallo ###username###", "id": 31 },
+      { "languageId": "de", "wording": "Hallo ###username###", "id": 32 }
     ]
   },
   {

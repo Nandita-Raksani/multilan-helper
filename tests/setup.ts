@@ -79,8 +79,8 @@ export const sampleApiData = [
   {
     id: 10003,
     multilanTextList: [
-      { languageId: "en", wording: "Hello {username}", id: 9 },
-      { languageId: "fr", wording: "Bonjour {username}", id: 10 },
+      { languageId: "en", wording: "Hello ###username###", id: 9 },
+      { languageId: "fr", wording: "Bonjour ###username###", id: 10 },
     ],
   },
 ];
@@ -99,7 +99,7 @@ export const sampleTranslationMap = {
     de: "Abbrechen",
   },
   "10003": {
-    en: "Hello {username}",
-    fr: "Bonjour {username}",
+    en: "Hello ###username###",
+    fr: "Bonjour ###username###",
   },
 };

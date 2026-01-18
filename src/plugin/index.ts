@@ -162,8 +162,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         const result = await switchLanguage(
           translationData,
           msg.language,
-          msg.scope || "page",
-          msg.placeholders || {}
+          msg.scope || "page"
         );
         figma.ui.postMessage({
           type: "language-switched",

@@ -6,7 +6,6 @@ export interface UIState {
   scope: 'page' | 'selection';
   textNodes: TextNodeInfo[];
   selectedNode: TextNodeInfo | null;
-  placeholders: Record<string, string>;
   bulkLinkResults: BulkLinkResults | null;
   globalSearchResults: SearchResult[];
   allTranslations: unknown[];
@@ -21,10 +20,6 @@ class Store {
     scope: 'page',
     textNodes: [],
     selectedNode: null,
-    placeholders: {
-      username: 'John',
-      count: '5'
-    },
     bulkLinkResults: null,
     globalSearchResults: [],
     allTranslations: []

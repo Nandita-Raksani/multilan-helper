@@ -58,7 +58,7 @@ describe("pluginBridge", () => {
 
   describe("switchLanguage", () => {
     it("should send switch-language message", () => {
-      pluginBridge.switchLanguage("fr", "page", { username: "John" });
+      pluginBridge.switchLanguage("fr", "page");
 
       expect(postMessageMock).toHaveBeenCalledWith(
         {
@@ -66,7 +66,6 @@ describe("pluginBridge", () => {
             type: "switch-language",
             language: "fr",
             scope: "page",
-            placeholders: { username: "John" },
           },
         },
         "*"

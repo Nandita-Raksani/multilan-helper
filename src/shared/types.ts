@@ -126,7 +126,6 @@ export interface PluginMessage {
   nodeId?: string;
   multilanId?: string;
   searchQuery?: string;
-  placeholders?: Record<string, string>;
   variables?: Record<string, string>;
   text?: string;
   confirmations?: Array<{ nodeId: string; multilanId: string }>;

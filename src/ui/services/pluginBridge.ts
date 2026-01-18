@@ -31,12 +31,11 @@ class PluginBridge {
     this.send({ type: 'refresh', scope });
   }
 
-  switchLanguage(language: Language, scope: 'page' | 'selection', placeholders: Record<string, string>): void {
+  switchLanguage(language: Language, scope: 'page' | 'selection'): void {
     this.send({
       type: 'switch-language',
       language,
-      scope,
-      placeholders
+      scope
     });
   }
 

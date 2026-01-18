@@ -25,7 +25,7 @@ export function initLanguageBar(): void {
       langBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
 
-      pluginBridge.switchLanguage(lang, state.scope, state.placeholders);
+      pluginBridge.switchLanguage(lang, state.scope);
     });
   });
 }

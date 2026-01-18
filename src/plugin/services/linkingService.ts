@@ -26,7 +26,6 @@ import {
 } from "./nodeService";
 import {
   getTranslation,
-  replacePlaceholders,
   replaceVariables,
   buildTextToIdMap,
   searchTranslationsWithScore,
@@ -104,8 +103,7 @@ export async function markAsPlaceholder(
 export async function switchLanguage(
   translationData: TranslationMap,
   lang: Language,
-  scope: "page" | "selection",
-  placeholders: Record<string, string>
+  scope: "page" | "selection"
 ): Promise<{ success: number; missing: string[]; overflow: string[] }> {
   const nodes = getTextNodesInScope(scope);
   let success = 0;
@@ -127,9 +125,6 @@ export async function switchLanguage(
         continue;
       }
     }
-
-    // Replace placeholders (existing {key} format)
-    translation = replacePlaceholders(translation, placeholders);
 
     // Replace variables (###variable### format) using stored values
     const storedVariables = getVariableValues(node);

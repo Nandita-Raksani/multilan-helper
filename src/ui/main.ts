@@ -8,7 +8,6 @@ import {
   initSearchPanel,
   initLinksPanel,
   initBulkLinkModal,
-  initSettingsPanel,
   updateSearchSelectedNode,
   renderGlobalSearchResults,
   renderTextList,
@@ -144,7 +143,6 @@ function init(): void {
   initSearchPanel();
   initLinksPanel();
   initBulkLinkModal();
-  initSettingsPanel();
 
   // Subscribe to plugin messages
   pluginBridge.subscribe(handlePluginMessage);
