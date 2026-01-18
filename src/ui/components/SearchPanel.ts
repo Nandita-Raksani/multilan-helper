@@ -105,8 +105,8 @@ export function updateSearchSelectedNode(): void {
     // Show action buttons based on link status
     if (isLinked) {
       searchSelectedActions.innerHTML = `
-        <button class="btn btn-secondary" id="searchUnlinkBtn" style="font-size: 10px; padding: 4px 10px;">Unlink</button>
-        <button class="btn btn-secondary" id="searchMakePlaceholderBtn" style="font-size: 10px; padding: 4px 10px; background: #f59e0b; color: white;">Make placeholder</button>
+        <button class="btn-sm btn-sm-outline" id="searchUnlinkBtn">Unlink</button>
+        <button class="btn-sm btn-sm-warning" id="searchMakePlaceholderBtn">Make placeholder</button>
       `;
 
       getElementById('searchUnlinkBtn').addEventListener('click', () => {
@@ -213,9 +213,9 @@ export function renderGlobalSearchResults(): void {
         </div>
         ` : ''}
         <div class="search-result-actions">
-          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''} style="background: #10b981;">${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
-          ${isCurrentLink ? `<span style="color: #10b981; font-size: 10px; padding: 6px 0;">Currently linked</span>` : ''}
-          <button class="btn-create-result btn-create-text" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>
+          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
+          ${isCurrentLink ? `<span class="currently-linked-text">Currently linked</span>` : ''}
+          <button class="btn-create-result btn-sm btn-sm-primary" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>
         </div>
       </div>
     `;
