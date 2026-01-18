@@ -58,18 +58,16 @@ export function renderTextList(): void {
   }
 
   textList.innerHTML = filtered.map(node => {
-    let itemClass = node.multilanId ? 'linked' : 'unlinked';
-    if (node.isPlaceholder) itemClass = 'placeholder';
+    const itemClass = node.multilanId ? 'linked' : 'unlinked';
     const translations = node.translations || {};
     const previewText = translations[state.currentLang] || node.characters;
-    const placeholderBadge = node.isPlaceholder ? '<span class="placeholder-badge">Placeholder</span>' : '';
     const linkButton = !node.multilanId ? `<button class="btn-link-node" data-id="${node.id}" data-text="${escapeHtml(node.characters)}">Link</button>` : '';
     const unlinkButton = node.multilanId ? `<button class="btn-unlink-node" data-id="${node.id}">Unlink</button>` : '';
 
     return `
       <div class="text-item ${itemClass}" data-id="${node.id}">
         <div class="text-item-header">
-          <span class="text-item-name">${escapeHtml(node.name)}${placeholderBadge}</span>
+          <span class="text-item-name">${escapeHtml(node.name)}</span>
           ${!node.multilanId ? `<span class="text-item-unlinked">Not linked ${linkButton}</span>` : unlinkButton}
         </div>
         <div class="text-item-content">${escapeHtml(previewText)}</div>

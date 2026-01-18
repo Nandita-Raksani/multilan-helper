@@ -134,14 +134,6 @@ describe("LinksPanel", () => {
       expect(unlinkedItem?.classList.contains("unlinked")).toBe(true);
     });
 
-    it("should apply placeholder class to placeholder nodes", () => {
-      store.setState({ textNodes: sampleTextNodes });
-      renderTextList();
-
-      const placeholderItem = document.querySelector('[data-id="node-3"]');
-      expect(placeholderItem?.classList.contains("placeholder")).toBe(true);
-    });
-
     it("should show link button for unlinked nodes", () => {
       store.setState({ textNodes: sampleTextNodes });
       renderTextList();
@@ -156,14 +148,6 @@ describe("LinksPanel", () => {
 
       const linkedItem = document.querySelector('[data-id="node-1"]');
       expect(linkedItem?.querySelector(".btn-unlink-node")).not.toBeNull();
-    });
-
-    it("should show placeholder badge for placeholder nodes", () => {
-      store.setState({ textNodes: sampleTextNodes });
-      renderTextList();
-
-      const placeholderItem = document.querySelector('[data-id="node-3"]');
-      expect(placeholderItem?.querySelector(".placeholder-badge")).not.toBeNull();
     });
 
     it("should handle unlink button click", () => {
