@@ -28,11 +28,13 @@
     <div id="searchPanel" class="panel active">
       <!-- Selection Context Banner -->
       <div id="searchSelectedNode" class="selected-node" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h4 style="margin: 0; font-size: 11px;">Selected</h4>
-          <span id="searchSelectedBadge" class="text-item-id"></span>
+        <div class="selected-node-header">
+          <div class="selected-node-info">
+            <span class="selected-node-label">Selected</span>
+            <span id="searchSelectedText" class="selected-node-text"></span>
+          </div>
+          <span id="searchSelectedBadge"></span>
         </div>
-        <div id="searchSelectedText" class="selected-node-text" style="margin-top: 4px;"></div>
         <div id="searchSelectedActions" class="btn-row" style="margin-top: 8px;"></div>
       </div>
 
