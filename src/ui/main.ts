@@ -149,12 +149,12 @@ function handlePluginMessage(msg: PluginMessage): void {
 }
 
 async function handleTranslationFetch(): Promise<void> {
-  setStatus('Fetching translations...');
+  setStatus('Fetching from API...');
 
   // Set up progress callback
   setFetchProgressCallback((loaded, total) => {
     const percent = Math.round((loaded / total) * 100);
-    setStatus(`Loading translations: ${loaded.toLocaleString()} / ${total.toLocaleString()} (${percent}%)`);
+    setStatus(`Fetching from API: ${loaded.toLocaleString()} / ${total.toLocaleString()} (${percent}%)`);
   });
 
   const result = await fetchTranslations();
@@ -172,7 +172,7 @@ async function handleTranslationFetch(): Promise<void> {
       translationSource: 'api',
     });
   } else {
-    setStatus('Using bundled translations (API unavailable)');
+    setStatus('API fetch failed - using bundled data');
     pluginBridge.send({
       type: 'translations-fetched',
       translationSource: 'bundled',

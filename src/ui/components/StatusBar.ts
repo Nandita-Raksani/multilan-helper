@@ -10,13 +10,13 @@ export function initStatusBar(): void {
     if (refreshBtn?.classList.contains('loading')) return;
 
     refreshBtn?.classList.add('loading');
-    setStatus('Refreshing translations...');
+    setStatus('Fetching from API...');
     pluginBridge.refreshTranslations();
 
     // Remove loading state after a timeout (in case response doesn't come back)
     setTimeout(() => {
       refreshBtn?.classList.remove('loading');
-    }, 15000);
+    }, 60000); // 60 seconds for large fetches
   });
 }
 
