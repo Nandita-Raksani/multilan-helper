@@ -200,11 +200,14 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         if (success) {
           const count = Object.keys(translationData).length;
           figma.notify(`Loaded ${count.toLocaleString()} translations from API`);
+          figma.ui.postMessage({ type: 'api-status', status: 'success', count });
         } else {
-          figma.notify(`API data parsing failed - using backup from ${BUILD_TIMESTAMP}`, { error: true });
+          figma.notify(`API data parsing failed`, { error: true, timeout: 2000 });
+          figma.ui.postMessage({ type: 'api-status', status: 'error', backupDate: BUILD_TIMESTAMP });
         }
       } else {
-        figma.notify(`API fetch failed - using backup from ${BUILD_TIMESTAMP}`, { error: true });
+        figma.notify(`API fetch failed`, { error: true, timeout: 2000 });
+        figma.ui.postMessage({ type: 'api-status', status: 'error', backupDate: BUILD_TIMESTAMP });
       }
       // Now initialize with whatever data we have
       await initialize();

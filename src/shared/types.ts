@@ -135,7 +135,8 @@ export type UIMessageType =
   | "global-search-results"
   | "search-results"
   | "text-created"
-  | "request-translations";
+  | "request-translations"
+  | "api-status";
 
 // Combined message type for both directions
 export interface PluginMessage {
@@ -152,6 +153,9 @@ export interface PluginMessage {
   // Translation API fields
   translationData?: unknown;
   translationSource?: 'api' | 'bundled';
+  status?: 'success' | 'error';
+  backupDate?: string;
+  count?: number;
   // Plugin -> UI fields
   canEdit?: boolean;
   textNodes?: TextNodeInfo[];

@@ -145,6 +145,15 @@ function handlePluginMessage(msg: PluginMessage): void {
       // Plugin is requesting translations - fetch from API
       handleTranslationFetch();
       break;
+
+    case 'api-status':
+      // Update status bar with API result
+      if (msg.status === 'success' && msg.count) {
+        setStatus(`${msg.count.toLocaleString()} translations loaded`);
+      } else if (msg.status === 'error' && msg.backupDate) {
+        setStatus(`Using backup from ${msg.backupDate}`);
+      }
+      break;
   }
 }
 
