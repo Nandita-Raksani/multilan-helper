@@ -3,10 +3,12 @@
 
 import { TranslationDataPort } from "../ports/translationPort";
 import { CurrentApiAdapter } from "./implementations/currentApiAdapter";
+import { SearchApiAdapter } from "./implementations/searchApiAdapter";
 import { isCurrentApiFormat } from "./types/currentApi.types";
+import { isSearchApiFormat } from "./types/searchApi.types";
 
 // Supported adapter types
-export type AdapterType = "current-api";
+export type AdapterType = "current-api" | "search-api";
 
 // Adapter factory function type
 type AdapterFactory = (data: unknown) => TranslationDataPort;
@@ -14,16 +16,22 @@ type AdapterFactory = (data: unknown) => TranslationDataPort;
 // Registry of adapter factories
 const adapterRegistry: Map<AdapterType, AdapterFactory> = new Map([
   ["current-api", (data) => new CurrentApiAdapter(data)],
+  ["search-api", (data) => new SearchApiAdapter(data)],
 ]);
 
 /**
  * Detect the appropriate adapter type for the given data
  */
 export function detectAdapterType(data: unknown): AdapterType | null {
+  // Check search API format first (has resultList with multilan objects)
+  // This is the standard format for both API and bundled data
+  if (isSearchApiFormat(data)) {
+    return "search-api";
+  }
+  // Legacy: current API format (array of multilans with string languageIds)
   if (isCurrentApiFormat(data)) {
     return "current-api";
   }
-  // Add detection for future formats here
   return null;
 }
 
@@ -84,6 +92,7 @@ export function getRegisteredAdapterTypes(): AdapterType[] {
 
 // Re-export adapter implementations for direct use if needed
 export { CurrentApiAdapter } from "./implementations/currentApiAdapter";
+export { SearchApiAdapter, mergeSearchApiResponses } from "./implementations/searchApiAdapter";
 
 // Re-export types
 export { TranslationDataPort } from "../ports/translationPort";
@@ -92,3 +101,10 @@ export type {
   CurrentApiMultilanText,
 } from "./types/currentApi.types";
 export { isCurrentApiFormat } from "./types/currentApi.types";
+export type {
+  SearchApiResponse,
+  SearchApiResultItem,
+  SearchApiMultilan,
+  SearchApiRequest,
+} from "./types/searchApi.types";
+export { isSearchApiFormat } from "./types/searchApi.types";

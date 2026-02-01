@@ -113,6 +113,10 @@ class PluginBridge {
   syncVariables(): void {
     this.send({ type: 'sync-variables' });
   }
+
+  refreshTranslations(): void {
+    this.send({ type: 'refresh-translations' });
+  }
 }
 
 export const pluginBridge = new PluginBridge();

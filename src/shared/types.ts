@@ -120,6 +120,8 @@ export type PluginMessageType =
   | "global-search"
   | "create-linked-text"
   | "sync-variables"
+  | "translations-fetched"
+  | "refresh-translations"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -132,7 +134,8 @@ export type UIMessageType =
   | "bulk-auto-link-results"
   | "global-search-results"
   | "search-results"
-  | "text-created";
+  | "text-created"
+  | "request-translations";
 
 // Combined message type for both directions
 export interface PluginMessage {
@@ -146,6 +149,9 @@ export interface PluginMessage {
   variables?: Record<string, string>;
   text?: string;
   confirmations?: Array<{ nodeId: string; multilanId: string }>;
+  // Translation API fields
+  translationData?: unknown;
+  translationSource?: 'api' | 'bundled';
   // Plugin -> UI fields
   canEdit?: boolean;
   textNodes?: TextNodeInfo[];

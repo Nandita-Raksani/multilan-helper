@@ -21,6 +21,8 @@ import {
   clearExpectedText,
   getVariableValues,
   clearVariableValues,
+  addMultilanIdToName,
+  removeMultilanIdFromName,
 } from "./nodeService";
 import {
   getTranslation,
@@ -52,6 +54,9 @@ export async function linkTextNode(
   }
 
   setMultilanId(node, multilanId);
+
+  // Add multilanId to node name for visibility to viewers
+  addMultilanIdToName(node, multilanId);
 
   // Update text with translation if both translationData and language are provided
   if (translationData && language) {
@@ -86,6 +91,9 @@ export async function unlinkTextNode(nodeId: string): Promise<boolean> {
 
   // Unbind from Figma Variable
   unbindTextFromVariable(node);
+
+  // Remove multilanId from node name
+  removeMultilanIdFromName(node);
 
   clearMultilanId(node);
   clearExpectedText(node);
@@ -266,6 +274,9 @@ export async function createLinkedTextNode(
 
   // Link to multilanId
   setMultilanId(textNode, multilanId);
+
+  // Add multilanId to node name for visibility to viewers
+  addMultilanIdToName(textNode, multilanId);
 
   // Store expected text for modification detection
   setExpectedText(textNode, translation);

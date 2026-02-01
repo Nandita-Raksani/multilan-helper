@@ -1,9 +1,10 @@
 // Multilan Helper Plugin - Main entry point
 // Runs in Figma's sandbox environment
 
-import apiData from "../translations/api-data.json";
+import bundledApiData from "../translations/api-data.json";
 import {
   TranslationMap,
+  MetadataMap,
   PluginMessage,
   Language,
   SUPPORTED_LANGUAGES,
@@ -29,6 +30,7 @@ import {
   clearMultilanId,
   clearExpectedText,
   setVariableValues,
+  removeMultilanIdFromName,
 } from "./services/nodeService";
 import {
   linkTextNode,
@@ -43,10 +45,36 @@ import { setupVariableBindingWithValues, syncTranslationVariables, setFrameVaria
 // Build timestamp - update this when translations are updated
 const BUILD_TIMESTAMP = "2026-01-18 12:00";
 
-// Create adapter for translation data (hexagonal architecture)
-const adapter = createAdapter(apiData);
-const translationData: TranslationMap = adapter.getTranslationMap();
-const metadataData = adapter.getMetadataMap();
+// Translation data - can be updated from API
+let translationData: TranslationMap;
+let metadataData: MetadataMap;
+let translationSource: 'api' | 'bundled' = 'bundled';
+
+// Initialize with bundled data as default
+function initializeBundledData(): void {
+  const adapter = createAdapter(bundledApiData);
+  translationData = adapter.getTranslationMap();
+  metadataData = adapter.getMetadataMap();
+  translationSource = 'bundled';
+}
+
+// Update with API data
+function updateWithApiData(apiData: unknown): boolean {
+  try {
+    const adapter = createAdapter(apiData);
+    translationData = adapter.getTranslationMap();
+    metadataData = adapter.getMetadataMap();
+    translationSource = 'api';
+    return true;
+  } catch (error) {
+    console.error('Failed to parse API data, using bundled:', error);
+    initializeBundledData();
+    return false;
+  }
+}
+
+// Initialize with bundled data immediately
+initializeBundledData();
 
 // Helper to get translations for a multilanId
 const getTranslations = (multilanId: string) => getAllTranslations(translationData, multilanId);
@@ -74,6 +102,7 @@ function autoUnlinkModifiedNodes(scope: "page" | "selection"): number {
 
     // Check if text was modified from expected
     if (isTextModified(node)) {
+      removeMultilanIdFromName(node);
       clearMultilanId(node);
       clearExpectedText(node);
       unlinkedCount++;
@@ -92,6 +121,7 @@ function autoUnlinkModifiedNodes(scope: "page" | "selection"): number {
         );
         if (!matchesAnyTranslation) {
           // Text doesn't match any translation, unlink it
+          removeMultilanIdFromName(node);
           clearMultilanId(node);
           unlinkedCount++;
         }
@@ -159,6 +189,19 @@ figma.on("selectionchange", () => {
 figma.ui.onmessage = async (msg: PluginMessage) => {
   switch (msg.type) {
     case "init":
+      // Request translations from UI (which will fetch from API)
+      figma.ui.postMessage({ type: "request-translations" });
+      break;
+
+    case "translations-fetched":
+      // UI has fetched (or failed to fetch) translations
+      if (msg.translationSource === 'api' && msg.translationData) {
+        const success = updateWithApiData(msg.translationData);
+        if (success) {
+          figma.notify('Loaded translations from API');
+        }
+      }
+      // Now initialize with whatever data we have
       await initialize();
       break;
 
@@ -483,6 +526,12 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         }
         figma.ui.postMessage({ type: "variables-synced", ...syncResult });
       }
+      break;
+
+    case "refresh-translations":
+      // Request fresh translations from API via UI
+      figma.notify("Refreshing translations...");
+      figma.ui.postMessage({ type: "request-translations" });
       break;
 
     case "close":

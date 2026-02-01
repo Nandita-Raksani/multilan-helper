@@ -2,12 +2,14 @@ import type { Language, PluginMessage } from '../shared/types';
 import { SUPPORTED_LANGUAGES } from '../shared/types';
 import { store } from './state/store';
 import { pluginBridge } from './services/pluginBridge';
+import { fetchTranslations, setFetchProgressCallback } from './services/translationFetcher';
 import {
   initLanguageBar,
   initTabs,
   initSearchPanel,
   initLinksPanel,
   initBulkLinkModal,
+  initStatusBar,
   updateSearchSelectedNode,
   renderGlobalSearchResults,
   renderTextList,
@@ -138,6 +140,43 @@ function handlePluginMessage(msg: PluginMessage): void {
       setStatus(`Created text node linked to ${msg.multilanId}`);
       pluginBridge.refresh(store.getState().scope);
       break;
+
+    case 'request-translations':
+      // Plugin is requesting translations - fetch from API
+      handleTranslationFetch();
+      break;
+  }
+}
+
+async function handleTranslationFetch(): Promise<void> {
+  setStatus('Fetching translations...');
+
+  // Set up progress callback
+  setFetchProgressCallback((loaded, total) => {
+    const percent = Math.round((loaded / total) * 100);
+    setStatus(`Loading translations: ${loaded.toLocaleString()} / ${total.toLocaleString()} (${percent}%)`);
+  });
+
+  const result = await fetchTranslations();
+
+  // Clear progress callback
+  setFetchProgressCallback(null);
+
+  if (result.success && result.data) {
+    const stats = result.stats;
+    const countText = stats ? `${stats.totalElements.toLocaleString()} translations` : 'translations';
+    setStatus(`Loaded ${countText} from API`);
+    pluginBridge.send({
+      type: 'translations-fetched',
+      translationData: result.data,
+      translationSource: 'api',
+    });
+  } else {
+    setStatus('Using bundled translations (API unavailable)');
+    pluginBridge.send({
+      type: 'translations-fetched',
+      translationSource: 'bundled',
+    });
   }
 }
 
@@ -148,6 +187,7 @@ function init(): void {
   initSearchPanel();
   initLinksPanel();
   initBulkLinkModal();
+  initStatusBar();
 
   // Subscribe to plugin messages
   pluginBridge.subscribe(handlePluginMessage);

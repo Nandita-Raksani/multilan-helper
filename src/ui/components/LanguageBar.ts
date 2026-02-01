@@ -2,6 +2,7 @@ import type { Language } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
 import { querySelectorAll } from '../utils/dom';
+import { renderGlobalSearchResults } from './SearchPanel';
 
 const LANGUAGES: Language[] = ['en', 'fr', 'nl', 'de'];
 
@@ -19,7 +20,8 @@ export function initLanguageBar(): void {
       store.setState({ currentLang: lang });
 
       if (!state.canEdit) {
-        // Dev seat: preview mode only - translations shown in search results
+        // Dev seat: preview mode only - re-render to highlight new language
+        renderGlobalSearchResults();
         return;
       }
 

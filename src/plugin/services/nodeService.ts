@@ -122,6 +122,35 @@ export function clearVariableValues(node: TextNode): void {
   node.setPluginData(VARIABLE_VALUES_KEY, "");
 }
 
+// Separator used to append multilanId to node name
+const NAME_SEPARATOR = " • ";
+
+/**
+ * Add multilanId to node name for visibility to viewers
+ * Format: "Original Name • TXT-1234"
+ */
+export function addMultilanIdToName(node: TextNode, multilanId: string): void {
+  // Remove any existing multilanId first
+  const baseName = removeMultilanIdFromNameString(node.name);
+  node.name = `${baseName}${NAME_SEPARATOR}${multilanId}`;
+}
+
+/**
+ * Remove multilanId from node name
+ */
+export function removeMultilanIdFromName(node: TextNode): void {
+  node.name = removeMultilanIdFromNameString(node.name);
+}
+
+/**
+ * Helper to remove multilanId suffix from a name string
+ */
+function removeMultilanIdFromNameString(name: string): string {
+  const separatorIndex = name.lastIndexOf(NAME_SEPARATOR);
+  if (separatorIndex === -1) return name;
+  return name.substring(0, separatorIndex);
+}
+
 /**
  * Get all text nodes in scope (page or selection)
  */

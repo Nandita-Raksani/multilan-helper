@@ -1,470 +1,158 @@
-[
-  {
-    "id": 10001,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:30:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Submit", "id": 1, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Soumettre", "id": 2, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Indienen", "id": 3, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Einreichen", "id": 4, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10002,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:32:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Cancel", "id": 5, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Annuler", "id": 6, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Annuleren", "id": 7, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Abbrechen", "id": 8, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10003,
-    "status": "FINAL",
-    "createdAt": "2024-06-16T09:15:00Z",
-    "modifiedAt": "2025-01-08T11:45:00Z",
-    "modifiedBy": "maria.garcia@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Welcome", "id": 9, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Bienvenue", "id": 10, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Welkom", "id": 11, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Willkommen", "id": 12, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10004,
-    "status": "FOUR_EYES_CHECK",
-    "createdAt": "2024-06-16T09:20:00Z",
-    "modifiedAt": "2026-01-15T16:30:00Z",
-    "modifiedBy": "anna.mueller@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Username", "id": 13, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Nom d'utilisateur", "id": 14, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Gebruikersnaam", "id": 15, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Benutzername", "id": 16, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10005,
-    "status": "FINAL",
-    "createdAt": "2024-06-16T09:22:00Z",
-    "modifiedAt": "2025-01-08T11:45:00Z",
-    "modifiedBy": "maria.garcia@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Password", "id": 17, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Mot de passe", "id": 18, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Wachtwoord", "id": 19, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Passwort", "id": 20, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10006,
-    "status": "IN_TRANSLATION",
-    "createdAt": "2024-07-01T14:00:00Z",
-    "modifiedAt": "2026-01-17T09:15:00Z",
-    "modifiedBy": "translation.team@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Login successful", "id": 21, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Connexion réussie", "id": 22, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Inloggen geslaagd", "id": 23, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Anmeldung erfolgreich", "id": 24, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10007,
-    "status": "FINAL",
-    "createdAt": "2024-07-02T10:30:00Z",
-    "modifiedAt": "2025-02-20T08:00:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "This field is required", "id": 25, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Ce champ est obligatoire", "id": 26, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Dit veld is verplicht", "id": 27, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Dieses Feld ist erforderlich", "id": 28, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10008,
-    "status": "DRAFT",
-    "createdAt": "2024-08-10T11:00:00Z",
-    "modifiedAt": "2026-01-18T10:00:00Z",
-    "modifiedBy": "nandita.raksani@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Hello ###username###", "id": 29, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Bonjour ###username###", "id": 30, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Hallo ###username###", "id": 31, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Hallo ###username###", "id": 32, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10009,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:35:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Save", "id": 33, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Enregistrer", "id": 34, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Opslaan", "id": 35, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Speichern", "id": 36, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10010,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:36:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Delete", "id": 37, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Supprimer", "id": 38, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Verwijderen", "id": 39, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Löschen", "id": 40, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10011,
-    "status": "TO_TRANSLATE_INTERNALLY",
-    "createdAt": "2024-09-01T08:00:00Z",
-    "modifiedAt": "2026-01-16T12:00:00Z",
-    "modifiedBy": "product.team@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Settings", "id": 41, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Paramètres", "id": 42, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Instellingen", "id": 43, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Einstellungen", "id": 44, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10012,
-    "status": "FINAL",
-    "createdAt": "2024-06-20T15:00:00Z",
-    "modifiedAt": "2025-03-01T09:30:00Z",
-    "modifiedBy": "maria.garcia@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Profile", "id": 45, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Profil", "id": 46, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Profiel", "id": 47, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Profil", "id": 48, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10013,
-    "status": "FINAL",
-    "createdAt": "2024-06-20T15:05:00Z",
-    "modifiedAt": "2025-03-01T09:30:00Z",
-    "modifiedBy": "maria.garcia@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Log out", "id": 49, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Déconnexion", "id": 50, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Uitloggen", "id": 51, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Abmelden", "id": 52, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10014,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:40:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Search", "id": 53, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Rechercher", "id": 54, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Zoeken", "id": 55, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Suchen", "id": 56, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10015,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:42:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Home", "id": 57, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Accueil", "id": 58, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Startpagina", "id": 59, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Startseite", "id": 60, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10016,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:44:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Back", "id": 61, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Retour", "id": 62, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Terug", "id": 63, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Zurück", "id": 64, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10017,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:46:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Next", "id": 65, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Suivant", "id": 66, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Volgende", "id": 67, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Weiter", "id": 68, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10018,
-    "status": "TO_TRANSLATE_EXTERNALLY",
-    "createdAt": "2024-10-05T16:00:00Z",
-    "modifiedAt": "2026-01-17T14:00:00Z",
-    "modifiedBy": "external.agency@partner.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Loading...", "id": 69, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Chargement...", "id": 70, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Laden...", "id": 71, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Wird geladen...", "id": 72, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10019,
-    "status": "FINAL",
-    "createdAt": "2024-07-10T11:30:00Z",
-    "modifiedAt": "2025-04-15T10:00:00Z",
-    "modifiedBy": "qa.team@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Error occurred", "id": 73, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Une erreur s'est produite", "id": 74, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Er is een fout opgetreden", "id": 75, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Ein Fehler ist aufgetreten", "id": 76, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10020,
-    "status": "FINAL",
-    "createdAt": "2024-07-10T11:32:00Z",
-    "modifiedAt": "2025-04-15T10:00:00Z",
-    "modifiedBy": "qa.team@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Success!", "id": 77, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Succès !", "id": 78, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Gelukt!", "id": 79, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Erfolg!", "id": 80, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10021,
-    "status": "FOUR_EYES_CHECK",
-    "createdAt": "2024-11-20T09:00:00Z",
-    "modifiedAt": "2026-01-16T15:45:00Z",
-    "modifiedBy": "senior.reviewer@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Submit form", "id": 81, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Soumettre le formulaire", "id": 82, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Formulier indienen", "id": 83, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Formular absenden", "id": 84, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10022,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:48:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Send", "id": 85, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Envoyer", "id": 86, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Verzenden", "id": 87, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Senden", "id": 88, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10023,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:50:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Confirm", "id": 89, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Confirmer", "id": 90, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Bevestigen", "id": 91, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Bestätigen", "id": 92, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10024,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:52:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Apply", "id": 93, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Appliquer", "id": 94, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Toepassen", "id": 95, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Anwenden", "id": 96, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10025,
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:54:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Edit", "id": 97, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Modifier", "id": 98, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Bewerken", "id": 99, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Bearbeiten", "id": 100, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10026,
-    "status": "DRAFT",
-    "createdAt": "2025-12-01T10:00:00Z",
-    "modifiedAt": "2026-01-18T08:30:00Z",
-    "modifiedBy": "nandita.raksani@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Add new", "id": 101, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Ajouter", "id": 102, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Nieuw toevoegen", "id": 103, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Neu hinzufügen", "id": 104, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10027,
-    "status": "FINAL",
-    "createdAt": "2024-06-25T14:00:00Z",
-    "modifiedAt": "2025-05-10T11:00:00Z",
-    "modifiedBy": "maria.garcia@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Create account", "id": 105, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Créer un compte", "id": 106, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Account aanmaken", "id": 107, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Konto erstellen", "id": 108, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10028,
-    "status": "FINAL",
-    "createdAt": "2024-06-25T14:05:00Z",
-    "modifiedAt": "2025-05-10T11:00:00Z",
-    "modifiedBy": "maria.garcia@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Sign in", "id": 109, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Se connecter", "id": 110, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Inloggen", "id": 111, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Anmelden", "id": 112, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10029,
-    "status": "FINAL",
-    "createdAt": "2024-06-25T14:10:00Z",
-    "modifiedAt": "2025-05-10T11:00:00Z",
-    "modifiedBy": "maria.garcia@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Sign up", "id": 113, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "S'inscrire", "id": 114, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Registreren", "id": 115, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Registrieren", "id": 116, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10030,
-    "status": "IN_TRANSLATION",
-    "createdAt": "2024-06-25T14:15:00Z",
-    "modifiedAt": "2026-01-17T16:00:00Z",
-    "modifiedBy": "translation.team@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Forgot password?", "id": 117, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Mot de passe oublié ?", "id": 118, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Wachtwoord vergeten?", "id": 119, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Passwort vergessen?", "id": 120, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10050,
-    "status": "DRAFT",
-    "createdAt": "2025-11-15T09:00:00Z",
-    "modifiedAt": "2026-01-18T09:30:00Z",
-    "modifiedBy": "nandita.raksani@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Welcome back, ###username###! You have ###count### new messages.", "id": 121, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Bon retour, ###username### ! Vous avez ###count### nouveaux messages.", "id": 122, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Welkom terug, ###username###! Je hebt ###count### nieuwe berichten.", "id": 123, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Willkommen zurück, ###username###! Sie haben ###count### neue Nachrichten.", "id": 124, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10051,
-    "status": "TO_TRANSLATE_INTERNALLY",
-    "createdAt": "2025-11-20T10:00:00Z",
-    "modifiedAt": "2026-01-16T11:00:00Z",
-    "modifiedBy": "product.team@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Hello ###name###, your order ###orderNumber### is ready for pickup.", "id": 125, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Bonjour ###name###, votre commande ###orderNumber### est prête à être retirée.", "id": 126, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Hallo ###name###, je bestelling ###orderNumber### is klaar om op te halen.", "id": 127, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Hallo ###name###, Ihre Bestellung ###orderNumber### ist zur Abholung bereit.", "id": 128, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10052,
-    "status": "FOUR_EYES_CHECK",
-    "createdAt": "2025-11-25T14:30:00Z",
-    "modifiedAt": "2026-01-15T17:00:00Z",
-    "modifiedBy": "senior.reviewer@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "###itemCount### items in your cart", "id": 129, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "###itemCount### articles dans votre panier", "id": 130, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "###itemCount### artikelen in je winkelwagen", "id": 131, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "###itemCount### Artikel in Ihrem Warenkorb", "id": 132, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10053,
-    "status": "FINAL",
-    "createdAt": "2025-10-01T08:00:00Z",
-    "modifiedAt": "2025-12-20T14:00:00Z",
-    "modifiedBy": "qa.team@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Logged in as ###email###", "id": 133, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Connecté en tant que ###email###", "id": 134, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Ingelogd als ###email###", "id": 135, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Angemeldet als ###email###", "id": 136, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10054,
-    "status": "FINAL",
-    "createdAt": "2025-10-05T09:30:00Z",
-    "modifiedAt": "2025-12-20T14:00:00Z",
-    "modifiedBy": "qa.team@company.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "###percentage###% complete", "id": 137, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "###percentage### % terminé", "id": 138, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "###percentage###% voltooid", "id": 139, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "###percentage### % abgeschlossen", "id": 140, "sourceLanguageId": "en" }
-    ]
-  },
-  {
-    "id": 10055,
-    "status": "TO_TRANSLATE_EXTERNALLY",
-    "createdAt": "2025-12-10T11:00:00Z",
-    "modifiedAt": "2026-01-17T13:00:00Z",
-    "modifiedBy": "external.agency@partner.com",
-    "multilanTextList": [
-      { "languageId": "en", "wording": "Hello ###name###, your order ###orderNumber### is ready for pickup.###orderNumber### ###orderNumber### ", "id": 141, "sourceLanguageId": "en" },
-      { "languageId": "fr", "wording": "Bonjour ###name###, votre commande ###orderNumber### est prête à être retirée.###orderNumber### ###orderNumber### ", "id": 142, "sourceLanguageId": "en" },
-      { "languageId": "nl", "wording": "Hallo ###name###, je bestelling ###orderNumber### is klaar om op te halen.###orderNumber### ###orderNumber### ", "id": 143, "sourceLanguageId": "en" },
-      { "languageId": "de", "wording": "Hallo ###name###, Ihre Bestellung ###orderNumber### ist zur Abholung bereit.###orderNumber### ###orderNumber### ", "id": 144, "sourceLanguageId": "en" }
-    ]
-  }
-]
+{
+  "resultList": [
+    {
+      "multilan": {
+        "id": 10001,
+        "createdAt": "2024-06-15T10:30:00Z",
+        "modifiedAt": "2025-01-10T14:22:00Z",
+        "modifiedBy": "john.smith@company.com",
+        "multilanTextList": [
+          { "id": 1, "languageId": 3, "wording": "Submit", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 2, "languageId": 2, "wording": "Soumettre", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 3, "languageId": 1, "wording": "Indienen", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 4, "languageId": 4, "wording": "Einreichen", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 1
+    },
+    {
+      "multilan": {
+        "id": 10002,
+        "createdAt": "2024-06-15T10:32:00Z",
+        "modifiedAt": "2025-01-10T14:22:00Z",
+        "modifiedBy": "john.smith@company.com",
+        "multilanTextList": [
+          { "id": 5, "languageId": 3, "wording": "Cancel", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 6, "languageId": 2, "wording": "Annuler", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 7, "languageId": 1, "wording": "Annuleren", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 8, "languageId": 4, "wording": "Abbrechen", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 5
+    },
+    {
+      "multilan": {
+        "id": 10003,
+        "createdAt": "2024-06-16T09:15:00Z",
+        "modifiedAt": "2025-01-08T11:45:00Z",
+        "modifiedBy": "maria.garcia@company.com",
+        "multilanTextList": [
+          { "id": 9, "languageId": 3, "wording": "Welcome", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 10, "languageId": 2, "wording": "Bienvenue", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 11, "languageId": 1, "wording": "Welkom", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 12, "languageId": 4, "wording": "Willkommen", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 9
+    },
+    {
+      "multilan": {
+        "id": 10004,
+        "createdAt": "2024-06-16T09:20:00Z",
+        "modifiedAt": "2026-01-15T16:30:00Z",
+        "modifiedBy": "anna.mueller@company.com",
+        "multilanTextList": [
+          { "id": 13, "languageId": 3, "wording": "Username", "status": "FOUR_EYES_CHECK", "sourceLanguageId": 3 },
+          { "id": 14, "languageId": 2, "wording": "Nom d'utilisateur", "status": "FOUR_EYES_CHECK", "sourceLanguageId": 3 },
+          { "id": 15, "languageId": 1, "wording": "Gebruikersnaam", "status": "FOUR_EYES_CHECK", "sourceLanguageId": 3 },
+          { "id": 16, "languageId": 4, "wording": "Benutzername", "status": "FOUR_EYES_CHECK", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 13
+    },
+    {
+      "multilan": {
+        "id": 10005,
+        "createdAt": "2024-06-16T09:25:00Z",
+        "modifiedAt": "2025-01-12T09:00:00Z",
+        "modifiedBy": "john.smith@company.com",
+        "multilanTextList": [
+          { "id": 17, "languageId": 3, "wording": "Password", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 18, "languageId": 2, "wording": "Mot de passe", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 19, "languageId": 1, "wording": "Wachtwoord", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 20, "languageId": 4, "wording": "Passwort", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 17
+    },
+    {
+      "multilan": {
+        "id": 10006,
+        "createdAt": "2024-06-17T14:00:00Z",
+        "modifiedAt": "2025-01-10T14:22:00Z",
+        "modifiedBy": "maria.garcia@company.com",
+        "multilanTextList": [
+          { "id": 21, "languageId": 3, "wording": "Sign in", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 22, "languageId": 2, "wording": "Se connecter", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 23, "languageId": 1, "wording": "Aanmelden", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 24, "languageId": 4, "wording": "Anmelden", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 21
+    },
+    {
+      "multilan": {
+        "id": 10007,
+        "createdAt": "2024-06-17T14:05:00Z",
+        "modifiedAt": "2025-01-10T14:22:00Z",
+        "modifiedBy": "maria.garcia@company.com",
+        "multilanTextList": [
+          { "id": 25, "languageId": 3, "wording": "Sign out", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 26, "languageId": 2, "wording": "Se déconnecter", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 27, "languageId": 1, "wording": "Afmelden", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 28, "languageId": 4, "wording": "Abmelden", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 25
+    },
+    {
+      "multilan": {
+        "id": 10008,
+        "createdAt": "2024-06-18T10:00:00Z",
+        "modifiedAt": "2025-01-14T16:45:00Z",
+        "modifiedBy": "anna.mueller@company.com",
+        "multilanTextList": [
+          { "id": 29, "languageId": 3, "wording": "Save changes", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 30, "languageId": 2, "wording": "Enregistrer les modifications", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 31, "languageId": 1, "wording": "Wijzigingen opslaan", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 32, "languageId": 4, "wording": "Änderungen speichern", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 29
+    },
+    {
+      "multilan": {
+        "id": 10009,
+        "createdAt": "2024-06-18T10:10:00Z",
+        "modifiedAt": "2025-01-14T16:45:00Z",
+        "modifiedBy": "anna.mueller@company.com",
+        "multilanTextList": [
+          { "id": 33, "languageId": 3, "wording": "Delete", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 34, "languageId": 2, "wording": "Supprimer", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 35, "languageId": 1, "wording": "Verwijderen", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 36, "languageId": 4, "wording": "Löschen", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 33
+    },
+    {
+      "multilan": {
+        "id": 10010,
+        "createdAt": "2024-06-19T11:30:00Z",
+        "modifiedAt": "2025-01-10T14:22:00Z",
+        "modifiedBy": "john.smith@company.com",
+        "multilanTextList": [
+          { "id": 37, "languageId": 3, "wording": "Loading...", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 38, "languageId": 2, "wording": "Chargement...", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 39, "languageId": 1, "wording": "Laden...", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 40, "languageId": 4, "wording": "Wird geladen...", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 37
+    }
+  ],
+  "isLastPage": true,
+  "numberOfElements": 10,
+  "totalElements": 10,
+  "totalPages": 1
+}

@@ -267,6 +267,13 @@ body {
   background: rgba(0, 0, 0, 0.1);
 }
 
+.translation-row.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-left: 3px solid var(--figma-color-bg-brand);
+  margin-left: -8px;
+  padding-left: 5px;
+}
+
 .translation-lang {
   width: 22px;
   font-weight: 600;
@@ -355,6 +362,50 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.7;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--figma-color-border);
+  border-radius: 4px;
+  color: var(--figma-color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.refresh-btn:hover {
+  background: var(--figma-color-bg-hover);
+  color: var(--figma-color-text);
+  border-color: var(--figma-color-border-brand);
+}
+
+.refresh-btn:active {
+  transform: scale(0.95);
+}
+
+.refresh-btn.loading svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* View Mode Banner */
