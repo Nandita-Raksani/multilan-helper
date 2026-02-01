@@ -7,7 +7,7 @@
   <div id="app">
     <!-- View Mode Banner (shown for non-editors) -->
     <div id="viewModeBanner" class="view-mode-banner" style="display: none;">
-      View Mode - You can preview translations but cannot edit
+      Preview Mode - Browse translations and copy text (editing requires full seat)
     </div>
 
     <!-- Language Bar -->
@@ -30,7 +30,6 @@
       <div id="searchSelectedNode" class="selected-node" style="display: none;">
         <div class="selected-node-header">
           <div class="selected-node-info">
-            <span class="selected-node-label">Selected</span>
             <span id="searchSelectedText" class="selected-node-text"></span>
           </div>
           <span id="searchSelectedBadge"></span>
@@ -38,7 +37,9 @@
         <div id="searchSelectedActions" class="btn-row" style="margin-top: 8px;"></div>
       </div>
 
-      <input type="text" class="search-panel-input" id="globalSearchInput" placeholder="Search by ID or text...">
+      <div class="search-container">
+        <input type="text" class="search-panel-input" id="globalSearchInput" placeholder="Search by ID or text...">
+      </div>
       <div class="search-hint">Search translations, then Copy, Link, or Create text nodes.</div>
       <div id="globalSearchResultsCount" class="search-results-count"></div>
       <div id="globalSearchResults"></div>
@@ -49,7 +50,8 @@
       <div class="texts-header">
         <button class="scope-btn active" data-scope="page">Entire Page</button>
         <button class="scope-btn" data-scope="selection">Selection</button>
-        <button class="scope-btn" id="autoLinkBtn">Auto-Link All</button>
+        <button class="scope-btn" id="autoLinkBtn">Auto-Link</button>
+        <button class="scope-btn" id="syncVarsBtn" title="Sync variables with latest translations">Sync Vars</button>
       </div>
       <input type="text" class="search-box" id="textSearch" placeholder="Filter texts...">
       <div id="textList" class="text-list">

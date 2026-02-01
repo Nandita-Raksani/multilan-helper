@@ -48,6 +48,7 @@ export interface TextNodeInfo {
   translations: TranslationEntry | null;
   hasOverflow: boolean;
   isPlaceholder: boolean;
+  variableValues?: Record<string, string>;
 }
 
 // Variable occurrence with index for duplicate handling
@@ -118,6 +119,7 @@ export type PluginMessageType =
   | "confirm-fuzzy-link"
   | "global-search"
   | "create-linked-text"
+  | "sync-variables"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -158,6 +160,7 @@ export interface PluginMessage {
   exactMatches?: ExactMatch[];
   fuzzyMatches?: FuzzyMatch[];
   unmatched?: UnmatchedItem[];
+  hasSelection?: boolean;
 }
 
 // Constants

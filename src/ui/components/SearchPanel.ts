@@ -2,10 +2,16 @@ import type { SearchResult, MultilanStatus } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
 import { getElementById } from '../utils/dom';
-import { escapeHtml, copyToClipboard, showButtonFeedback, debounce } from '../utils/dom';
+import { escapeHtml, copyToClipboard, debounce } from '../utils/dom';
 
 // Track variable values per multilanId
 const variableValues: Map<string, Record<string, string>> = new Map();
+
+// Format translation text with styled variable pills for display
+function formatTranslationWithPills(text: string): string {
+  return escapeHtml(text).replace(/###(\w+)###/g, '<span class="var-pill">$1</span>');
+}
+
 
 // Status badge configuration - light bg with colored text (like GitHub labels)
 const STATUS_CONFIG: Record<MultilanStatus, { bg: string; text: string; label: string }> = {
@@ -24,20 +30,42 @@ function getStatusBadge(status?: MultilanStatus): string {
 }
 
 function formatDate(dateStr?: string): string {
-  if (!dateStr) return 'Unknown';
+  if (!dateStr) return '';
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function getMetadataTooltip(result: SearchResult): string {
+function getMetadataJson(result: SearchResult): string {
   if (!result.metadata) return '';
-  const { createdAt, modifiedAt, modifiedBy, sourceLanguageId } = result.metadata;
-  const lines = [];
-  if (sourceLanguageId) lines.push(`Source: ${sourceLanguageId.toUpperCase()}`);
-  if (createdAt) lines.push(`Created: ${formatDate(createdAt)}`);
-  if (modifiedAt) lines.push(`Modified: ${formatDate(modifiedAt)}`);
-  if (modifiedBy) lines.push(`By: ${modifiedBy}`);
-  return lines.join('\n');
+  return JSON.stringify(result.metadata);
+}
+
+function buildMetadataContent(metadataJson: string): string {
+  if (!metadataJson) return '';
+
+  try {
+    const metadata = JSON.parse(metadataJson);
+    const rows: string[] = [];
+
+    if (metadata.sourceLanguageId) {
+      rows.push(`<tr><td class="meta-label">Source</td><td class="meta-value">${metadata.sourceLanguageId.toUpperCase()}</td></tr>`);
+    }
+    if (metadata.createdAt) {
+      rows.push(`<tr><td class="meta-label">Created</td><td class="meta-value">${formatDate(metadata.createdAt)}</td></tr>`);
+    }
+    if (metadata.modifiedAt) {
+      rows.push(`<tr><td class="meta-label">Modified</td><td class="meta-value">${formatDate(metadata.modifiedAt)}</td></tr>`);
+    }
+    if (metadata.modifiedBy) {
+      const by = metadata.modifiedBy.length > 30 ? metadata.modifiedBy.substring(0, 30) + '...' : metadata.modifiedBy;
+      rows.push(`<tr><td class="meta-label">By</td><td class="meta-value">${escapeHtml(by)}</td></tr>`);
+    }
+
+    if (rows.length === 0) return '';
+    return `<table>${rows.join('')}</table>`;
+  } catch {
+    return '';
+  }
 }
 
 export function initSearchPanel(): void {
@@ -53,6 +81,19 @@ export function initSearchPanel(): void {
       renderGlobalSearchResults();
     }
   }, 200));
+
+  // Update hint based on edit permissions
+  updateSearchHint();
+}
+
+export function updateSearchHint(): void {
+  const state = store.getState();
+  const searchHint = document.querySelector('.search-hint');
+  if (searchHint) {
+    searchHint.textContent = state.canEdit
+      ? 'Search translations, then Copy, Link, or Create text nodes.'
+      : 'Search translations and copy text. Select language to preview.';
+  }
 }
 
 export function updateSearchSelectedNode(): void {
@@ -79,17 +120,21 @@ export function updateSearchSelectedNode(): void {
       searchSelectedBadge.title = '';
     }
 
-    // Show action buttons based on link status
+    // Show action buttons based on link status and edit permissions
     if (isLinked) {
-      searchSelectedActions.innerHTML = `
-        <button class="btn-sm btn-sm-outline" id="searchUnlinkBtn">Unlink</button>
-      `;
+      // Only show Unlink button if user can edit
+      if (state.canEdit) {
+        searchSelectedActions.innerHTML = `
+          <button class="btn-sm btn-sm-outline" id="searchUnlinkBtn">Unlink</button>
+        `;
+        getElementById('searchUnlinkBtn').addEventListener('click', () => {
+          pluginBridge.unlinkNode(state.selectedNode!.id);
+        });
+      } else {
+        searchSelectedActions.innerHTML = '';
+      }
 
-      getElementById('searchUnlinkBtn').addEventListener('click', () => {
-        pluginBridge.unlinkNode(state.selectedNode!.id);
-      });
-
-      // Click badge to copy ID
+      // Click badge to copy ID (available for all users)
       searchSelectedBadge.onclick = () => {
         const id = state.selectedNode!.multilanId!;
         if (copyToClipboard(id)) {
@@ -132,59 +177,80 @@ export function renderGlobalSearchResults(): void {
     return;
   }
 
+  // Sort results: linked translation first, then rest in original order
+  const sortedResults = isAlreadyLinked
+    ? [...results].sort((a, b) => {
+        if (a.multilanId === isAlreadyLinked) return -1;
+        if (b.multilanId === isAlreadyLinked) return 1;
+        return 0;
+      })
+    : results;
+
   globalSearchResultsCount.textContent = `${results.length} result${results.length > 1 ? 's' : ''} found`;
 
-  globalSearchResults.innerHTML = results.map(result => {
+  globalSearchResults.innerHTML = sortedResults.map(result => {
     const primaryText = result.translations[state.currentLang] || result.translations['en'] || Object.values(result.translations)[0];
     const isCurrentLink = isAlreadyLinked && state.selectedNode?.multilanId === result.multilanId;
     const hasVariables = result.variableOccurrences && result.variableOccurrences.length > 0;
     const variableKeys = hasVariables ? result.variableOccurrences!.map(v => v.key) : [];
-    const tooltipText = getMetadataTooltip(result);
+    const metadataJson = getMetadataJson(result);
 
-    // Initialize variable values for this result if not exists
-    if (hasVariables && !variableValues.has(result.multilanId)) {
-      variableValues.set(result.multilanId, {});
+    // Initialize variable values - use stored values if this is the currently linked result
+    if (hasVariables) {
+      if (isCurrentLink && state.selectedNode?.variableValues) {
+        // Pre-fill with stored values from the linked node
+        variableValues.set(result.multilanId, { ...state.selectedNode.variableValues });
+      } else if (!variableValues.has(result.multilanId)) {
+        variableValues.set(result.multilanId, {});
+      }
     }
 
+    // Get current values for pre-filling inputs
+    const currentValues = hasVariables ? (variableValues.get(result.multilanId) || {}) : {};
+
     return `
-      <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}" ${tooltipText ? `data-tooltip="${escapeHtml(tooltipText)}"` : ''}>
+      <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
         <div class="search-result-header">
           <div class="search-result-id-row">
-            ${getStatusBadge(result.metadata?.status)}
             <span class="btn-sm btn-sm-success clickable-id" data-id="${escapeHtml(result.multilanId)}" title="Click to copy">${escapeHtml(result.multilanId)}</span>
+            ${getStatusBadge(result.metadata?.status)}
           </div>
         </div>
         <div class="translations-preview">
           ${Object.entries(result.translations).map(([lang, text]) => `
             <div class="translation-row">
               <span class="translation-lang">${lang.toUpperCase()}</span>
-              <span class="translation-text">${escapeHtml(text)}</span>
-              <button class="copy-btn" data-text="${escapeHtml(text)}">Copy</button>
+              <span class="translation-text">${formatTranslationWithPills(text)}</span>
+              <button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
             </div>
           `).join('')}
         </div>
         ${hasVariables ? `
-        <div class="variables-section" style="padding: 8px 0; border-top: 1px solid var(--figma-color-border);">
-          <div style="font-size: 10px; color: var(--figma-color-text-secondary); margin-bottom: 6px;">Variables:</div>
-          ${result.variableOccurrences!.map(varOcc => `
-            <div class="variable-row" style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-              <label style="font-size: 11px; min-width: 80px; color: var(--figma-color-text);">${escapeHtml(varOcc.name)}${varOcc.isIndexed ? ` (${varOcc.index})` : ''}:</label>
+        <div class="variables-section">
+          <div class="variables-label">Variables</div>
+          <div class="variables-list">
+            ${result.variableOccurrences!.map(varOcc => `
+            <div class="variable-row">
+              <span class="var-name">${escapeHtml(varOcc.name)}${varOcc.isIndexed ? `<span class="var-index">(${varOcc.index})</span>` : ''}</span>
               <input type="text"
                 class="variable-input"
                 data-multilan-id="${escapeHtml(result.multilanId)}"
                 data-var-key="${escapeHtml(varOcc.key)}"
-                placeholder="Enter value"
-                style="flex: 1; padding: 4px 8px; font-size: 11px; border: 1px solid var(--figma-color-border); border-radius: 4px; background: var(--figma-color-bg); color: var(--figma-color-text);"
+                value="${escapeHtml(currentValues[varOcc.key] || '')}"
               />
             </div>
-          `).join('')}
+            `).join('')}
+          </div>
         </div>
         ` : ''}
         <div class="search-result-actions">
-          ${hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
-          ${isCurrentLink ? `<span class="currently-linked-text">Currently linked</span>` : ''}
-          <button class="btn-create-result btn-sm btn-sm-primary" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>
+          ${state.canEdit && hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
+          ${state.canEdit && isCurrentLink && hasVariables ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}" data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}">Update values</button>` : ''}
+          ${isCurrentLink && !hasVariables ? `<span class="currently-linked-text">Currently linked</span>` : ''}
+          ${state.canEdit ? `<button class="btn-create-result btn-sm btn-sm-primary" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>` : ''}
+          ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
         </div>
+        ${metadataJson ? `<div class="metadata-info collapsed">${buildMetadataContent(metadataJson)}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -218,7 +284,8 @@ function attachSearchResultHandlers(): void {
       e.stopPropagation();
       const text = btn.dataset.text!;
       if (copyToClipboard(text)) {
-        showButtonFeedback(btn, 'Copy', 'Copied!');
+        btn.classList.add('copied');
+        setTimeout(() => btn.classList.remove('copied'), 1000);
       }
     });
   });
@@ -277,6 +344,19 @@ function attachSearchResultHandlers(): void {
       }
 
       pluginBridge.createLinkedText(multilanId, text, state.currentLang, variables);
+    });
+  });
+
+  // Info toggle handlers
+  globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-info-toggle').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const card = btn.closest('.search-result-card');
+      const metadataInfo = card?.querySelector('.metadata-info');
+      if (metadataInfo) {
+        metadataInfo.classList.toggle('collapsed');
+        btn.classList.toggle('active');
+      }
     });
   });
 }

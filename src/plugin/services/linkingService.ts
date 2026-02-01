@@ -28,9 +28,14 @@ import {
   buildTextToIdMap,
   searchTranslationsWithScore,
 } from "./translationService";
+import {
+  setupVariableBinding,
+  unbindTextFromVariable,
+} from "./variableService";
 
 /**
  * Link a text node to a multilanId and optionally update text with translation
+ * Also sets up Figma Variable binding for language mode switching
  */
 export async function linkTextNode(
   nodeId: string,
@@ -48,7 +53,7 @@ export async function linkTextNode(
 
   setMultilanId(node, multilanId);
 
-  // Update text with translation if translation data is provided
+  // Update text with translation if both translationData and language are provided
   if (translationData && language) {
     const translation = getTranslation(translationData, multilanId, language);
     if (translation) {
@@ -56,6 +61,12 @@ export async function linkTextNode(
       // Store the expected text to detect modifications
       setExpectedText(node, translation);
     }
+  }
+
+  // Setup Figma Variable binding for language mode switching
+  // This allows dev/view seat users to switch languages via mode switching
+  if (translationData) {
+    await setupVariableBinding(node, multilanId, translationData);
   }
 
   return true;
@@ -72,6 +83,9 @@ export async function unlinkTextNode(nodeId: string): Promise<boolean> {
   if (isPlaceholder(node)) {
     clearPlaceholderStatus(node);
   }
+
+  // Unbind from Figma Variable
+  unbindTextFromVariable(node);
 
   clearMultilanId(node);
   clearExpectedText(node);
@@ -230,6 +244,7 @@ export async function applyExactMatches(
 
 /**
  * Create a new text node linked to a multilanId
+ * Also sets up Figma Variable binding for language mode switching
  */
 export async function createLinkedTextNode(
   translationData: TranslationMap,
@@ -254,6 +269,10 @@ export async function createLinkedTextNode(
 
   // Store expected text for modification detection
   setExpectedText(textNode, translation);
+
+  // Setup Figma Variable binding for language mode switching
+  // This allows dev/view seat users to switch languages via mode switching
+  await setupVariableBinding(textNode, multilanId, translationData);
 
   // Position near viewport center or current selection
   const selection = figma.currentPage.selection;

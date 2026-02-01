@@ -19,7 +19,8 @@ import {
   getCurrentTab,
   triggerSearch,
   clearSearch,
-  setActiveLanguage
+  setActiveLanguage,
+  updateSearchHint
 } from './components';
 
 /**
@@ -58,6 +59,7 @@ function handlePluginMessage(msg: PluginMessage): void {
       }
 
       setActiveLanguage(initialLang);
+      updateSearchHint();
 
       setStatus(`${msg.translationCount} translations loaded`);
       if (msg.buildTimestamp) {
@@ -80,7 +82,10 @@ function handlePluginMessage(msg: PluginMessage): void {
       break;
 
     case 'selection-changed': {
-      store.setState({ selectedNode: msg.selectedNode || null });
+      store.setState({
+        selectedNode: msg.selectedNode || null,
+        hasSelection: msg.hasSelection || false
+      });
       updateSearchSelectedNode();
 
       // Update text list if in selection mode

@@ -60,6 +60,7 @@ export function setupUIFixture(): void {
             <button class="scope-btn" data-scope="selection">Selection</button>
           </div>
           <button class="btn btn-secondary btn-auto-link" id="autoLinkBtn">Auto-Link All</button>
+          <button class="scope-btn" id="syncVarsBtn" title="Sync variables with latest translations">Sync Vars</button>
         </div>
         <input type="text" class="search-box" id="textSearch" placeholder="Filter texts...">
         <div id="textList" class="text-list">

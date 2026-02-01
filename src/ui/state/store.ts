@@ -6,6 +6,7 @@ export interface UIState {
   scope: 'page' | 'selection';
   textNodes: TextNodeInfo[];
   selectedNode: TextNodeInfo | null;
+  hasSelection: boolean;
   bulkLinkResults: BulkLinkResults | null;
   globalSearchResults: SearchResult[];
   allTranslations: unknown[];
@@ -20,6 +21,7 @@ class Store {
     scope: 'page',
     textNodes: [],
     selectedNode: null,
+    hasSelection: false,
     bulkLinkResults: null,
     globalSearchResults: [],
     allTranslations: []

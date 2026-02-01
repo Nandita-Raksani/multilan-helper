@@ -13,19 +13,20 @@ export function initLanguageBar(): void {
       const state = store.getState();
       const lang = btn.dataset.lang as Language;
 
+      // Update UI immediately
+      langBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      store.setState({ currentLang: lang });
+
       if (!state.canEdit) {
-        // In view mode, just highlight the button to show preview
-        langBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        store.setState({ currentLang: lang });
+        // Dev seat: preview mode only - translations shown in search results
         return;
       }
 
-      store.setState({ currentLang: lang });
-      langBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      pluginBridge.switchLanguage(lang, state.scope);
+      // For designers: auto-detect scope based on selection
+      // If anything is selected in Figma, use 'selection' scope to only change selected frame/nodes
+      const effectiveScope = state.hasSelection ? 'selection' : 'page';
+      pluginBridge.switchLanguage(lang, effectiveScope);
     });
   });
 }

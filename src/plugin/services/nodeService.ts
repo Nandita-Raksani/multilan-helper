@@ -154,6 +154,7 @@ export function buildTextNodeInfo(
 ): TextNodeInfo {
   const multilanId = getMultilanId(node);
   const translations = multilanId ? getTranslations(multilanId) : null;
+  const storedVariables = getVariableValues(node);
 
   return {
     id: node.id,
@@ -163,6 +164,7 @@ export function buildTextNodeInfo(
     translations,
     hasOverflow: false, // TODO: Implement overflow detection
     isPlaceholder: isPlaceholder(node),
+    variableValues: storedVariables || undefined,
   };
 }
 

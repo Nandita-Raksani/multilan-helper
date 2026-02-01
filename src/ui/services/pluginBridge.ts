@@ -109,6 +109,10 @@ class PluginBridge {
       multilanId
     });
   }
+
+  syncVariables(): void {
+    this.send({ type: 'sync-variables' });
+  }
 }
 
 export const pluginBridge = new PluginBridge();
