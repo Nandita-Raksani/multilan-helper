@@ -198,8 +198,13 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       if (msg.translationSource === 'api' && msg.translationData) {
         const success = updateWithApiData(msg.translationData);
         if (success) {
-          figma.notify('Loaded translations from API');
+          const count = Object.keys(translationData).length;
+          figma.notify(`Loaded ${count.toLocaleString()} translations from API`);
+        } else {
+          figma.notify(`API data parsing failed - using backup from ${BUILD_TIMESTAMP}`, { error: true });
         }
+      } else {
+        figma.notify(`API fetch failed - using backup from ${BUILD_TIMESTAMP}`, { error: true });
       }
       // Now initialize with whatever data we have
       await initialize();
@@ -530,7 +535,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "refresh-translations":
       // Request fresh translations from API via UI
-      figma.notify("Refreshing translations...");
+      figma.notify("Fetching from API...");
       figma.ui.postMessage({ type: "request-translations" });
       break;
 

@@ -76,12 +76,14 @@ async function fetchPage(page: number): Promise<SearchApiResponse | null> {
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
-        console.warn(`API request timed out (page ${page})`);
-      } else if (error.message.includes('CORS') || error.message.includes('NetworkError')) {
-        console.warn('API request blocked by CORS');
+        console.error(`[TranslationFetcher] Request timed out (page ${page})`);
+      } else if (error.message.includes('CORS') || error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+        console.error('[TranslationFetcher] CORS blocked or network error:', error.message);
       } else {
-        console.warn('API fetch failed:', error.message);
+        console.error('[TranslationFetcher] Fetch failed:', error.message);
       }
+    } else {
+      console.error('[TranslationFetcher] Unknown error:', error);
     }
     return null;
   }

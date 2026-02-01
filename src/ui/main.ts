@@ -172,7 +172,7 @@ async function handleTranslationFetch(): Promise<void> {
       translationSource: 'api',
     });
   } else {
-    setStatus('API fetch failed - using bundled data');
+    setStatus('API fetch failed - using backup');
     pluginBridge.send({
       type: 'translations-fetched',
       translationSource: 'bundled',
