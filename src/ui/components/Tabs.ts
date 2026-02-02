@@ -58,3 +58,21 @@ export function getCurrentTab(): TabId {
   const activeTab = document.querySelector('.tab.active');
   return (activeTab?.getAttribute('data-tab') as TabId) || 'search';
 }
+
+/**
+ * Hide the Links tab for dev seat users who can't edit
+ */
+export function hideLinksTab(): void {
+  const linksTab = document.querySelector('.tab[data-tab="texts"]') as HTMLElement;
+  const linksPanel = getElementById('textsPanel');
+
+  if (linksTab) {
+    linksTab.style.display = 'none';
+  }
+  if (linksPanel) {
+    linksPanel.style.display = 'none';
+  }
+
+  // Make sure Search tab is active
+  setActiveTab('search');
+}

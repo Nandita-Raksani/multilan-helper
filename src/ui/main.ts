@@ -22,7 +22,8 @@ import {
   triggerSearch,
   clearSearch,
   setActiveLanguage,
-  updateSearchHint
+  updateSearchHint,
+  hideLinksTab
 } from './components';
 
 /**
@@ -58,6 +59,7 @@ function handlePluginMessage(msg: PluginMessage): void {
 
       if (!msg.canEdit) {
         setViewMode(true);
+        hideLinksTab();
       }
 
       setActiveLanguage(initialLang);

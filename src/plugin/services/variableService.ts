@@ -8,7 +8,7 @@
 import { Language, SUPPORTED_LANGUAGES, TranslationMap } from "../../shared/types";
 import { replaceVariables } from "./translationService";
 
-const COLLECTION_NAME = "Translations";
+const COLLECTION_NAME = "Multilans";
 
 // Cache for variable collection and mode IDs
 let cachedCollection: VariableCollection | null = null;
