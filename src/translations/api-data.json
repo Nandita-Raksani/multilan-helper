@@ -149,10 +149,55 @@
         ]
       },
       "mostRelevantTextId": 37
+    },
+    {
+      "multilan": {
+        "id": 10011,
+        "createdAt": "2024-06-20T09:00:00Z",
+        "modifiedAt": "2025-01-15T10:00:00Z",
+        "modifiedBy": "john.smith@company.com",
+        "multilanTextList": [
+          { "id": 41, "languageId": 3, "wording": "Hello, ###name###!", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 42, "languageId": 2, "wording": "Bonjour, ###name### !", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 43, "languageId": 1, "wording": "Hallo, ###name###!", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 44, "languageId": 4, "wording": "Hallo, ###name###!", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 41
+    },
+    {
+      "multilan": {
+        "id": 10012,
+        "createdAt": "2024-06-20T09:15:00Z",
+        "modifiedAt": "2025-01-15T10:00:00Z",
+        "modifiedBy": "maria.garcia@company.com",
+        "multilanTextList": [
+          { "id": 45, "languageId": 3, "wording": "You have ###count### new messages", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 46, "languageId": 2, "wording": "Vous avez ###count### nouveaux messages", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 47, "languageId": 1, "wording": "U heeft ###count### nieuwe berichten", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 48, "languageId": 4, "wording": "Sie haben ###count### neue Nachrichten", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 45
+    },
+    {
+      "multilan": {
+        "id": 10013,
+        "createdAt": "2024-06-20T09:30:00Z",
+        "modifiedAt": "2025-01-15T10:00:00Z",
+        "modifiedBy": "anna.mueller@company.com",
+        "multilanTextList": [
+          { "id": 49, "languageId": 3, "wording": "Transfer ###amount### to ###recipient###", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 50, "languageId": 2, "wording": "Transférer ###amount### à ###recipient###", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 51, "languageId": 1, "wording": "###amount### overmaken naar ###recipient###", "status": "FINAL", "sourceLanguageId": 3 },
+          { "id": 52, "languageId": 4, "wording": "###amount### an ###recipient### überweisen", "status": "FINAL", "sourceLanguageId": 3 }
+        ]
+      },
+      "mostRelevantTextId": 49
     }
   ],
   "isLastPage": true,
-  "numberOfElements": 10,
-  "totalElements": 10,
+  "numberOfElements": 13,
+  "totalElements": 13,
   "totalPages": 1
 }
