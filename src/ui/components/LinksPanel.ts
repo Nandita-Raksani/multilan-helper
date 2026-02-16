@@ -8,35 +8,33 @@ import { triggerSearch } from './SearchPanel';
 export function initLinksPanel(): void {
   const scopeBtns = querySelectorAll<HTMLButtonElement>('.scope-btn');
   const textSearch = getElementById<HTMLInputElement>('textSearch');
-  const autoLinkBtn = getElementById<HTMLButtonElement>('autoLinkBtn');
 
-  // Scope toggle
+  // Scope toggle - triggers auto-link for the selected scope
   scopeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      const state = store.getState();
+      if (!state.canEdit) {
+        alert('You do not have edit permissions');
+        return;
+      }
+
       scopeBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const scope = btn.dataset.scope as 'page' | 'selection';
       store.setState({ scope });
+
+      // Refresh the text list and trigger auto-link
       pluginBridge.refresh(scope);
+      updateStatusText('Scanning for matches...');
+      btn.disabled = true;
+      pluginBridge.bulkAutoLink(scope);
+      setTimeout(() => { btn.disabled = false; }, 1000);
     });
   });
 
   // Text search filter
   textSearch.addEventListener('input', () => {
     renderTextList();
-  });
-
-  // Auto-Link All button
-  autoLinkBtn.addEventListener('click', () => {
-    const state = store.getState();
-    if (!state.canEdit) {
-      alert('You do not have edit permissions');
-      return;
-    }
-    updateStatusText('Scanning for matches...');
-    autoLinkBtn.disabled = true;
-    pluginBridge.bulkAutoLink(state.scope);
-    setTimeout(() => { autoLinkBtn.disabled = false; }, 1000);
   });
 }
 

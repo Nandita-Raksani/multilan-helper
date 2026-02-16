@@ -4,7 +4,7 @@ export type TabId = 'search' | 'texts' | 'settings';
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'search', label: 'Search' },
-  { id: 'texts', label: 'Links' },
+  { id: 'texts', label: 'Auto-Link' },
   { id: 'settings', label: 'Settings' }
 ];
 
@@ -60,17 +60,17 @@ export function getCurrentTab(): TabId {
 }
 
 /**
- * Hide the Links tab for dev seat users who can't edit
+ * Hide the Auto-Link tab for dev seat users who can't edit
  */
-export function hideLinksTab(): void {
-  const linksTab = document.querySelector('.tab[data-tab="texts"]') as HTMLElement;
-  const linksPanel = getElementById('textsPanel');
+export function hideAutoLinkTab(): void {
+  const autoLinkTab = document.querySelector('.tab[data-tab="texts"]') as HTMLElement;
+  const autoLinkPanel = getElementById('textsPanel');
 
-  if (linksTab) {
-    linksTab.style.display = 'none';
+  if (autoLinkTab) {
+    autoLinkTab.style.display = 'none';
   }
-  if (linksPanel) {
-    linksPanel.style.display = 'none';
+  if (autoLinkPanel) {
+    autoLinkPanel.style.display = 'none';
   }
 
   // Make sure Search tab is active
