@@ -6,7 +6,6 @@ import {
   PLUGIN_DATA_KEY,
   PLACEHOLDER_KEY,
   EXPECTED_TEXT_KEY,
-  VARIABLE_VALUES_KEY,
 } from "../../shared/types";
 
 /**
@@ -95,33 +94,6 @@ export function isTextModified(node: TextNode): boolean {
   return node.characters !== expectedText;
 }
 
-/**
- * Get stored variable values from a text node
- */
-export function getVariableValues(node: TextNode): Record<string, string> | null {
-  const data = node.getPluginData(VARIABLE_VALUES_KEY);
-  if (!data) return null;
-  try {
-    return JSON.parse(data);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Set variable values on a text node
- */
-export function setVariableValues(node: TextNode, values: Record<string, string>): void {
-  node.setPluginData(VARIABLE_VALUES_KEY, JSON.stringify(values));
-}
-
-/**
- * Clear variable values from a text node
- */
-export function clearVariableValues(node: TextNode): void {
-  node.setPluginData(VARIABLE_VALUES_KEY, "");
-}
-
 // Separator used to append multilanId to node name
 const NAME_SEPARATOR = " • ";
 
@@ -183,7 +155,6 @@ export function buildTextNodeInfo(
 ): TextNodeInfo {
   const multilanId = getMultilanId(node);
   const translations = multilanId ? getTranslations(multilanId) : null;
-  const storedVariables = getVariableValues(node);
 
   return {
     id: node.id,
@@ -193,7 +164,6 @@ export function buildTextNodeInfo(
     translations,
     hasOverflow: false, // TODO: Implement overflow detection
     isPlaceholder: isPlaceholder(node),
-    variableValues: storedVariables || undefined,
   };
 }
 

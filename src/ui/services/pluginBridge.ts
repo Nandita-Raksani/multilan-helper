@@ -46,13 +46,12 @@ class PluginBridge {
     });
   }
 
-  linkNode(nodeId: string, multilanId: string, language: Language, variables?: Record<string, string>): void {
+  linkNode(nodeId: string, multilanId: string, language: Language): void {
     this.send({
       type: 'link-node',
       nodeId,
       multilanId,
-      language,
-      variables
+      language
     });
   }
 
@@ -70,13 +69,12 @@ class PluginBridge {
     });
   }
 
-  createLinkedText(multilanId: string, text: string, language: Language, variables?: Record<string, string>): void {
+  createLinkedText(multilanId: string, text: string, language: Language): void {
     this.send({
       type: 'create-linked-text',
       multilanId,
       text,
-      language,
-      variables
+      language
     });
   }
 
@@ -108,10 +106,6 @@ class PluginBridge {
       nodeId,
       multilanId
     });
-  }
-
-  syncVariables(): void {
-    this.send({ type: 'sync-variables' });
   }
 
   refreshTranslations(): void {

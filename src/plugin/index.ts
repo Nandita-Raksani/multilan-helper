@@ -16,7 +16,6 @@ import {
   globalSearchTranslations,
   searchTranslations,
   detectLanguage,
-  replaceVariables,
 } from "./services/translationService";
 import {
   getAllTextNodesInfo,
@@ -24,12 +23,10 @@ import {
   selectNode,
   getTextNodesInScope,
   getMultilanId,
-  setExpectedText,
   getExpectedText,
   isTextModified,
   clearMultilanId,
   clearExpectedText,
-  setVariableValues,
   removeMultilanIdFromName,
 } from "./services/nodeService";
 import {
@@ -40,7 +37,6 @@ import {
   bulkAutoLink,
   createLinkedTextNode,
 } from "./services/linkingService";
-import { setupVariableBindingWithValues, syncTranslationVariables, setFrameVariableMode } from "./services/variableService";
 
 // Build timestamp - update this when translations are updated
 const BUILD_TIMESTAMP = "2026-01-18 12:00";
@@ -48,14 +44,12 @@ const BUILD_TIMESTAMP = "2026-01-18 12:00";
 // Translation data - can be updated from API
 let translationData: TranslationMap;
 let metadataData: MetadataMap;
-let translationSource: 'api' | 'bundled' = 'bundled';
 
 // Initialize with bundled data as default
 function initializeBundledData(): void {
   const adapter = createAdapter(bundledApiData);
   translationData = adapter.getTranslationMap();
   metadataData = adapter.getMetadataMap();
-  translationSource = 'bundled';
 }
 
 // Update with API data
@@ -64,7 +58,6 @@ function updateWithApiData(apiData: unknown): boolean {
     const adapter = createAdapter(apiData);
     translationData = adapter.getTranslationMap();
     metadataData = adapter.getMetadataMap();
-    translationSource = 'api';
     return true;
   } catch (error) {
     console.error('Failed to parse API data, using bundled:', error);
@@ -140,12 +133,6 @@ async function initialize(): Promise<void> {
     figma.notify(`Auto-unlinked ${unlinkedCount} modified node${unlinkedCount > 1 ? 's' : ''}`);
   }
 
-  // Sync translation variables (populates any new modes added manually)
-  const syncResult = await syncTranslationVariables(translationData);
-  if (syncResult.synced > 0 && syncResult.modes.length > 1) {
-    figma.notify(`Synced ${syncResult.synced} variables across ${syncResult.modes.length} languages`);
-  }
-
   const textNodes = getAllTextNodesInfo("page", getTranslations);
   const selectedNode = getSelectedTextNodeInfo(getTranslations);
 
@@ -217,20 +204,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       if (msg.language && isLanguage(msg.language)) {
         const scope = msg.scope || "page";
 
-        // Try to set variable mode on selected frames (for variable-bound text)
-        if (scope === "selection" && figma.currentPage.selection.length > 0) {
-          for (const node of figma.currentPage.selection) {
-            // Set mode on frames, groups, components, etc.
-            if ("children" in node || node.type === "TEXT") {
-              const targetNode = node.type === "TEXT" && node.parent ? node.parent : node;
-              if (targetNode && "id" in targetNode) {
-                await setFrameVariableMode(targetNode as SceneNode, msg.language);
-              }
-            }
-          }
-        }
-
-        // Always change text content directly for non-variable-bound nodes
         if (!canEdit()) {
           figma.notify("You don't have edit permissions", { error: true });
           return;
@@ -273,46 +246,18 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.nodeId && msg.multilanId) {
-        // If variables are provided, we need to handle text replacement manually
-        if (msg.variables && Object.keys(msg.variables).length > 0) {
-          // Link without automatic text update
-          const success = await linkTextNode(msg.nodeId, msg.multilanId);
-          if (success) {
-            // Get translation and replace variables
-            const node = figma.getNodeById(msg.nodeId) as TextNode;
-            if (node && msg.language) {
-              const translation = getAllTranslations(translationData, msg.multilanId);
-              if (translation && translation[msg.language]) {
-                const replacedText = replaceVariables(translation[msg.language], msg.variables);
-                await figma.loadFontAsync(node.fontName as FontName);
-                node.characters = replacedText;
-                // Store expected text for modification detection
-                setExpectedText(node, replacedText);
-                // Store variable values for language switching
-                setVariableValues(node, msg.variables);
-                // Note: Don't bind to Figma Variables when using variable replacements
-                // Each instance has unique values that can't be shared via variable modes
-              }
-            }
-            figma.notify(`Linked to ${msg.multilanId}`);
-            const textNodes = getAllTextNodesInfo("page", getTranslations);
-            const selectedNode = getSelectedTextNodeInfo(getTranslations);
-            figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
-          }
-        } else {
-          const success = await linkTextNode(
-            msg.nodeId,
-            msg.multilanId,
-            translationData,
-            msg.language
-          );
-          if (success) {
-            figma.notify(`Linked to ${msg.multilanId}`);
-            // Refresh
-            const textNodes = getAllTextNodesInfo("page", getTranslations);
-            const selectedNode = getSelectedTextNodeInfo(getTranslations);
-            figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
-          }
+        const success = await linkTextNode(
+          msg.nodeId,
+          msg.multilanId,
+          translationData,
+          msg.language
+        );
+        if (success) {
+          figma.notify(`Linked to ${msg.multilanId}`);
+          // Refresh
+          const textNodes = getAllTextNodesInfo("page", getTranslations);
+          const selectedNode = getSelectedTextNodeInfo(getTranslations);
+          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
         }
       }
       break;
@@ -476,55 +421,20 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.multilanId && msg.text) {
-        let textToCreate = msg.text;
         const lang = (msg.language as Language) || "en";
-
-        // If variables are provided, replace them in the translation
-        if (msg.variables && Object.keys(msg.variables).length > 0) {
-          const translation = getAllTranslations(translationData, msg.multilanId);
-          if (translation && translation[lang]) {
-            textToCreate = replaceVariables(translation[lang], msg.variables);
-          }
-        }
 
         const textNode = await createLinkedTextNode(
           translationData,
           msg.multilanId,
-          textToCreate,
+          msg.text,
           lang
         );
-
-        // If we used variable replacement, update the node text and expected text
-        // (createLinkedTextNode uses getTranslation which returns the original)
-        if (msg.variables && Object.keys(msg.variables).length > 0) {
-          textNode.characters = textToCreate;
-          setExpectedText(textNode, textToCreate);
-          // Store variable values for language switching
-          setVariableValues(textNode, msg.variables);
-          // Note: Don't bind to Figma Variables when using variable replacements
-          // Each instance has unique values that can't be shared via variable modes
-        }
 
         figma.notify(`Created text node: "${textNode.characters}" (${msg.multilanId})`);
         figma.ui.postMessage({
           type: "text-created",
           multilanId: msg.multilanId,
         });
-      }
-      break;
-
-    case "sync-variables":
-      {
-        figma.notify("Syncing variables...");
-        const syncResult = await syncTranslationVariables(translationData);
-        if (syncResult.synced > 0) {
-          figma.notify(`Synced ${syncResult.synced} variables across ${syncResult.modes.length} language(s)`);
-        } else if (syncResult.modes.length === 0) {
-          figma.notify("No Translations collection found. Link some text nodes first.", { error: true });
-        } else {
-          figma.notify("Variables are up to date");
-        }
-        figma.ui.postMessage({ type: "variables-synced", ...syncResult });
       }
       break;
 

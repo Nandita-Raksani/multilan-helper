@@ -4,14 +4,6 @@ import { pluginBridge } from '../services/pluginBridge';
 import { getElementById } from '../utils/dom';
 import { escapeHtml, copyToClipboard, debounce } from '../utils/dom';
 
-// Track variable values per multilanId
-const variableValues: Map<string, Record<string, string>> = new Map();
-
-// Format translation text with styled variable pills for display
-function formatTranslationWithPills(text: string): string {
-  return escapeHtml(text).replace(/###(\w+)###/g, '<span class="var-pill">$1</span>');
-}
-
 
 // Status badge configuration - light bg with colored text (like GitHub labels)
 const STATUS_CONFIG: Record<MultilanStatus, { bg: string; text: string; label: string }> = {
@@ -191,22 +183,7 @@ export function renderGlobalSearchResults(): void {
   globalSearchResults.innerHTML = sortedResults.map(result => {
     const primaryText = result.translations[state.currentLang] || result.translations['en'] || Object.values(result.translations)[0];
     const isCurrentLink = isAlreadyLinked && state.selectedNode?.multilanId === result.multilanId;
-    const hasVariables = result.variableOccurrences && result.variableOccurrences.length > 0;
-    const variableKeys = hasVariables ? result.variableOccurrences!.map(v => v.key) : [];
     const metadataJson = getMetadataJson(result);
-
-    // Initialize variable values - use stored values if this is the currently linked result
-    if (hasVariables) {
-      if (isCurrentLink && state.selectedNode?.variableValues) {
-        // Pre-fill with stored values from the linked node
-        variableValues.set(result.multilanId, { ...state.selectedNode.variableValues });
-      } else if (!variableValues.has(result.multilanId)) {
-        variableValues.set(result.multilanId, {});
-      }
-    }
-
-    // Get current values for pre-filling inputs
-    const currentValues = hasVariables ? (variableValues.get(result.multilanId) || {}) : {};
 
     return `
       <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
@@ -220,34 +197,15 @@ export function renderGlobalSearchResults(): void {
           ${Object.entries(result.translations).map(([lang, text]) => `
             <div class="translation-row ${lang === state.currentLang ? 'active' : ''}">
               <span class="translation-lang">${lang.toUpperCase()}</span>
-              <span class="translation-text">${formatTranslationWithPills(text)}</span>
+              <span class="translation-text">${escapeHtml(text)}</span>
               <button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
             </div>
           `).join('')}
         </div>
-        ${hasVariables ? `
-        <div class="variables-section">
-          <div class="variables-label">Variables</div>
-          <div class="variables-list">
-            ${result.variableOccurrences!.map(varOcc => `
-            <div class="variable-row">
-              <span class="var-name">${escapeHtml(varOcc.name)}${varOcc.isIndexed ? `<span class="var-index">(${varOcc.index})</span>` : ''}</span>
-              <input type="text"
-                class="variable-input"
-                data-multilan-id="${escapeHtml(result.multilanId)}"
-                data-var-key="${escapeHtml(varOcc.key)}"
-                value="${escapeHtml(currentValues[varOcc.key] || '')}"
-              />
-            </div>
-            `).join('')}
-          </div>
-        </div>
-        ` : ''}
         <div class="search-result-actions">
-          ${state.canEdit && hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Link with values' : 'Link'}</button>` : ''}
-          ${state.canEdit && isCurrentLink && hasVariables ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}" data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}">Update values</button>` : ''}
-          ${isCurrentLink && !hasVariables ? `<span class="currently-linked-text">Currently linked</span>` : ''}
-          ${state.canEdit ? `<button class="btn-create-result btn-sm btn-sm-primary" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}" ${hasVariables ? `data-has-variables="true" data-variable-keys="${escapeHtml(variableKeys.join(','))}"` : ''}>${hasVariables ? 'Create with values' : 'Create'}</button>` : ''}
+          ${state.canEdit && hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
+          ${isCurrentLink ? `<span class="currently-linked-text">Currently linked</span>` : ''}
+          ${state.canEdit ? `<button class="btn-create-result btn-sm btn-sm-primary" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}">Create</button>` : ''}
           ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
         </div>
         ${metadataJson ? `<div class="metadata-info collapsed">${buildMetadataContent(metadataJson)}</div>` : ''}
@@ -290,37 +248,13 @@ function attachSearchResultHandlers(): void {
     });
   });
 
-  // Variable input handlers
-  globalSearchResults.querySelectorAll<HTMLInputElement>('.variable-input').forEach(input => {
-    input.addEventListener('input', () => {
-      const multilanId = input.dataset.multilanId!;
-      const varKey = input.dataset.varKey!;
-      const values = variableValues.get(multilanId) || {};
-      values[varKey] = input.value;
-      variableValues.set(multilanId, values);
-    });
-  });
-
   // Link button handlers
   globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-link-result').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const multilanId = btn.dataset.id!;
       if (!state.selectedNode) return;
-      const hasVariables = btn.dataset.hasVariables === 'true';
-      const variableKeys = btn.dataset.variableKeys?.split(',') || [];
-      const variables = hasVariables ? variableValues.get(multilanId) : undefined;
-
-      // Validate all variables are filled
-      if (hasVariables && variableKeys.length > 0) {
-        const missingVars = variableKeys.filter(v => !variables?.[v]?.trim());
-        if (missingVars.length > 0) {
-          alert(`Please fill in all variables: ${missingVars.join(', ')}`);
-          return;
-        }
-      }
-
-      pluginBridge.linkNode(state.selectedNode.id, multilanId, state.currentLang, variables);
+      pluginBridge.linkNode(state.selectedNode.id, multilanId, state.currentLang);
     });
   });
 
@@ -330,20 +264,7 @@ function attachSearchResultHandlers(): void {
       e.stopPropagation();
       const multilanId = btn.dataset.id!;
       const text = btn.dataset.text!;
-      const hasVariables = btn.dataset.hasVariables === 'true';
-      const variableKeys = btn.dataset.variableKeys?.split(',') || [];
-      const variables = hasVariables ? variableValues.get(multilanId) : undefined;
-
-      // Validate all variables are filled
-      if (hasVariables && variableKeys.length > 0) {
-        const missingVars = variableKeys.filter(v => !variables?.[v]?.trim());
-        if (missingVars.length > 0) {
-          alert(`Please fill in all variables: ${missingVars.join(', ')}`);
-          return;
-        }
-      }
-
-      pluginBridge.createLinkedText(multilanId, text, state.currentLang, variables);
+      pluginBridge.createLinkedText(multilanId, text, state.currentLang);
     });
   });
 

@@ -5,7 +5,6 @@ import { TranslationDataPort } from "../../ports/translationPort";
 import { TranslationMap, MetadataMap, MultilanStatus } from "../../shared/types";
 import {
   SearchApiResponse,
-  SearchApiMultilan,
   isSearchApiFormat,
   languageIdToCode,
 } from "../types/searchApi.types";

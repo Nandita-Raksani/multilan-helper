@@ -19,25 +19,17 @@ import {
   loadNodeFont,
   setExpectedText,
   clearExpectedText,
-  getVariableValues,
-  clearVariableValues,
   addMultilanIdToName,
   removeMultilanIdFromName,
 } from "./nodeService";
 import {
   getTranslation,
-  replaceVariables,
   buildTextToIdMap,
   searchTranslationsWithScore,
 } from "./translationService";
-import {
-  setupVariableBinding,
-  unbindTextFromVariable,
-} from "./variableService";
 
 /**
  * Link a text node to a multilanId and optionally update text with translation
- * Also sets up Figma Variable binding for language mode switching
  */
 export async function linkTextNode(
   nodeId: string,
@@ -68,12 +60,6 @@ export async function linkTextNode(
     }
   }
 
-  // Setup Figma Variable binding for language mode switching
-  // This allows dev/view seat users to switch languages via mode switching
-  if (translationData) {
-    await setupVariableBinding(node, multilanId, translationData);
-  }
-
   return true;
 }
 
@@ -89,15 +75,11 @@ export async function unlinkTextNode(nodeId: string): Promise<boolean> {
     clearPlaceholderStatus(node);
   }
 
-  // Unbind from Figma Variable
-  unbindTextFromVariable(node);
-
   // Remove multilanId from node name
   removeMultilanIdFromName(node);
 
   clearMultilanId(node);
   clearExpectedText(node);
-  clearVariableValues(node);
   return true;
 }
 
@@ -144,12 +126,6 @@ export async function switchLanguage(
       } else {
         continue;
       }
-    }
-
-    // Replace variables (###variable### format) using stored values
-    const storedVariables = getVariableValues(node);
-    if (storedVariables) {
-      translation = replaceVariables(translation, storedVariables);
     }
 
     // Load font before changing text
@@ -252,7 +228,6 @@ export async function applyExactMatches(
 
 /**
  * Create a new text node linked to a multilanId
- * Also sets up Figma Variable binding for language mode switching
  */
 export async function createLinkedTextNode(
   translationData: TranslationMap,
@@ -280,10 +255,6 @@ export async function createLinkedTextNode(
 
   // Store expected text for modification detection
   setExpectedText(textNode, translation);
-
-  // Setup Figma Variable binding for language mode switching
-  // This allows dev/view seat users to switch languages via mode switching
-  await setupVariableBinding(textNode, multilanId, translationData);
 
   // Position near viewport center or current selection
   const selection = figma.currentPage.selection;

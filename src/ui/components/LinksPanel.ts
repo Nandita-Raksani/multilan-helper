@@ -9,7 +9,6 @@ export function initLinksPanel(): void {
   const scopeBtns = querySelectorAll<HTMLButtonElement>('.scope-btn');
   const textSearch = getElementById<HTMLInputElement>('textSearch');
   const autoLinkBtn = getElementById<HTMLButtonElement>('autoLinkBtn');
-  const syncVarsBtn = getElementById<HTMLButtonElement>('syncVarsBtn');
 
   // Scope toggle
   scopeBtns.forEach(btn => {
@@ -38,14 +37,6 @@ export function initLinksPanel(): void {
     autoLinkBtn.disabled = true;
     pluginBridge.bulkAutoLink(state.scope);
     setTimeout(() => { autoLinkBtn.disabled = false; }, 1000);
-  });
-
-  // Sync Variables button
-  syncVarsBtn.addEventListener('click', () => {
-    updateStatusText('Syncing variables...');
-    syncVarsBtn.disabled = true;
-    pluginBridge.syncVariables();
-    setTimeout(() => { syncVarsBtn.disabled = false; }, 2000);
   });
 }
 

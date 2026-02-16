@@ -48,15 +48,6 @@ export interface TextNodeInfo {
   translations: TranslationEntry | null;
   hasOverflow: boolean;
   isPlaceholder: boolean;
-  variableValues?: Record<string, string>;
-}
-
-// Variable occurrence with index for duplicate handling
-export interface VariableOccurrence {
-  name: string;
-  key: string; // Unique key like "amount" or "amount_2" for duplicates
-  index: number; // 1-based index for this variable name
-  isIndexed: boolean; // True if this variable appears multiple times
 }
 
 // Search result
@@ -64,7 +55,6 @@ export interface SearchResult {
   multilanId: string;
   translations: TranslationEntry;
   score?: number;
-  variableOccurrences?: VariableOccurrence[];
   metadata?: MultilanMetadata;
 }
 
@@ -119,7 +109,6 @@ export type PluginMessageType =
   | "confirm-fuzzy-link"
   | "global-search"
   | "create-linked-text"
-  | "sync-variables"
   | "translations-fetched"
   | "refresh-translations"
   | "close";
@@ -147,7 +136,6 @@ export interface PluginMessage {
   nodeId?: string;
   multilanId?: string;
   searchQuery?: string;
-  variables?: Record<string, string>;
   text?: string;
   confirmations?: Array<{ nodeId: string; multilanId: string }>;
   // Translation API fields
@@ -177,4 +165,3 @@ export interface PluginMessage {
 export const PLUGIN_DATA_KEY = "multilanId";
 export const PLACEHOLDER_KEY = "isPlaceholder";
 export const EXPECTED_TEXT_KEY = "expectedText";
-export const VARIABLE_VALUES_KEY = "variableValues";
