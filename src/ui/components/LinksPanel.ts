@@ -50,7 +50,7 @@ export function initLinksPanel(): void {
 
     isHighlighting = !isHighlighting;
     highlightBtn.classList.toggle('active', isHighlighting);
-    highlightBtn.textContent = isHighlighting ? 'Unhighlight' : 'Highlight';
+    highlightBtn.textContent = isHighlighting ? 'Hide Unlinked' : 'Show Unlinked';
 
     pluginBridge.highlightUnlinked(isHighlighting, state.scope);
   });
