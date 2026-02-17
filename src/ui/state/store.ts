@@ -10,6 +10,8 @@ export interface UIState {
   bulkLinkResults: BulkLinkResults | null;
   globalSearchResults: SearchResult[];
   allTranslations: unknown[];
+  translationSource: 'api' | 'tra';
+  translationCount: number;
 }
 
 type StateListener = (state: UIState) => void;
@@ -24,7 +26,9 @@ class Store {
     hasSelection: false,
     bulkLinkResults: null,
     globalSearchResults: [],
-    allTranslations: []
+    allTranslations: [],
+    translationSource: 'api',
+    translationCount: 0
   };
 
   private listeners: Set<StateListener> = new Set();

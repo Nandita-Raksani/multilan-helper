@@ -33,11 +33,11 @@ describe("Tabs", () => {
     it("should switch between all tabs", () => {
       initTabs();
 
-      const settingsTab = document.querySelector('[data-tab="settings"]') as HTMLElement;
-      settingsTab.click();
+      const textsTab = document.querySelector('[data-tab="texts"]') as HTMLElement;
+      textsTab.click();
 
-      expect(settingsTab.classList.contains("active")).toBe(true);
-      expect(document.getElementById("settingsPanel")?.classList.contains("active")).toBe(true);
+      expect(textsTab.classList.contains("active")).toBe(true);
+      expect(document.getElementById("textsPanel")?.classList.contains("active")).toBe(true);
     });
   });
 
@@ -53,7 +53,7 @@ describe("Tabs", () => {
     });
 
     it("should deactivate other tabs", () => {
-      setActiveTab("settings");
+      setActiveTab("texts");
 
       const searchTab = document.querySelector('[data-tab="search"]');
       const searchPanel = document.getElementById("searchPanel");

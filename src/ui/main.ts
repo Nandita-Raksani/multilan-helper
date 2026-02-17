@@ -54,7 +54,8 @@ function handlePluginMessage(msg: PluginMessage): void {
         canEdit: msg.canEdit,
         textNodes: msg.textNodes || [],
         selectedNode: msg.selectedNode || null,
-        currentLang: initialLang
+        currentLang: initialLang,
+        translationCount: msg.translationCount || 0
       });
 
       if (!msg.canEdit) {

@@ -23,8 +23,7 @@ export function setupUIFixture(): void {
       <!-- Tabs -->
       <div class="tabs">
         <div class="tab active" data-tab="search">Search</div>
-        <div class="tab" data-tab="texts">Links</div>
-        <div class="tab" data-tab="settings">Settings</div>
+        <div class="tab" data-tab="texts">Auto-Link</div>
       </div>
 
       <!-- Search Panel -->
@@ -68,21 +67,6 @@ export function setupUIFixture(): void {
         </div>
       </div>
 
-      <!-- Settings Panel -->
-      <div id="settingsPanel" class="panel">
-        <h3 style="margin-bottom: 12px;">Placeholder Values</h3>
-        <div id="placeholderSettings">
-          <div style="margin-bottom: 8px;">
-            <label style="display: block; margin-bottom: 4px;">username</label>
-            <input type="text" class="search-box" data-placeholder="username" value="John" style="margin-bottom: 0;">
-          </div>
-          <div style="margin-bottom: 8px;">
-            <label style="display: block; margin-bottom: 4px;">count</label>
-            <input type="text" class="search-box" data-placeholder="count" value="5" style="margin-bottom: 0;">
-          </div>
-        </div>
-      </div>
-
       <!-- Bulk Auto-Link Modal -->
       <div id="bulkLinkModal" class="modal-overlay">
         <div class="modal">
@@ -99,7 +83,14 @@ export function setupUIFixture(): void {
       <!-- Status Bar -->
       <div class="status-bar">
         <span id="statusText">Ready</span>
-        <span id="buildTimestamp" style="float: right; opacity: 0.7;"></span>
+        <div class="status-bar-right">
+          <select id="sourceSelect" class="source-select" title="Translation source">
+            <option value="api">API</option>
+            <option value="tra">.tra</option>
+          </select>
+          <button id="refreshTranslationsBtn" class="refresh-btn" title="Refresh translations"></button>
+          <span id="buildTimestamp"></span>
+        </div>
       </div>
     </div>
   `;
@@ -126,10 +117,11 @@ export function resetStore(): void {
       scope: "page",
       textNodes: [],
       selectedNode: null,
-      placeholders: { username: "John", count: "5" },
       bulkLinkResults: null,
       globalSearchResults: [],
       allTranslations: [],
+      translationSource: "api",
+      translationCount: 0,
     });
   });
 }

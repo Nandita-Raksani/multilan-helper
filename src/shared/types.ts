@@ -112,6 +112,7 @@ export type PluginMessageType =
   | "translations-fetched"
   | "refresh-translations"
   | "highlight-unlinked"
+  | "set-translation-source"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -142,7 +143,7 @@ export interface PluginMessage {
   highlight?: boolean;
   // Translation API fields
   translationData?: unknown;
-  translationSource?: 'api' | 'bundled';
+  translationSource?: 'api' | 'bundled' | 'tra';
   status?: 'success' | 'error';
   backupDate?: string;
   count?: number;

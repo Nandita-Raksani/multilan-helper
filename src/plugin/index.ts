@@ -536,6 +536,19 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       }
       break;
 
+    case "set-translation-source":
+      if (msg.translationSource === 'tra') {
+        initializeTraFileData();
+        figma.notify(`Loaded ${Object.keys(translationData).length} translations from .tra files`);
+      } else {
+        // Request fresh API data via UI
+        figma.notify("Fetching from API...");
+        figma.ui.postMessage({ type: "request-translations" });
+      }
+      // Re-initialize to update UI with new translation count
+      initialize();
+      break;
+
     case "close":
       figma.closePlugin();
       break;

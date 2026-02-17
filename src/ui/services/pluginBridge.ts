@@ -119,6 +119,13 @@ class PluginBridge {
       scope
     });
   }
+
+  setTranslationSource(source: 'api' | 'tra'): void {
+    this.send({
+      type: 'set-translation-source',
+      translationSource: source
+    });
+  }
 }
 
 export const pluginBridge = new PluginBridge();
