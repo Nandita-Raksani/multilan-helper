@@ -58,9 +58,9 @@ export function setupUIFixture(): void {
           <div class="scope-toggle">
             <button class="scope-btn active" data-scope="page">Entire Page</button>
             <button class="scope-btn" data-scope="selection">Selection</button>
+            <button class="btn btn-secondary btn-auto-link" id="autoLinkBtn">Auto-Link</button>
+            <button class="scope-btn" id="highlightUnlinkedBtn" title="Highlight unlinked text nodes">Show Unlinked</button>
           </div>
-          <button class="btn btn-secondary btn-auto-link" id="autoLinkBtn">Auto-Link All</button>
-          <button class="scope-btn" id="syncVarsBtn" title="Sync variables with latest translations">Sync Vars</button>
         </div>
         <input type="text" class="search-box" id="textSearch" placeholder="Filter texts...">
         <div id="textList" class="text-list">

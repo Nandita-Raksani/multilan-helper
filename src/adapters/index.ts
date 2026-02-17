@@ -4,19 +4,22 @@
 import { TranslationDataPort } from "../ports/translationPort";
 import { CurrentApiAdapter } from "./implementations/currentApiAdapter";
 import { SearchApiAdapter } from "./implementations/searchApiAdapter";
+import { TraFileAdapter } from "./implementations/traFileAdapter";
 import { isCurrentApiFormat } from "./types/currentApi.types";
 import { isSearchApiFormat } from "./types/searchApi.types";
+import { isTraFileData } from "./types/traFile.types";
 
 // Supported adapter types
-export type AdapterType = "current-api" | "search-api";
+export type AdapterType = "current-api" | "search-api" | "tra-files";
 
 // Adapter factory function type
 type AdapterFactory = (data: unknown) => TranslationDataPort;
 
 // Registry of adapter factories
-const adapterRegistry: Map<AdapterType, AdapterFactory> = new Map([
+const adapterRegistry = new Map<AdapterType, AdapterFactory>([
   ["current-api", (data) => new CurrentApiAdapter(data)],
   ["search-api", (data) => new SearchApiAdapter(data)],
+  ["tra-files", (data) => new TraFileAdapter(data)],
 ]);
 
 /**
@@ -31,6 +34,10 @@ export function detectAdapterType(data: unknown): AdapterType | null {
   // Legacy: current API format (array of multilans with string languageIds)
   if (isCurrentApiFormat(data)) {
     return "current-api";
+  }
+  // .tra file format (object with en, fr, nl, de string properties)
+  if (isTraFileData(data)) {
+    return "tra-files";
   }
   return null;
 }
@@ -93,6 +100,7 @@ export function getRegisteredAdapterTypes(): AdapterType[] {
 // Re-export adapter implementations for direct use if needed
 export { CurrentApiAdapter } from "./implementations/currentApiAdapter";
 export { SearchApiAdapter, mergeSearchApiResponses } from "./implementations/searchApiAdapter";
+export { TraFileAdapter } from "./implementations/traFileAdapter";
 
 // Re-export types
 export { TranslationDataPort } from "../ports/translationPort";
@@ -108,3 +116,5 @@ export type {
   SearchApiRequest,
 } from "./types/searchApi.types";
 export { isSearchApiFormat } from "./types/searchApi.types";
+export type { TraFileData } from "./types/traFile.types";
+export { isTraFileData, parseTraFile, parseTraLine } from "./types/traFile.types";

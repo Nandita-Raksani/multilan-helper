@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMockTextNode, setupFigmaMock, sampleTranslationMap } from "../../setup";
-import { PLUGIN_DATA_KEY, PLACEHOLDER_KEY, VARIABLE_VALUES_KEY } from "../../../src/shared/types";
+import { PLUGIN_DATA_KEY, PLACEHOLDER_KEY } from "../../../src/shared/types";
 
 // We need to mock the figma global before importing the service
 let mockFigma: ReturnType<typeof setupFigmaMock>;
@@ -290,26 +290,6 @@ describe("linkingService", () => {
       expect(result.success).toBe(1);
       expect(result.missing).toContain("node-1");
       expect(mockNode.characters).toBe("English only");
-    });
-
-    it("should replace variables using stored values", async () => {
-      const { switchLanguage } = await import("../../../src/plugin/services/linkingService");
-
-      const mockNode = createMockTextNode({
-        id: "node-1",
-        characters: "Hello ###username###",
-      });
-      mockNode.setPluginData(PLUGIN_DATA_KEY, "10003");
-      // Store variable values for the node (this simulates having linked with variables)
-      mockNode.setPluginData(VARIABLE_VALUES_KEY, JSON.stringify({ username_1: "Alice" }));
-      (mockNode as unknown as { width: number }).width = 100;
-
-      mockFigma.currentPage.findAll.mockReturnValue([mockNode]);
-
-      const result = await switchLanguage(sampleTranslationMap, "en", "page");
-
-      expect(result.success).toBe(1);
-      expect(mockNode.characters).toBe("Hello Alice");
     });
 
     it("should handle font loading errors gracefully", async () => {

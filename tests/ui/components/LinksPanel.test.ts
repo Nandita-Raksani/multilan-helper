@@ -54,11 +54,11 @@ describe("LinksPanel", () => {
       );
     });
 
-    it("should set up auto-link button handler", () => {
+    it("should trigger auto-link when scope button is clicked", () => {
       initLinksPanel();
 
-      const autoLinkBtn = document.getElementById("autoLinkBtn") as HTMLButtonElement;
-      autoLinkBtn.click();
+      const pageBtn = document.querySelector('[data-scope="page"]') as HTMLButtonElement;
+      pageBtn.click();
 
       expect(postMessageMock).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -71,7 +71,7 @@ describe("LinksPanel", () => {
       );
     });
 
-    it("should prevent auto-link in view mode", () => {
+    it("should prevent scope click in view mode", () => {
       store.setState({ canEdit: false });
       initLinksPanel();
 
@@ -79,8 +79,8 @@ describe("LinksPanel", () => {
       const alertMock = vi.fn();
       vi.stubGlobal("alert", alertMock);
 
-      const autoLinkBtn = document.getElementById("autoLinkBtn") as HTMLButtonElement;
-      autoLinkBtn.click();
+      const pageBtn = document.querySelector('[data-scope="page"]') as HTMLButtonElement;
+      pageBtn.click();
 
       expect(alertMock).toHaveBeenCalledWith("You do not have edit permissions");
     });

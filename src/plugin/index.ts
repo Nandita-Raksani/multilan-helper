@@ -2,6 +2,10 @@
 // Runs in Figma's sandbox environment
 
 import bundledApiData from "../translations/api-data.json";
+import traFileEn from "../translations/en-BE.tra";
+import traFileFr from "../translations/fr-BE.tra";
+import traFileNl from "../translations/nl-BE.tra";
+import traFileDe from "../translations/de-BE.tra";
 import {
   TranslationMap,
   MetadataMap,
@@ -10,6 +14,7 @@ import {
   SUPPORTED_LANGUAGES,
 } from "../shared/types";
 import { createAdapter } from "../adapters";
+import { TraFileData } from "../adapters/types/traFile.types";
 import {
   getAllTranslations,
   isLanguage,
@@ -48,11 +53,39 @@ let metadataData: MetadataMap;
 // Store original fills for highlighted nodes
 const originalFills: Map<string, Paint[] | typeof figma.mixed> = new Map();
 
-// Initialize with bundled data as default
+// Initialize with .tra files (primary bundled source)
+function initializeTraFileData(): boolean {
+  try {
+    const traData: TraFileData = {
+      en: traFileEn,
+      fr: traFileFr,
+      nl: traFileNl,
+      de: traFileDe,
+    };
+    const adapter = createAdapter(traData, "tra-files");
+    translationData = adapter.getTranslationMap();
+    metadataData = adapter.getMetadataMap();
+    console.log(`Loaded ${Object.keys(translationData).length} translations from .tra files`);
+    return true;
+  } catch (error) {
+    console.error('Failed to parse .tra files:', error);
+    return false;
+  }
+}
+
+// Initialize with bundled JSON data (fallback)
 function initializeBundledData(): void {
   const adapter = createAdapter(bundledApiData);
   translationData = adapter.getTranslationMap();
   metadataData = adapter.getMetadataMap();
+  console.log(`Loaded ${Object.keys(translationData).length} translations from bundled JSON`);
+}
+
+// Initialize with fallback chain: .tra files -> JSON
+function initializeWithFallback(): void {
+  if (!initializeTraFileData()) {
+    initializeBundledData();
+  }
 }
 
 // Update with API data
@@ -63,14 +96,14 @@ function updateWithApiData(apiData: unknown): boolean {
     metadataData = adapter.getMetadataMap();
     return true;
   } catch (error) {
-    console.error('Failed to parse API data, using bundled:', error);
-    initializeBundledData();
+    console.error('Failed to parse API data, falling back to bundled data:', error);
+    initializeWithFallback();
     return false;
   }
 }
 
-// Initialize with bundled data immediately
-initializeBundledData();
+// Initialize with fallback chain: .tra files -> JSON
+initializeWithFallback();
 
 // Helper to get translations for a multilanId
 const getTranslations = (multilanId: string) => getAllTranslations(translationData, multilanId);

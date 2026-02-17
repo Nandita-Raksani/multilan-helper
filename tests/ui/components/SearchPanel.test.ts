@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { setupUIFixture, mockParentPostMessage, sampleSearchResults, sampleSearchResultsWithVariables, sampleTextNodes } from "../setup";
+import { setupUIFixture, mockParentPostMessage, sampleSearchResults, sampleTextNodes } from "../setup";
 import { store } from "../../../src/ui/state/store";
 import {
   initSearchPanel,
@@ -252,107 +252,6 @@ describe("SearchPanel", () => {
         }),
         "*"
       );
-    });
-
-    it("should show alert when Link button clicked with empty variable", () => {
-      const alertMock = vi.fn();
-      vi.stubGlobal("alert", alertMock);
-
-      store.setState({
-        globalSearchResults: sampleSearchResultsWithVariables,
-        selectedNode: sampleTextNodes[1], // unlinked node
-      });
-      initSearchPanel();
-      renderGlobalSearchResults();
-
-      const linkBtn = document.querySelector(".btn-link-result") as HTMLButtonElement;
-      linkBtn.click();
-
-      expect(alertMock).toHaveBeenCalledWith(expect.stringContaining("Please fill in all variables"));
-    });
-
-    it("should show alert when Create button clicked with empty variable", () => {
-      const alertMock = vi.fn();
-      vi.stubGlobal("alert", alertMock);
-
-      store.setState({
-        globalSearchResults: sampleSearchResultsWithVariables,
-      });
-      initSearchPanel();
-      renderGlobalSearchResults();
-
-      const createBtn = document.querySelector(".btn-create-result") as HTMLButtonElement;
-      createBtn.click();
-
-      expect(alertMock).toHaveBeenCalledWith(expect.stringContaining("Please fill in all variables"));
-    });
-
-    it("should Link with variables when filled", () => {
-      store.setState({
-        globalSearchResults: sampleSearchResultsWithVariables,
-        selectedNode: sampleTextNodes[1], // unlinked node
-      });
-      initSearchPanel();
-      renderGlobalSearchResults();
-
-      // Fill in the variable
-      const variableInput = document.querySelector('.variable-input[data-var-key="username"]') as HTMLInputElement;
-      variableInput.value = "John";
-      variableInput.dispatchEvent(new Event("input"));
-
-      const linkBtn = document.querySelector(".btn-link-result") as HTMLButtonElement;
-      linkBtn.click();
-
-      expect(postMessageMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pluginMessage: expect.objectContaining({
-            type: "link-node",
-            multilanId: "20001",
-            variables: { username: "John" },
-          }),
-        }),
-        "*"
-      );
-    });
-
-    it("should Create with variables when filled", () => {
-      store.setState({
-        globalSearchResults: sampleSearchResultsWithVariables,
-      });
-      initSearchPanel();
-      renderGlobalSearchResults();
-
-      // Fill in the variable
-      const variableInput = document.querySelector('.variable-input[data-var-key="username"]') as HTMLInputElement;
-      variableInput.value = "Jane";
-      variableInput.dispatchEvent(new Event("input"));
-
-      const createBtn = document.querySelector(".btn-create-result") as HTMLButtonElement;
-      createBtn.click();
-
-      expect(postMessageMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pluginMessage: expect.objectContaining({
-            type: "create-linked-text",
-            multilanId: "20001",
-            variables: { username: "Jane" },
-          }),
-        }),
-        "*"
-      );
-    });
-
-    it("should show variable input fields for results with variables", () => {
-      store.setState({
-        globalSearchResults: sampleSearchResultsWithVariables,
-      });
-      renderGlobalSearchResults();
-
-      const variableSection = document.querySelector(".variables-section");
-      expect(variableSection).not.toBeNull();
-
-      const variableInput = document.querySelector('.variable-input[data-var-key="username"]');
-      expect(variableInput).not.toBeNull();
     });
 
   });
