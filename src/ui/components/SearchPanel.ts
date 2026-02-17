@@ -162,7 +162,19 @@ export function renderGlobalSearchResults(): void {
   if (results.length === 0) {
     globalSearchResultsCount.textContent = '';
     if (searchQuery) {
-      globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
+      // Show helpful message when searching with a selected node
+      if (hasSelection && !isAlreadyLinked) {
+        const truncatedQuery = searchQuery.length > 40 ? searchQuery.slice(0, 40) + '...' : searchQuery;
+        globalSearchResults.innerHTML = `
+          <div class="empty-state">
+            <div class="no-match-title">No match found</div>
+            <div class="no-match-text">"${escapeHtml(truncatedQuery)}"</div>
+            <div class="no-match-hint">Try searching with fewer words or check if this text exists in translations.</div>
+          </div>
+        `;
+      } else {
+        globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
+      }
     } else {
       globalSearchResults.innerHTML = '<div class="empty-state">Start typing to search translations</div>';
     }

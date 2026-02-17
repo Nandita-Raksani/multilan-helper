@@ -1076,3 +1076,28 @@ body {
 .metadata-info .meta-value {
   color: var(--figma-color-text);
 }
+
+/* No Match Found State */
+.no-match-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--figma-color-text);
+  margin-bottom: 8px;
+}
+
+.no-match-text {
+  font-size: 11px;
+  color: var(--figma-color-text);
+  background: var(--figma-color-bg-secondary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  word-break: break-word;
+  border-left: 3px solid #f59e0b;
+}
+
+.no-match-hint {
+  font-size: 10px;
+  color: var(--figma-color-text-secondary);
+  line-height: 1.4;
+}
