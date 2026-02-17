@@ -2,10 +2,7 @@
 // Runs in Figma's sandbox environment
 
 import bundledApiData from "../translations/api-data.json";
-import traFileEn from "../translations/en-BE.tra";
-import traFileFr from "../translations/fr-BE.tra";
-import traFileNl from "../translations/nl-BE.tra";
-import traFileDe from "../translations/de-BE.tra";
+import { traFileContents } from "../translations/tra-bundle";
 import {
   TranslationMap,
   MetadataMap,
@@ -54,13 +51,14 @@ let metadataData: MetadataMap;
 const originalFills: Map<string, Paint[] | typeof figma.mixed> = new Map();
 
 // Initialize with .tra files (primary bundled source)
+// Uses tra-bundle.ts which has been pre-converted to UTF-8
 function initializeTraFileData(): boolean {
   try {
     const traData: TraFileData = {
-      en: traFileEn,
-      fr: traFileFr,
-      nl: traFileNl,
-      de: traFileDe,
+      en: traFileContents.en,
+      fr: traFileContents.fr,
+      nl: traFileContents.nl,
+      de: traFileContents.de,
     };
     const adapter = createAdapter(traData, "tra-files");
     translationData = adapter.getTranslationMap();
