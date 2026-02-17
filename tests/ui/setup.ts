@@ -13,11 +13,14 @@ export function setupUIFixture(): void {
       </div>
 
       <!-- Language Bar -->
-      <div class="lang-bar">
-        <button class="lang-btn" data-lang="en">EN</button>
-        <button class="lang-btn" data-lang="fr">FR</button>
-        <button class="lang-btn" data-lang="nl">NL</button>
-        <button class="lang-btn" data-lang="de">DE</button>
+      <div id="languageBarSection" class="lang-bar-section">
+        <div class="lang-bar">
+          <button class="lang-btn" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="fr">FR</button>
+          <button class="lang-btn" data-lang="nl">NL</button>
+          <button class="lang-btn" data-lang="de">DE</button>
+        </div>
+        <p class="lang-bar-hint">Change language of selection or entire page</p>
       </div>
 
       <!-- Tabs -->

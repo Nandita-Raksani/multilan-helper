@@ -13,15 +13,26 @@ body {
 }
 
 /* Language Bar */
-.lang-bar {
-  display: flex;
-  gap: 4px;
-  padding: 8px;
+.lang-bar-section {
   background: var(--figma-color-bg-secondary);
   border-bottom: 1px solid var(--figma-color-border);
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.lang-bar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 8px 4px 8px;
+}
+
+.lang-bar-hint {
+  font-size: 10px;
+  color: var(--figma-color-text-tertiary);
+  text-align: center;
+  margin: 0;
+  padding: 0 8px 8px 8px;
 }
 
 .lang-btn {

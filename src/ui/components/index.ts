@@ -1,4 +1,4 @@
-export { initLanguageBar, setActiveLanguage } from './LanguageBar';
+export { initLanguageBar, setActiveLanguage, hideLanguageBar } from './LanguageBar';
 export { initTabs, setActiveTab, onTabChange, getCurrentTab, hideAutoLinkTab } from './Tabs';
 export { initSearchPanel, updateSearchSelectedNode, renderGlobalSearchResults, setSearchQuery, clearSearch, triggerSearch, updateSearchHint } from './SearchPanel';
 export { initLinksPanel, renderTextList } from './LinksPanel';

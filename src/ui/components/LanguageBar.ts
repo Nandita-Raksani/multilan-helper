@@ -1,10 +1,15 @@
 import type { Language } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
-import { querySelectorAll } from '../utils/dom';
+import { querySelectorAll, getElementById } from '../utils/dom';
 import { renderGlobalSearchResults } from './SearchPanel';
 
 const LANGUAGES: Language[] = ['en', 'fr', 'nl', 'de'];
+
+export function hideLanguageBar(): void {
+  const section = getElementById('languageBarSection');
+  section.style.display = 'none';
+}
 
 export function initLanguageBar(): void {
   const langBtns = querySelectorAll<HTMLButtonElement>('.lang-btn');
