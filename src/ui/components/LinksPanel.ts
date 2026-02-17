@@ -5,9 +5,12 @@ import { escapeHtml } from '../utils/dom';
 import { setActiveTab } from './Tabs';
 import { triggerSearch } from './SearchPanel';
 
+let isHighlighting = false;
+
 export function initLinksPanel(): void {
-  const scopeBtns = querySelectorAll<HTMLButtonElement>('.scope-btn');
+  const scopeBtns = querySelectorAll<HTMLButtonElement>('.scope-btn[data-scope]');
   const textSearch = getElementById<HTMLInputElement>('textSearch');
+  const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
 
   // Scope toggle - triggers auto-link for the selected scope
   scopeBtns.forEach(btn => {
@@ -35,6 +38,21 @@ export function initLinksPanel(): void {
   // Text search filter
   textSearch.addEventListener('input', () => {
     renderTextList();
+  });
+
+  // Highlight unlinked toggle
+  highlightBtn.addEventListener('click', () => {
+    const state = store.getState();
+    if (!state.canEdit) {
+      alert('You do not have edit permissions');
+      return;
+    }
+
+    isHighlighting = !isHighlighting;
+    highlightBtn.classList.toggle('active', isHighlighting);
+    highlightBtn.textContent = isHighlighting ? 'Unhighlight' : 'Highlight';
+
+    pluginBridge.highlightUnlinked(isHighlighting, state.scope);
   });
 }
 

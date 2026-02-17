@@ -111,6 +111,7 @@ export type PluginMessageType =
   | "create-linked-text"
   | "translations-fetched"
   | "refresh-translations"
+  | "highlight-unlinked"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -138,6 +139,7 @@ export interface PluginMessage {
   searchQuery?: string;
   text?: string;
   confirmations?: Array<{ nodeId: string; multilanId: string }>;
+  highlight?: boolean;
   // Translation API fields
   translationData?: unknown;
   translationSource?: 'api' | 'bundled';

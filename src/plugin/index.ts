@@ -45,6 +45,9 @@ const BUILD_TIMESTAMP = "2026-01-18 12:00";
 let translationData: TranslationMap;
 let metadataData: MetadataMap;
 
+// Store original fills for highlighted nodes
+const originalFills: Map<string, Paint[] | typeof figma.mixed> = new Map();
+
 // Initialize with bundled data as default
 function initializeBundledData(): void {
   const adapter = createAdapter(bundledApiData);
@@ -442,6 +445,62 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       // Request fresh translations from API via UI
       figma.notify("Fetching from API...");
       figma.ui.postMessage({ type: "request-translations" });
+      break;
+
+    case "highlight-unlinked":
+      if (!canEdit()) {
+        figma.notify("You don't have edit permissions", { error: true });
+        return;
+      }
+      {
+        const scope = msg.scope || "page";
+        const nodes = getTextNodesInScope(scope);
+        const unlinkedNodes = nodes.filter(node => !getMultilanId(node));
+
+        if (msg.highlight) {
+          // Highlight: store original fills and apply highlight color
+          const highlightFill: SolidPaint = {
+            type: "SOLID",
+            color: { r: 1, g: 0.8, b: 0.2 }, // Yellow/orange highlight
+            opacity: 1
+          };
+
+          let count = 0;
+          for (const node of unlinkedNodes) {
+            // Store original fill
+            originalFills.set(node.id, node.fills as Paint[] | typeof figma.mixed);
+            // Apply highlight fill
+            node.fills = [highlightFill];
+            count++;
+          }
+
+          if (count > 0) {
+            figma.notify(`Highlighted ${count} unlinked text node${count > 1 ? 's' : ''}`);
+          } else {
+            figma.notify("No unlinked text nodes found");
+          }
+        } else {
+          // Unhighlight: restore original fills
+          for (const node of unlinkedNodes) {
+            const originalFill = originalFills.get(node.id);
+            if (originalFill !== undefined) {
+              node.fills = originalFill;
+              originalFills.delete(node.id);
+            }
+          }
+
+          // Also restore any remaining stored fills (in case nodes were linked while highlighted)
+          for (const [nodeId, fill] of originalFills.entries()) {
+            const node = figma.getNodeById(nodeId);
+            if (node && node.type === "TEXT") {
+              (node as TextNode).fills = fill;
+            }
+            originalFills.delete(nodeId);
+          }
+
+          figma.notify("Restored original text colors");
+        }
+      }
       break;
 
     case "close":

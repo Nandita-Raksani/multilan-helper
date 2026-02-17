@@ -111,6 +111,14 @@ class PluginBridge {
   refreshTranslations(): void {
     this.send({ type: 'refresh-translations' });
   }
+
+  highlightUnlinked(highlight: boolean, scope: 'page' | 'selection'): void {
+    this.send({
+      type: 'highlight-unlinked',
+      highlight,
+      scope
+    });
+  }
 }
 
 export const pluginBridge = new PluginBridge();

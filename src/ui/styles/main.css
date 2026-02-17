@@ -1101,3 +1101,20 @@ body {
   color: var(--figma-color-text-secondary);
   line-height: 1.4;
 }
+
+/* Highlight Button */
+.highlight-btn {
+  background: var(--figma-color-bg);
+  border: 1px solid #f59e0b;
+  color: #f59e0b;
+}
+
+.highlight-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.highlight-btn.active {
+  background: #f59e0b;
+  color: white;
+  border-color: #f59e0b;
+}
