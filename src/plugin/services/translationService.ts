@@ -64,6 +64,56 @@ export function replacePlaceholders(
 }
 
 /**
+ * Extract ###variable### values from text by matching against a template.
+ * E.g., template "Hello, ###name###!" + text "Hello, John!" → { name: "John" }
+ */
+export function extractVariableValues(
+  template: string,
+  text: string
+): Record<string, string> | null {
+  const varPattern = /###([^#]+)###/g;
+  const variables: string[] = [];
+  let match;
+  while ((match = varPattern.exec(template)) !== null) {
+    variables.push(match[1]);
+  }
+  if (variables.length === 0) return null;
+
+  // Split template by variable patterns into alternating [literal, varName, literal, ...]
+  const parts = template.split(/###[^#]+###/);
+
+  // Build regex: escape literals, insert capture groups between them
+  let regexStr = '';
+  for (let i = 0; i < parts.length; i++) {
+    regexStr += parts[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (i < variables.length) {
+      regexStr += '(.+?)';
+    }
+  }
+
+  const textMatch = text.match(new RegExp('^' + regexStr + '$'));
+  if (!textMatch) return null;
+
+  const result: Record<string, string> = {};
+  for (let i = 0; i < variables.length; i++) {
+    result[variables[i]] = textMatch[i + 1];
+  }
+  return result;
+}
+
+/**
+ * Replace ###variable### placeholders in a template with actual values.
+ */
+export function applyVariables(
+  template: string,
+  variables: Record<string, string>
+): string {
+  return template.replace(/###([^#]+)###/g, (_match, name) => {
+    return variables[name] !== undefined ? variables[name] : `###${name}###`;
+  });
+}
+
+/**
  * Calculate match score between query and text
  */
 export function calculateMatchScore(query: string, text: string): number {

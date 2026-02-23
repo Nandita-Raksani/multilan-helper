@@ -24,8 +24,11 @@ import {
 } from "./nodeService";
 import {
   getTranslation,
+  getAllTranslations,
   buildTextToIdMap,
   searchTranslationsWithScore,
+  extractVariableValues,
+  applyVariables,
 } from "./translationService";
 
 /**
@@ -115,6 +118,21 @@ export function switchLanguage(
     if (!translation) {
       missing.push(node.id);
       translation = "*Multilan not available*";
+    }
+
+    // Preserve ###variable### values from the current text
+    if (translation.includes('###')) {
+      const allTranslations = getAllTranslations(translationData, multilanId);
+      if (allTranslations) {
+        // Try to extract variable values by matching current text against each language template
+        for (const langTemplate of Object.values(allTranslations)) {
+          const vars = extractVariableValues(langTemplate, node.characters);
+          if (vars && Object.keys(vars).length > 0) {
+            translation = applyVariables(translation, vars);
+            break;
+          }
+        }
+      }
     }
 
     try {
