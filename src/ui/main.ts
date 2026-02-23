@@ -2,7 +2,6 @@ import type { Language, PluginMessage } from '../shared/types';
 import { SUPPORTED_LANGUAGES } from '../shared/types';
 import { store } from './state/store';
 import { pluginBridge } from './services/pluginBridge';
-import { fetchTranslations, setFetchProgressCallback } from './services/translationFetcher';
 import {
   initLanguageBar,
   initTabs,
@@ -150,51 +149,6 @@ function handlePluginMessage(msg: PluginMessage): void {
       pluginBridge.refresh(store.getState().scope);
       break;
 
-    case 'request-translations':
-      // Plugin is requesting translations - fetch from API
-      handleTranslationFetch();
-      break;
-
-    case 'api-status':
-      // Update status bar with API result
-      if (msg.status === 'success' && msg.count) {
-        setStatus(`${msg.count.toLocaleString()} translations loaded`);
-      } else if (msg.status === 'error' && msg.backupDate) {
-        setStatus(`Using backup from ${msg.backupDate}`);
-      }
-      break;
-  }
-}
-
-async function handleTranslationFetch(): Promise<void> {
-  setStatus('Fetching from API...');
-
-  // Set up progress callback
-  setFetchProgressCallback((loaded, total) => {
-    const percent = Math.round((loaded / total) * 100);
-    setStatus(`Fetching from API: ${loaded.toLocaleString()} / ${total.toLocaleString()} (${percent}%)`);
-  });
-
-  const result = await fetchTranslations();
-
-  // Clear progress callback
-  setFetchProgressCallback(null);
-
-  if (result.success && result.data) {
-    const stats = result.stats;
-    const countText = stats ? `${stats.totalElements.toLocaleString()} translations` : 'translations';
-    setStatus(`Loaded ${countText} from API`);
-    pluginBridge.send({
-      type: 'translations-fetched',
-      translationData: result.data,
-      translationSource: 'api',
-    });
-  } else {
-    setStatus('API fetch failed - using backup');
-    pluginBridge.send({
-      type: 'translations-fetched',
-      translationSource: 'bundled',
-    });
   }
 }
 

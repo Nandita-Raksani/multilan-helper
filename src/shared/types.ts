@@ -109,10 +109,7 @@ export type PluginMessageType =
   | "confirm-fuzzy-link"
   | "global-search"
   | "create-linked-text"
-  | "translations-fetched"
-  | "refresh-translations"
   | "highlight-unlinked"
-  | "set-translation-source"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -125,9 +122,7 @@ export type UIMessageType =
   | "bulk-auto-link-results"
   | "global-search-results"
   | "search-results"
-  | "text-created"
-  | "request-translations"
-  | "api-status";
+  | "text-created";
 
 // Combined message type for both directions
 export interface PluginMessage {
@@ -141,12 +136,6 @@ export interface PluginMessage {
   text?: string;
   confirmations?: Array<{ nodeId: string; multilanId: string }>;
   highlight?: boolean;
-  // Translation API fields
-  translationData?: unknown;
-  translationSource?: 'api' | 'bundled' | 'tra';
-  status?: 'success' | 'error';
-  backupDate?: string;
-  count?: number;
   // Plugin -> UI fields
   canEdit?: boolean;
   textNodes?: TextNodeInfo[];

@@ -385,40 +385,6 @@ body {
   opacity: 0.7;
 }
 
-.refresh-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid var(--figma-color-border);
-  border-radius: 4px;
-  color: var(--figma-color-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.refresh-btn:hover {
-  background: var(--figma-color-bg-hover);
-  color: var(--figma-color-text);
-  border-color: var(--figma-color-border-brand);
-}
-
-.refresh-btn:active {
-  transform: scale(0.95);
-}
-
-.refresh-btn.loading svg {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 /* View Mode Banner */
 .view-mode-banner {
   background: #fef3c7;
@@ -1148,23 +1114,3 @@ body {
   border-color: #f59e0b;
 }
 
-/* Source Select Dropdown */
-.source-select {
-  font-size: 10px;
-  padding: 2px 4px;
-  border: 1px solid var(--figma-color-border);
-  border-radius: 4px;
-  background: var(--figma-color-bg);
-  color: var(--figma-color-text);
-  cursor: pointer;
-  margin-right: 4px;
-}
-
-.source-select:hover {
-  border-color: var(--figma-color-border-strong);
-}
-
-.source-select:focus {
-  outline: none;
-  border-color: var(--figma-color-bg-brand);
-}

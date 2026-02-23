@@ -10,7 +10,6 @@ export interface UIState {
   bulkLinkResults: BulkLinkResults | null;
   globalSearchResults: SearchResult[];
   allTranslations: unknown[];
-  translationSource: 'api' | 'tra';
   translationCount: number;
 }
 
@@ -27,7 +26,6 @@ class Store {
     bulkLinkResults: null,
     globalSearchResults: [],
     allTranslations: [],
-    translationSource: 'api',
     translationCount: 0
   };
 

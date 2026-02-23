@@ -44,7 +44,7 @@ import {
 // Build timestamp - update this when translations are updated
 const BUILD_TIMESTAMP = "2026-01-18 12:00";
 
-// Translation data - can be updated from API
+// Translation data loaded from bundled .tra files (with JSON fallback)
 let translationData: TranslationMap;
 let metadataData: MetadataMap;
 
@@ -85,20 +85,6 @@ function initializeBundledData(): void {
 function initializeWithFallback(): void {
   if (!initializeTraFileData()) {
     initializeBundledData();
-  }
-}
-
-// Update with API data
-function updateWithApiData(apiData: unknown): boolean {
-  try {
-    const adapter = createAdapter(apiData);
-    translationData = adapter.getTranslationMap();
-    metadataData = adapter.getMetadataMap();
-    return true;
-  } catch (error) {
-    console.error('Failed to parse API data, falling back to bundled data:', error);
-    initializeWithFallback();
-    return false;
   }
 }
 
@@ -224,27 +210,6 @@ figma.on("selectionchange", () => {
 figma.ui.onmessage = async (msg: PluginMessage) => {
   switch (msg.type) {
     case "init":
-      // Request translations from UI (which will fetch from API)
-      figma.ui.postMessage({ type: "request-translations" });
-      break;
-
-    case "translations-fetched":
-      // UI has fetched (or failed to fetch) translations
-      if (msg.translationSource === 'api' && msg.translationData) {
-        const success = updateWithApiData(msg.translationData);
-        if (success) {
-          const count = Object.keys(translationData).length;
-          figma.notify(`Loaded ${count.toLocaleString()} translations from API`);
-          figma.ui.postMessage({ type: 'api-status', status: 'success', count });
-        } else {
-          figma.notify(`API data parsing failed`, { error: true, timeout: 2000 });
-          figma.ui.postMessage({ type: 'api-status', status: 'error', backupDate: BUILD_TIMESTAMP });
-        }
-      } else {
-        figma.notify(`API fetch failed`, { error: true, timeout: 2000 });
-        figma.ui.postMessage({ type: 'api-status', status: 'error', backupDate: BUILD_TIMESTAMP });
-      }
-      // Now initialize with whatever data we have
       await initialize();
       break;
 
@@ -486,12 +451,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       }
       break;
 
-    case "refresh-translations":
-      // Request fresh translations from API via UI
-      figma.notify("Fetching from API...");
-      figma.ui.postMessage({ type: "request-translations" });
-      break;
-
     case "highlight-unlinked":
       if (!canEdit()) {
         figma.notify("You don't have edit permissions", { error: true });
@@ -545,19 +504,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           figma.notify(`Removed ${rects.length} highlight${rects.length !== 1 ? 's' : ''}`);
         }
       }
-      break;
-
-    case "set-translation-source":
-      if (msg.translationSource === 'tra') {
-        initializeTraFileData();
-        figma.notify(`Loaded ${Object.keys(translationData).length} translations from .tra files`);
-      } else {
-        // Request fresh API data via UI
-        figma.notify("Fetching from API...");
-        figma.ui.postMessage({ type: "request-translations" });
-      }
-      // Re-initialize to update UI with new translation count
-      initialize();
       break;
 
     case "close":

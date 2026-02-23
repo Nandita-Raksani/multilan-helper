@@ -108,10 +108,6 @@ class PluginBridge {
     });
   }
 
-  refreshTranslations(): void {
-    this.send({ type: 'refresh-translations' });
-  }
-
   highlightUnlinked(highlight: boolean, scope: 'page' | 'selection'): void {
     this.send({
       type: 'highlight-unlinked',
@@ -120,12 +116,6 @@ class PluginBridge {
     });
   }
 
-  setTranslationSource(source: 'api' | 'tra'): void {
-    this.send({
-      type: 'set-translation-source',
-      translationSource: source
-    });
-  }
 }
 
 export const pluginBridge = new PluginBridge();
