@@ -84,67 +84,15 @@ export function updateSearchHint(): void {
   const searchHint = document.querySelector('.search-hint');
   if (searchHint) {
     searchHint.textContent = state.canEdit
-      ? 'Search translations, then Copy, Link, or Create text nodes.'
+      ? 'Search translations, then Copy or Link text nodes.'
       : 'Search translations and copy text. Select language to preview.';
   }
 }
 
 export function updateSearchSelectedNode(): void {
-  const state = store.getState();
+  // Hide the selected node banner - unlink is now in search results
   const searchSelectedNode = getElementById<HTMLDivElement>('searchSelectedNode');
-  const searchSelectedBadge = getElementById<HTMLSpanElement>('searchSelectedBadge');
-  const searchSelectedText = getElementById<HTMLDivElement>('searchSelectedText');
-  const searchSelectedActions = getElementById<HTMLDivElement>('searchSelectedActions');
-
-  if (state.selectedNode) {
-    searchSelectedNode.style.display = 'block';
-    searchSelectedText.textContent = `"${state.selectedNode.characters}"`;
-
-    const isLinked = state.selectedNode.multilanId;
-    if (isLinked) {
-      searchSelectedBadge.textContent = state.selectedNode.multilanId!;
-      searchSelectedBadge.className = 'btn-sm btn-sm-success';
-      searchSelectedBadge.style.cursor = 'pointer';
-      searchSelectedBadge.title = 'Click to copy';
-    } else {
-      searchSelectedBadge.textContent = 'Not linked';
-      searchSelectedBadge.className = 'status-badge-inline';
-      searchSelectedBadge.style.cursor = 'default';
-      searchSelectedBadge.title = '';
-    }
-
-    // Show action buttons based on link status and edit permissions
-    if (isLinked) {
-      // Only show Unlink button if user can edit
-      if (state.canEdit) {
-        searchSelectedActions.innerHTML = `
-          <button class="btn-sm btn-sm-outline" id="searchUnlinkBtn">Unlink</button>
-        `;
-        getElementById('searchUnlinkBtn').addEventListener('click', () => {
-          pluginBridge.unlinkNode(state.selectedNode!.id);
-        });
-      } else {
-        searchSelectedActions.innerHTML = '';
-      }
-
-      // Click badge to copy ID (available for all users)
-      searchSelectedBadge.onclick = () => {
-        const id = state.selectedNode!.multilanId!;
-        if (copyToClipboard(id)) {
-          const originalText = searchSelectedBadge.textContent;
-          searchSelectedBadge.textContent = 'Copied!';
-          setTimeout(() => {
-            searchSelectedBadge.textContent = originalText;
-          }, 1000);
-        }
-      };
-    } else {
-      searchSelectedBadge.onclick = null;
-      searchSelectedActions.innerHTML = '';
-    }
-  } else {
-    searchSelectedNode.style.display = 'none';
-  }
+  searchSelectedNode.style.display = 'none';
 
   renderGlobalSearchResults();
 }
@@ -226,6 +174,7 @@ export function renderGlobalSearchResults(): void {
         <div class="search-result-actions">
           ${state.canEdit && hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
           ${isCurrentLink ? `<span class="currently-linked-text">Currently linked</span>` : ''}
+          ${isCurrentLink && state.canEdit ? `<button class="btn-unlink-result btn-sm btn-sm-outline" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
           ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
         </div>
         ${metadataJson ? `<div class="metadata-info collapsed">${buildMetadataContent(metadataJson)}</div>` : ''}
@@ -239,7 +188,6 @@ export function renderGlobalSearchResults(): void {
 
 function attachSearchResultHandlers(): void {
   const globalSearchResults = getElementById<HTMLDivElement>('globalSearchResults');
-  const state = store.getState();
 
   // Clickable ID handlers
   globalSearchResults.querySelectorAll<HTMLSpanElement>('.clickable-id').forEach(span => {
@@ -268,13 +216,25 @@ function attachSearchResultHandlers(): void {
     });
   });
 
-  // Link button handlers
+  // Link button handlers - read latest state at click time to avoid stale closures
   globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-link-result').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const multilanId = btn.dataset.id!;
-      if (!state.selectedNode) return;
-      pluginBridge.linkNode(state.selectedNode.id, multilanId, state.currentLang);
+      const currentState = store.getState();
+      if (!currentState.selectedNode) return;
+      pluginBridge.linkNode(currentState.selectedNode.id, multilanId, currentState.currentLang);
+    });
+  });
+
+  // Unlink button handlers
+  globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-unlink-result').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const currentState = store.getState();
+      if (currentState.selectedNode) {
+        pluginBridge.unlinkNode(currentState.selectedNode.id);
+      }
     });
   });
 

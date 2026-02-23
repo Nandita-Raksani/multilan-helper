@@ -87,15 +87,21 @@ export function renderBulkLinkResults(): void {
         ${fuzzyMatches.map(m => `
           <div class="match-item">
             <div class="match-item-text">${escapeHtml(m.text.slice(0, 50))}${m.text.length > 50 ? '...' : ''}</div>
-            ${m.suggestions.slice(0, 2).map(s => `
+            ${m.suggestions.slice(0, 2).map(s => {
+              const previewText = s.translations['en'] || Object.values(s.translations)[0] || '';
+              return `
               <div class="fuzzy-suggestion">
-                <span>${escapeHtml(s.multilanId)}</span>
+                <div class="fuzzy-suggestion-info">
+                  <span class="fuzzy-suggestion-id">${escapeHtml(s.multilanId)}</span>
+                  <span class="fuzzy-suggestion-text">${escapeHtml(previewText)}</span>
+                </div>
                 <div class="fuzzy-actions">
                   <button class="btn-accept" data-node="${m.nodeId}" data-id="${s.multilanId}">Link</button>
                   <button class="btn-skip">Skip</button>
                 </div>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
         `).join('')}
       </div>

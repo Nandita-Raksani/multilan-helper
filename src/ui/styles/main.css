@@ -595,6 +595,27 @@ body {
   margin-top: 4px;
 }
 
+.fuzzy-suggestion-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fuzzy-suggestion-id {
+  font-weight: 600;
+  font-size: 10px;
+}
+
+.fuzzy-suggestion-text {
+  font-size: 10px;
+  color: var(--figma-color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .fuzzy-actions {
   display: flex;
   gap: 4px;
