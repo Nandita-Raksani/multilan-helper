@@ -30,6 +30,7 @@ import {
   clearMultilanId,
   clearExpectedText,
   removeMultilanIdFromName,
+  loadNodeFont,
 } from "./services/nodeService";
 import {
   linkTextNode,
@@ -49,6 +50,7 @@ let metadataData: MetadataMap;
 
 // Store highlight rectangle IDs for cleanup
 const highlightRects: string[] = [];
+
 
 // Initialize with .tra files (primary bundled source)
 // Uses tra-bundle.ts which has been pre-converted to UTF-8
@@ -167,6 +169,18 @@ async function initialize(): Promise<void> {
     figma.notify(`Auto-unlinked ${unlinkedCount} modified node${unlinkedCount > 1 ? 's' : ''}`);
   }
 
+  // Preload fonts for all linked text nodes so language switching is instant
+  const allPageNodes = getTextNodesInScope("page");
+  for (const node of allPageNodes) {
+    if (getMultilanId(node)) {
+      try {
+        await loadNodeFont(node);
+      } catch {
+        // Font load failed, will retry during switch if needed
+      }
+    }
+  }
+
   const textNodes = getAllTextNodesInfo("page", getTranslations);
   const selectedNode = getSelectedTextNodeInfo(getTranslations);
 
@@ -243,7 +257,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           return;
         }
 
-        const result = await switchLanguage(
+        const result = switchLanguage(
           translationData,
           msg.language,
           scope

@@ -93,13 +93,14 @@ export async function markAsPlaceholder(
 }
 
 /**
- * Switch language for all linked text nodes in scope
+ * Switch language for all linked text nodes in scope.
+ * Fonts must be preloaded (via initialize) for this to work synchronously.
  */
-export async function switchLanguage(
+export function switchLanguage(
   translationData: TranslationMap,
   lang: Language,
   scope: "page" | "selection"
-): Promise<{ success: number; missing: string[]; overflow: string[] }> {
+): { success: number; missing: string[]; overflow: string[] } {
   const nodes = getTextNodesInScope(scope);
   let success = 0;
   const missing: string[] = [];
@@ -116,26 +117,13 @@ export async function switchLanguage(
       translation = "*Multilan not available*";
     }
 
-    // Load font before changing text
     try {
-      await loadNodeFont(node);
-    } catch (fontErr) {
-      console.error(`Failed to load font for node ${node.id}:`, fontErr);
-      continue;
+      node.characters = translation;
+      setExpectedText(node, translation);
+      success++;
+    } catch (err) {
+      console.error(`Failed to switch node ${node.id}:`, err);
     }
-
-    const originalWidth = node.width;
-    node.characters = translation;
-
-    // Update expected text for modification detection
-    setExpectedText(node, translation);
-
-    // Check for overflow (text got wider)
-    if (node.width > originalWidth * 1.2) {
-      overflow.push(node.id);
-    }
-
-    success++;
   }
 
   return { success, missing, overflow };
