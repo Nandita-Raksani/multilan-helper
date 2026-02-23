@@ -47,8 +47,8 @@ const BUILD_TIMESTAMP = "2026-01-18 12:00";
 let translationData: TranslationMap;
 let metadataData: MetadataMap;
 
-// Store original strokes for highlighted parent nodes
-const originalStrokes: Map<string, { strokes: Paint[] | typeof figma.mixed; strokeWeight: number | typeof figma.mixed }> = new Map();
+// Store highlight rectangle IDs for cleanup
+const highlightRects: string[] = [];
 
 // Initialize with .tra files (primary bundled source)
 // Uses tra-bundle.ts which has been pre-converted to UTF-8
@@ -489,49 +489,46 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         const unlinkedNodes = nodes.filter(node => !getMultilanId(node));
 
         if (msg.highlight) {
-          // Highlight: add a stroke to the parent layer of each unlinked text node
+          // Highlight: create a rectangle around each unlinked text node
           const highlightStroke: SolidPaint = {
             type: "SOLID",
-            color: { r: 1, g: 0.4, b: 0 }, // Orange highlight stroke
+            color: { r: 0.96, g: 0.62, b: 0.04 }, // Amber (#f59e0b) matching UI button
             opacity: 1
           };
 
           let count = 0;
           for (const node of unlinkedNodes) {
-            const parent = node.parent;
-            if (!parent || parent.type === "PAGE" || parent.type === "DOCUMENT") continue;
-            if (originalStrokes.has(parent.id)) continue; // Already highlighted via sibling
+            const rect = figma.createRectangle();
+            rect.name = `__highlight_${node.id}`;
+            rect.x = node.absoluteTransform[0][2] - 2;
+            rect.y = node.absoluteTransform[1][2] - 2;
+            rect.resize(node.width + 4, node.height + 4);
+            rect.fills = [];
+            rect.strokes = [highlightStroke];
+            rect.strokeWeight = 2;
+            rect.cornerRadius = 2;
+            rect.locked = true;
 
-            const parentNode = parent as GeometryMixin & BaseNode;
-            // Store original strokes
-            originalStrokes.set(parent.id, {
-              strokes: parentNode.strokes as Paint[] | typeof figma.mixed,
-              strokeWeight: parentNode.strokeWeight as number | typeof figma.mixed,
-            });
-            // Apply highlight stroke
-            parentNode.strokes = [highlightStroke];
-            parentNode.strokeWeight = 2;
+            highlightRects.push(rect.id);
             count++;
           }
 
           if (count > 0) {
-            figma.notify(`Highlighted ${count} parent layer${count > 1 ? 's' : ''} with unlinked text`);
+            figma.notify(`Highlighted ${count} unlinked text node${count > 1 ? 's' : ''}`);
           } else {
             figma.notify("No unlinked text nodes found");
           }
         } else {
-          // Unhighlight: restore original strokes on parent layers
-          for (const [nodeId, original] of originalStrokes.entries()) {
-            const node = figma.getNodeById(nodeId);
-            if (node) {
-              const parentNode = node as GeometryMixin & BaseNode;
-              parentNode.strokes = original.strokes;
-              parentNode.strokeWeight = original.strokeWeight;
-            }
+          // Unhighlight: find and remove all highlight rectangles by name prefix
+          const rects = figma.currentPage.findAll(n =>
+            n.type === "RECTANGLE" && n.name.startsWith("__highlight_")
+          );
+          for (const rect of rects) {
+            rect.remove();
           }
-          originalStrokes.clear();
+          highlightRects.length = 0;
 
-          figma.notify("Restored original layer styles");
+          figma.notify(`Removed ${rects.length} highlight${rects.length !== 1 ? 's' : ''}`);
         }
       }
       break;

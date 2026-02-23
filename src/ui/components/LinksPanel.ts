@@ -8,30 +8,34 @@ import { triggerSearch } from './SearchPanel';
 let isHighlighting = false;
 
 export function initLinksPanel(): void {
+  const state = store.getState();
   const scopeBtns = querySelectorAll<HTMLButtonElement>('.scope-btn[data-scope]');
   const textSearch = getElementById<HTMLInputElement>('textSearch');
   const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
 
-  // Scope toggle - triggers auto-link for the selected scope
+  // Dev mode: rename tab, hide edit-only controls
+  if (!state.canEdit) {
+    const tab = document.querySelector('.tab[data-tab="texts"]');
+    if (tab) tab.textContent = 'Linked Texts';
+    highlightBtn.style.display = 'none';
+  }
+
+  // Scope toggle
   scopeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      const state = store.getState();
-      if (!state.canEdit) {
-        alert('You do not have edit permissions');
-        return;
-      }
-
       scopeBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const scope = btn.dataset.scope as 'page' | 'selection';
       store.setState({ scope });
 
-      // Refresh the text list and trigger auto-link
       pluginBridge.refresh(scope);
-      updateStatusText('Scanning for matches...');
-      btn.disabled = true;
-      pluginBridge.bulkAutoLink(scope);
-      setTimeout(() => { btn.disabled = false; }, 1000);
+
+      if (state.canEdit) {
+        updateStatusText('Scanning for matches...');
+        btn.disabled = true;
+        pluginBridge.bulkAutoLink(scope);
+        setTimeout(() => { btn.disabled = false; }, 1000);
+      }
     });
   });
 
@@ -40,19 +44,13 @@ export function initLinksPanel(): void {
     renderTextList();
   });
 
-  // Highlight unlinked toggle
+  // Highlight unlinked toggle (edit mode only)
   highlightBtn.addEventListener('click', () => {
-    const state = store.getState();
-    if (!state.canEdit) {
-      alert('You do not have edit permissions');
-      return;
-    }
-
     isHighlighting = !isHighlighting;
     highlightBtn.classList.toggle('active', isHighlighting);
     highlightBtn.textContent = isHighlighting ? 'Hide Unlinked' : 'Show Unlinked';
 
-    pluginBridge.highlightUnlinked(isHighlighting, state.scope);
+    pluginBridge.highlightUnlinked(isHighlighting, store.getState().scope);
   });
 }
 
@@ -73,12 +71,34 @@ export function renderTextList(): void {
     return;
   }
 
-  textList.innerHTML = filtered.map(node => {
+  // In dev mode, only show linked nodes
+  const displayNodes = state.canEdit ? filtered : filtered.filter(n => n.multilanId);
+
+  if (displayNodes.length === 0) {
+    textList.innerHTML = `<div class="empty-state">${state.canEdit ? 'No text layers found' : 'No linked text layers found'}</div>`;
+    return;
+  }
+
+  textList.innerHTML = displayNodes.map(node => {
     const itemClass = node.multilanId ? 'linked' : 'unlinked';
     const translations = node.translations || {};
     const previewText = node.multilanId
       ? (translations[state.currentLang] || '*Multilan not available*')
       : node.characters;
+
+    if (!state.canEdit) {
+      // Dev mode: show multilanId badge, no link/unlink buttons
+      return `
+        <div class="text-item ${itemClass}" data-id="${node.id}">
+          <div class="text-item-header">
+            <span class="text-item-name">${escapeHtml(node.name)}</span>
+            <span class="btn-sm btn-sm-success">${escapeHtml(node.multilanId!)}</span>
+          </div>
+          <div class="text-item-content">${escapeHtml(previewText)}</div>
+        </div>
+      `;
+    }
+
     const linkButton = !node.multilanId ? `<button class="btn-link-node" data-id="${node.id}" data-text="${escapeHtml(node.characters)}">Link</button>` : '';
     const unlinkButton = node.multilanId ? `<button class="btn-unlink-node" data-id="${node.id}">Unlink</button>` : '';
 

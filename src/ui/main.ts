@@ -23,7 +23,6 @@ import {
   clearSearch,
   setActiveLanguage,
   updateSearchHint,
-  hideAutoLinkTab,
   hideLanguageBar
 } from './components';
 
@@ -61,7 +60,6 @@ function handlePluginMessage(msg: PluginMessage): void {
 
       if (!msg.canEdit) {
         setViewMode(true);
-        hideAutoLinkTab();
         hideLanguageBar();
       }
 
