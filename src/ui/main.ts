@@ -93,9 +93,15 @@ function handlePluginMessage(msg: PluginMessage): void {
       });
       updateSearchSelectedNode();
 
-      // Update text list if in selection mode
       const state = store.getState();
-      if (state.scope === 'selection' && msg.selectionTextNodes) {
+
+      // Dev mode: auto-switch to selection data when something is selected, otherwise show page
+      if (!state.canEdit) {
+        if (msg.hasSelection && msg.selectionTextNodes) {
+          store.setState({ textNodes: msg.selectionTextNodes });
+        }
+        renderTextList();
+      } else if (state.scope === 'selection' && msg.selectionTextNodes) {
         store.setState({ textNodes: msg.selectionTextNodes });
         renderTextList();
       }

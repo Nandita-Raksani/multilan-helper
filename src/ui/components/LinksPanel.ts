@@ -13,11 +13,12 @@ export function initLinksPanel(): void {
   const textSearch = getElementById<HTMLInputElement>('textSearch');
   const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
 
-  // Dev mode: rename tab, hide edit-only controls
+  // Dev mode: rename tab, hide edit-only controls and scope buttons
   if (!state.canEdit) {
     const tab = document.querySelector('.tab[data-tab="texts"]');
-    if (tab) tab.textContent = 'Linked Texts';
+    if (tab) tab.textContent = 'Linked Multilans';
     highlightBtn.style.display = 'none';
+    scopeBtns.forEach(btn => btn.style.display = 'none');
   }
 
   // Scope toggle
