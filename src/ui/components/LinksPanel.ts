@@ -76,7 +76,9 @@ export function renderTextList(): void {
   textList.innerHTML = filtered.map(node => {
     const itemClass = node.multilanId ? 'linked' : 'unlinked';
     const translations = node.translations || {};
-    const previewText = translations[state.currentLang] || node.characters;
+    const previewText = node.multilanId
+      ? (translations[state.currentLang] || '*Multilan not available*')
+      : node.characters;
     const linkButton = !node.multilanId ? `<button class="btn-link-node" data-id="${node.id}" data-text="${escapeHtml(node.characters)}">Link</button>` : '';
     const unlinkButton = node.multilanId ? `<button class="btn-unlink-node" data-id="${node.id}">Unlink</button>` : '';
 

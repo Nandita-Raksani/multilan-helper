@@ -299,6 +299,11 @@ body {
   word-break: break-word;
 }
 
+.translation-text.translation-unavailable {
+  color: var(--figma-color-text-tertiary, #999);
+  font-style: italic;
+}
+
 /* Search Results */
 .search-results {
   display: flex;

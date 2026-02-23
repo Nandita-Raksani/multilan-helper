@@ -1,4 +1,5 @@
 import type { SearchResult, MultilanStatus } from '../../shared/types';
+import { SUPPORTED_LANGUAGES } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
 import { getElementById } from '../utils/dom';
@@ -193,7 +194,6 @@ export function renderGlobalSearchResults(): void {
   globalSearchResultsCount.textContent = `${results.length} result${results.length > 1 ? 's' : ''} found`;
 
   globalSearchResults.innerHTML = sortedResults.map(result => {
-    const primaryText = result.translations[state.currentLang] || result.translations['en'] || Object.values(result.translations)[0];
     const isCurrentLink = isAlreadyLinked && state.selectedNode?.multilanId === result.multilanId;
     const metadataJson = getMetadataJson(result);
 
@@ -206,18 +206,26 @@ export function renderGlobalSearchResults(): void {
           </div>
         </div>
         <div class="translations-preview">
-          ${Object.entries(result.translations).map(([lang, text]) => `
-            <div class="translation-row ${lang === state.currentLang ? 'active' : ''}">
-              <span class="translation-lang">${lang.toUpperCase()}</span>
-              <span class="translation-text">${escapeHtml(text)}</span>
-              <button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
-            </div>
-          `).join('')}
+          ${SUPPORTED_LANGUAGES.map(lang => {
+            const text = result.translations[lang];
+            if (text) {
+              return `
+              <div class="translation-row ${lang === state.currentLang ? 'active' : ''}">
+                <span class="translation-lang">${lang.toUpperCase()}</span>
+                <span class="translation-text">${escapeHtml(text)}</span>
+                <button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+              </div>`;
+            }
+            return `
+              <div class="translation-row ${lang === state.currentLang ? 'active' : ''} unavailable">
+                <span class="translation-lang">${lang.toUpperCase()}</span>
+                <span class="translation-text translation-unavailable"><em>Multilan not available</em></span>
+              </div>`;
+          }).join('')}
         </div>
         <div class="search-result-actions">
           ${state.canEdit && hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
           ${isCurrentLink ? `<span class="currently-linked-text">Currently linked</span>` : ''}
-          ${state.canEdit ? `<button class="btn-create-result btn-sm btn-sm-primary" data-id="${escapeHtml(result.multilanId)}" data-text="${escapeHtml(primaryText)}">Create</button>` : ''}
           ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
         </div>
         ${metadataJson ? `<div class="metadata-info collapsed">${buildMetadataContent(metadataJson)}</div>` : ''}
@@ -267,16 +275,6 @@ function attachSearchResultHandlers(): void {
       const multilanId = btn.dataset.id!;
       if (!state.selectedNode) return;
       pluginBridge.linkNode(state.selectedNode.id, multilanId, state.currentLang);
-    });
-  });
-
-  // Create button handlers
-  globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-create-result').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const multilanId = btn.dataset.id!;
-      const text = btn.dataset.text!;
-      pluginBridge.createLinkedText(multilanId, text, state.currentLang);
     });
   });
 

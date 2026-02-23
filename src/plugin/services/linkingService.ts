@@ -119,13 +119,8 @@ export async function switchLanguage(
     let translation = getTranslation(translationData, multilanId, lang);
 
     if (!translation) {
-      // Fallback to English
-      translation = getTranslation(translationData, multilanId, "en");
-      if (translation) {
-        missing.push(node.id);
-      } else {
-        continue;
-      }
+      missing.push(node.id);
+      translation = "*Multilan not available*";
     }
 
     // Load font before changing text
