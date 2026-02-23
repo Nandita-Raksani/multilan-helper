@@ -50,15 +50,8 @@ export async function linkTextNode(
   // Add multilanId to node name for visibility to viewers
   addMultilanIdToName(node, multilanId);
 
-  // Update text with translation if both translationData and language are provided
-  if (translationData && language) {
-    const translation = getTranslation(translationData, multilanId, language);
-    if (translation) {
-      await updateNodeText(node, translation);
-      // Store the expected text to detect modifications
-      setExpectedText(node, translation);
-    }
-  }
+  // Store the current text as expected text to detect future modifications
+  setExpectedText(node, node.characters);
 
   return true;
 }
