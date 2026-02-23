@@ -322,11 +322,6 @@ body {
   background: var(--figma-color-bg-hover);
 }
 
-.search-result-id {
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
 /* Buttons */
 .btn {
   padding: 8px 16px;
@@ -766,21 +761,11 @@ body {
   margin-bottom: 8px;
 }
 
-/* MultilanId badge - monospace style to look like an ID */
+/* MultilanId text - plain label next to copy button */
 .search-result-id {
   font-size: 11px;
   font-weight: 600;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  background: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
-  padding: 3px 8px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.search-result-id:hover {
-  background: rgba(59, 130, 246, 0.25);
+  color: var(--figma-color-text);
 }
 
 .search-result-primary {
@@ -912,12 +897,6 @@ body {
   align-items: center;
   gap: 8px;
   width: 100%;
-}
-
-.search-result-id {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--figma-color-text);
 }
 
 /* Icon button for copy */
