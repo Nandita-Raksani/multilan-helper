@@ -149,7 +149,8 @@ export function renderGlobalSearchResults(): void {
       <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
         <div class="search-result-header">
           <div class="search-result-id-row">
-            <span class="btn-sm btn-sm-success clickable-id" data-id="${escapeHtml(result.multilanId)}" title="Click to copy">${escapeHtml(result.multilanId)}</span>
+            <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
+            <button class="copy-btn icon-btn" data-text="${escapeHtml(result.multilanId)}" title="Copy ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
             ${getStatusBadge(result.metadata?.status)}
           </div>
         </div>
@@ -189,22 +190,7 @@ export function renderGlobalSearchResults(): void {
 function attachSearchResultHandlers(): void {
   const globalSearchResults = getElementById<HTMLDivElement>('globalSearchResults');
 
-  // Clickable ID handlers
-  globalSearchResults.querySelectorAll<HTMLSpanElement>('.clickable-id').forEach(span => {
-    span.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = span.dataset.id!;
-      if (copyToClipboard(id)) {
-        const originalText = span.textContent;
-        span.textContent = 'Copied!';
-        setTimeout(() => {
-          span.textContent = originalText;
-        }, 1000);
-      }
-    });
-  });
-
-  // Copy text handlers
+  // Copy button handlers (ID + translation text)
   globalSearchResults.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
