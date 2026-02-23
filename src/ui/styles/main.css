@@ -859,6 +859,16 @@ body {
   background: var(--figma-color-bg-secondary);
 }
 
+.btn-sm-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-sm-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
 .btn-sm-warning {
   background: #f59e0b;
   color: white;

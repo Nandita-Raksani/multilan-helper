@@ -174,8 +174,7 @@ export function renderGlobalSearchResults(): void {
         </div>
         <div class="search-result-actions">
           ${state.canEdit && hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
-          ${isCurrentLink ? `<span class="currently-linked-text">Currently linked</span>` : ''}
-          ${isCurrentLink && state.canEdit ? `<button class="btn-unlink-result btn-sm btn-sm-outline" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
+          ${isCurrentLink && state.canEdit ? `<button class="btn-unlink-result btn-sm btn-sm-danger" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
           ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
         </div>
         ${metadataJson ? `<div class="metadata-info collapsed">${buildMetadataContent(metadataJson)}</div>` : ''}
