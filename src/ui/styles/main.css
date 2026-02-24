@@ -984,3 +984,156 @@ body {
   border-color: #0d99ff;
 }
 
+/* Frame Panel */
+.frame-header {
+  margin-bottom: 12px;
+}
+
+.frame-header-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--figma-color-text);
+}
+
+.frame-header-summary {
+  font-size: 10px;
+  color: var(--figma-color-text-secondary);
+  margin-top: 2px;
+}
+
+.frame-node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.frame-node-card {
+  padding: 10px 12px;
+  border: 1px solid var(--figma-color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.frame-node-card:hover {
+  background: var(--figma-color-bg-hover);
+  border-color: var(--figma-color-border-brand);
+}
+
+.frame-node-card-linked {
+  border-left: 3px solid #10b981;
+}
+
+.frame-node-card-exact {
+  border-left: 3px solid #10b981;
+}
+
+.frame-node-card-close {
+  border-left: 3px solid #f59e0b;
+}
+
+.frame-node-card-none {
+  border-left: 3px solid #ef4444;
+}
+
+.frame-node-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.frame-node-text {
+  font-size: 11px;
+  color: var(--figma-color-text);
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+
+.frame-node-id-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.frame-node-id {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--figma-color-text-secondary);
+}
+
+.frame-score {
+  font-size: 10px;
+  color: var(--figma-color-text-tertiary);
+  margin-left: auto;
+}
+
+.frame-node-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--figma-color-border);
+}
+
+.frame-node-hint {
+  font-size: 10px;
+  color: var(--figma-color-text-secondary);
+  margin-top: 4px;
+}
+
+/* Frame Carousel */
+.frame-carousel-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--figma-color-border);
+}
+
+.frame-carousel-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.frame-carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--figma-color-border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.frame-carousel-dot.active {
+  background: var(--figma-color-bg-brand);
+}
+
+.frame-carousel-dot:hover {
+  background: var(--figma-color-text-secondary);
+}
+
+.frame-carousel-prev,
+.frame-carousel-next {
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.frame-carousel-prev:disabled,
+.frame-carousel-next:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+

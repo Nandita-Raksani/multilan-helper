@@ -1,4 +1,4 @@
-import type { Language, TextNodeInfo, SearchResult, MatchDetectionResult, UnlinkedQueueItem } from '../../shared/types';
+import type { Language, TextNodeInfo, SearchResult, MatchDetectionResult, UnlinkedQueueItem, FrameNodeMatchResult } from '../../shared/types';
 
 export interface UIState {
   canEdit: boolean;
@@ -10,6 +10,8 @@ export interface UIState {
   matchResult: MatchDetectionResult | null;
   unlinkedQueue: UnlinkedQueueItem[];
   unlinkedQueueIndex: number;
+  selectionTextNodes: TextNodeInfo[];
+  frameMatchResults: FrameNodeMatchResult[];
   isHighlightMode: boolean;
   globalSearchResults: SearchResult[];
   allTranslations: unknown[];
@@ -29,6 +31,8 @@ class Store {
     matchResult: null,
     unlinkedQueue: [],
     unlinkedQueueIndex: 0,
+    selectionTextNodes: [],
+    frameMatchResults: [],
     isHighlightMode: false,
     globalSearchResults: [],
     allTranslations: [],

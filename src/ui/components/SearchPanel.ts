@@ -186,7 +186,7 @@ function getMatchBadgeForResult(resultId: string): { css: string; label: string 
 
 export function renderGlobalSearchResults(): void {
   const state = store.getState();
-  const results = state.globalSearchResults;
+  let results = [...state.globalSearchResults];
   const hasSelection = state.selectedNode;
   const isAlreadyLinked = state.selectedNode?.multilanId;
   const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
@@ -194,6 +194,25 @@ export function renderGlobalSearchResults(): void {
 
   const globalSearchResults = getElementById<HTMLDivElement>('globalSearchResults');
   const globalSearchResultsCount = getElementById<HTMLDivElement>('globalSearchResultsCount');
+
+  // Merge matchResult into search results so detected matches always appear
+  const match = state.matchResult;
+  if (match && hasSelection) {
+    const existingIds = new Set(results.map(r => r.multilanId));
+
+    if (match.status === 'linked' && match.multilanId && match.translations && !existingIds.has(match.multilanId)) {
+      results.unshift({ multilanId: match.multilanId, translations: match.translations, metadata: match.metadata });
+    } else if (match.status === 'exact' && match.multilanId && match.translations && !existingIds.has(match.multilanId)) {
+      results.unshift({ multilanId: match.multilanId, translations: match.translations, metadata: match.metadata });
+    } else if (match.status === 'close' && match.suggestions) {
+      for (const suggestion of match.suggestions) {
+        if (!existingIds.has(suggestion.multilanId)) {
+          results.unshift({ multilanId: suggestion.multilanId, translations: suggestion.translations, metadata: suggestion.metadata });
+          existingIds.add(suggestion.multilanId);
+        }
+      }
+    }
+  }
 
   if (results.length === 0) {
     globalSearchResultsCount.textContent = '';

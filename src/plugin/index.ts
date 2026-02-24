@@ -9,6 +9,8 @@ import {
   PluginMessage,
   Language,
   SUPPORTED_LANGUAGES,
+  FrameNodeMatchResult,
+  TextNodeInfo,
 } from "../shared/types";
 import { createAdapter } from "../adapters";
 import { TraFileData } from "../adapters/types/traFile.types";
@@ -147,6 +149,30 @@ function autoUnlinkModifiedNodes(scope: "page" | "selection"): number {
   return unlinkedCount;
 }
 
+// Build per-node match results for frame/multi-selection mode
+function buildFrameMatchResults(nodes: TextNodeInfo[]): FrameNodeMatchResult[] {
+  return nodes.map(node => {
+    let matchResult;
+    if (node.multilanId) {
+      const metadata = metadataData ? metadataData[node.multilanId] : undefined;
+      matchResult = {
+        status: 'linked' as const,
+        multilanId: node.multilanId,
+        translations: node.translations || undefined,
+        metadata,
+      };
+    } else {
+      matchResult = detectMatch(translationData, node.characters, metadataData);
+    }
+    return {
+      nodeId: node.id,
+      nodeName: node.name,
+      characters: node.characters,
+      matchResult,
+    };
+  });
+}
+
 // Initialize: send initial data to UI
 async function initialize(): Promise<void> {
   // Auto-unlink nodes that have been modified by designers
@@ -195,19 +221,26 @@ async function initialize(): Promise<void> {
 
 // Handle selection change — auto-detect matches for unlinked nodes
 figma.on("selectionchange", () => {
-  const selectedNode = getSelectedTextNodeInfo(getTranslations);
+  let selectedNode = getSelectedTextNodeInfo(getTranslations);
   const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
   const hasSelection = figma.currentPage.selection.length > 0;
+
+  // If no single text node selected, use the first text node found in selection
+  if (!selectedNode && selectionTextNodes.length > 0) {
+    selectedNode = selectionTextNodes[0];
+  }
 
   // Auto-detect match for selected text node
   let matchResult = undefined;
   if (selectedNode) {
     if (selectedNode.multilanId) {
       // Already linked
+      const metadata = metadataData ? metadataData[selectedNode.multilanId] : undefined;
       matchResult = {
         status: 'linked' as const,
         multilanId: selectedNode.multilanId,
         translations: selectedNode.translations || undefined,
+        metadata,
       };
     } else {
       // Unlinked — run match detection
@@ -215,12 +248,18 @@ figma.on("selectionchange", () => {
     }
   }
 
+  // Build frame match results for multi-selection
+  const frameMatchResults = selectionTextNodes.length > 1
+    ? buildFrameMatchResults(selectionTextNodes)
+    : undefined;
+
   figma.ui.postMessage({
     type: "selection-changed",
     selectedNode,
     selectionTextNodes,
     hasSelection,
     matchResult,
+    frameMatchResults,
   });
 });
 
@@ -288,7 +327,11 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           // Refresh
           const textNodes = getAllTextNodesInfo("page", getTranslations);
           const selectedNode = getSelectedTextNodeInfo(getTranslations);
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
+          const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
+          const frameMatchResults = selectionTextNodes.length > 1
+            ? buildFrameMatchResults(selectionTextNodes)
+            : undefined;
+          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode, selectionTextNodes, frameMatchResults });
         }
       }
       break;
@@ -304,7 +347,11 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           figma.notify("Unlinked");
           const textNodes = getAllTextNodesInfo("page", getTranslations);
           const selectedNode = getSelectedTextNodeInfo(getTranslations);
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
+          const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
+          const frameMatchResults = selectionTextNodes.length > 1
+            ? buildFrameMatchResults(selectionTextNodes)
+            : undefined;
+          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode, selectionTextNodes, frameMatchResults });
         }
       }
       break;

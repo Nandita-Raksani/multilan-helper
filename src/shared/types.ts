@@ -75,6 +75,13 @@ export interface UnlinkedQueueItem {
   characters: string;
 }
 
+export interface FrameNodeMatchResult {
+  nodeId: string;
+  nodeName: string;
+  characters: string;
+  matchResult: MatchDetectionResult;
+}
+
 // Plugin message types (UI -> Plugin)
 export type PluginMessageType =
   | "init"
@@ -129,6 +136,7 @@ export interface PluginMessage {
   missing?: string[];
   results?: SearchResult[];
   matchResult?: MatchDetectionResult;
+  frameMatchResults?: FrameNodeMatchResult[];
   unlinkedQueue?: UnlinkedQueueItem[];
   hasSelection?: boolean;
 }

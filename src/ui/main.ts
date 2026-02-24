@@ -16,7 +16,10 @@ import {
   clearSearch,
   setActiveLanguage,
   updateSearchHint,
-  hideLanguageBar
+  hideLanguageBar,
+  renderFramePanel,
+  isFrameMode,
+  showSearchBar
 } from './components';
 import { handleUnlinkedQueue, advanceQueue } from './components/SearchPanel';
 
@@ -72,11 +75,21 @@ function handlePluginMessage(msg: PluginMessage): void {
       store.setState({
         textNodes: msg.textNodes || []
       });
+      if (msg.selectionTextNodes !== undefined) {
+        store.setState({
+          selectionTextNodes: msg.selectionTextNodes || [],
+          frameMatchResults: msg.frameMatchResults || [],
+        });
+      }
       if (msg.selectedNode !== undefined) {
         store.setState({
           selectedNode: msg.selectedNode || null,
           matchResult: msg.matchResult || null
         });
+      }
+      if (isFrameMode()) {
+        renderFramePanel();
+      } else {
         renderGlobalSearchResults();
       }
       // In highlight mode, after a link/unlink the node list changed — advance queue
@@ -88,18 +101,25 @@ function handlePluginMessage(msg: PluginMessage): void {
     case 'selection-changed': {
       store.setState({
         selectedNode: msg.selectedNode || null,
+        selectionTextNodes: msg.selectionTextNodes || [],
+        frameMatchResults: msg.frameMatchResults || [],
         hasSelection: msg.hasSelection || false,
         matchResult: msg.matchResult || null
       });
 
-      // Auto-search when text is selected — search results will re-render with badges
-      if (getCurrentTab() === 'search') {
-        const state = store.getState();
-        if (state.selectedNode) {
-          const text = state.selectedNode.characters;
-          triggerSearch(text);
-        } else {
-          clearSearch();
+      if (isFrameMode()) {
+        renderFramePanel();
+      } else {
+        showSearchBar();
+        // Auto-search when text is selected — search results will re-render with badges
+        if (getCurrentTab() === 'search') {
+          const state = store.getState();
+          if (state.selectedNode) {
+            const text = state.selectedNode.characters;
+            triggerSearch(text);
+          } else {
+            clearSearch();
+          }
         }
       }
       break;
