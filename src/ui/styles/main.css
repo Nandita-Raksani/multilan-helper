@@ -1100,25 +1100,26 @@ body {
 /* Highlight Button */
 .highlight-btn {
   flex: none;
-  padding: 8px 10px;
+  padding: 4px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  white-space: nowrap;
+  line-height: 1.2;
+  text-align: center;
   background: var(--figma-color-bg);
-  border: 1px solid #f59e0b;
-  color: #f59e0b;
+  border: 1px solid #0d99ff;
+  color: #0d99ff;
 }
 
 .highlight-btn:hover {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(13, 153, 255, 0.1);
 }
 
 .highlight-btn.active {
-  background: #f59e0b;
+  background: #0d99ff;
   color: white;
-  border-color: #f59e0b;
+  border-color: #0d99ff;
 }
 
