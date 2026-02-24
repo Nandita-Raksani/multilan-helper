@@ -9,6 +9,7 @@ import {
   SUPPORTED_LANGUAGES,
   MetadataMap,
   MultilanMetadata,
+  MatchDetectionResult,
 } from "../../shared/types";
 
 /**
@@ -315,4 +316,52 @@ export function detectLanguage(
   }
 
   return bestLang;
+}
+
+/**
+ * Detect match for a single text string against translation data.
+ * Pass 1: Exact match via buildTextToIdMap (O(1) lookup)
+ * Pass 2: Fuzzy match via searchTranslationsWithScore (limit=5, threshold≥0.3)
+ */
+export function detectMatch(
+  translationData: TranslationMap,
+  text: string,
+  metadataMap?: MetadataMap
+): MatchDetectionResult {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { status: 'none' };
+  }
+
+  // Pass 1: Exact match
+  const textToIdMap = buildTextToIdMap(translationData);
+  const exactId = textToIdMap.get(trimmed);
+  if (exactId) {
+    const translations = translationData[exactId];
+    const metadata = metadataMap ? metadataMap[exactId] : undefined;
+    return {
+      status: 'exact',
+      multilanId: exactId,
+      translations,
+      metadata,
+    };
+  }
+
+  // Pass 2: Fuzzy match
+  const fuzzyResults = searchTranslationsWithScore(translationData, trimmed, 5);
+  const filtered = fuzzyResults.filter(r => r.score >= 0.3);
+
+  if (filtered.length > 0) {
+    // Attach metadata to suggestions
+    const suggestions = filtered.map(r => ({
+      ...r,
+      metadata: metadataMap ? metadataMap[r.multilanId] : undefined,
+    }));
+    return {
+      status: 'close',
+      suggestions,
+    };
+  }
+
+  return { status: 'none' };
 }

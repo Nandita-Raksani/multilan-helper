@@ -22,56 +22,14 @@
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <div class="tab active" data-tab="search">Search</div>
-      <div class="tab" data-tab="texts">Auto-Link</div>
-    </div>
-
     <!-- Search Panel -->
     <div id="searchPanel" class="panel active">
-      <!-- Selection Context Banner -->
-      <div id="searchSelectedNode" class="selected-node" style="display: none;">
-        <div class="selected-node-header">
-          <div class="selected-node-info">
-            <span id="searchSelectedText" class="selected-node-text"></span>
-          </div>
-          <span id="searchSelectedBadge"></span>
-        </div>
-        <div id="searchSelectedActions" class="btn-row" style="margin-top: 8px;"></div>
-      </div>
-
       <div class="search-container">
         <input type="text" class="search-panel-input" id="globalSearchInput" placeholder="Search by ID or text...">
       </div>
       <div class="search-hint">Search translations, then Copy, Link, or Create text nodes.</div>
       <div id="globalSearchResultsCount" class="search-results-count"></div>
       <div id="globalSearchResults"></div>
-    </div>
-
-    <!-- Auto-Link Panel -->
-    <div id="textsPanel" class="panel">
-      <div class="texts-header">
-        <button class="scope-btn active" data-scope="page">Entire Page</button>
-        <button class="scope-btn" data-scope="selection">Selection</button>
-      </div>
-      <input type="text" class="search-box" id="textSearch" placeholder="Filter texts...">
-      <div id="textList" class="text-list">
-        <div class="empty-state">Loading...</div>
-      </div>
-    </div>
-
-    <!-- Bulk Auto-Link Modal -->
-    <div id="bulkLinkModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Auto-Link Results</h3>
-        <div id="bulkLinkSummary" class="summary-stats"></div>
-        <div id="bulkLinkContent"></div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" id="closeBulkModal">Close</button>
-          <button class="btn btn-primary" id="applyExactMatches" style="display: none;">Apply Exact Matches</button>
-        </div>
-      </div>
     </div>
 
     <!-- Status Bar -->

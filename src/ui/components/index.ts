@@ -1,6 +1,4 @@
 export { initLanguageBar, setActiveLanguage, hideLanguageBar } from './LanguageBar';
-export { initTabs, setActiveTab, onTabChange, getCurrentTab, hideAutoLinkTab } from './Tabs';
-export { initSearchPanel, updateSearchSelectedNode, renderGlobalSearchResults, setSearchQuery, clearSearch, triggerSearch, updateSearchHint } from './SearchPanel';
-export { initLinksPanel, renderTextList } from './LinksPanel';
-export { initBulkLinkModal, showModal as showBulkLinkModal, renderBulkLinkResults } from './BulkLinkModal';
+export { initTabs, getCurrentTab } from './Tabs';
+export { initSearchPanel, renderGlobalSearchResults, setSearchQuery, clearSearch, triggerSearch, updateSearchHint } from './SearchPanel';
 export { initStatusBar, setStatus, setBuildTimestamp, setViewMode } from './StatusBar';

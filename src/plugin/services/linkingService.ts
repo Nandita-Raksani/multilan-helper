@@ -2,7 +2,6 @@
 
 import {
   TranslationMap,
-  BulkMatchResult,
   Language,
 } from "../../shared/types";
 import {
@@ -16,7 +15,6 @@ import {
   setPlaceholderStatus,
   wrapWithStars,
   updateNodeText,
-  loadNodeFont,
   setExpectedText,
   clearExpectedText,
   addMultilanIdToName,
@@ -25,8 +23,6 @@ import {
 import {
   getTranslation,
   getAllTranslations,
-  buildTextToIdMap,
-  searchTranslationsWithScore,
   extractVariableValues,
   applyVariables,
 } from "./translationService";
@@ -145,79 +141,6 @@ export function switchLanguage(
   }
 
   return { success, missing, overflow };
-}
-
-/**
- * Bulk auto-link: find matches for unlinked text nodes
- */
-export function bulkAutoLink(
-  translationData: TranslationMap,
-  scope: "page" | "selection"
-): BulkMatchResult {
-  const nodes = getTextNodesInScope(scope);
-  const result: BulkMatchResult = {
-    exactMatches: [],
-    fuzzyMatches: [],
-    unmatched: [],
-  };
-
-  // Build a reverse lookup for exact matching
-  const textToMultilanId = buildTextToIdMap(translationData);
-
-  for (const node of nodes) {
-    // Skip already linked nodes (unless they're placeholders)
-    const currentId = getMultilanId(node);
-    if (currentId && !isPlaceholder(node)) continue;
-
-    const text = node.characters.trim();
-    if (!text) continue;
-
-    // Pass 1: Exact match
-    const exactMatch = textToMultilanId.get(text);
-    if (exactMatch) {
-      result.exactMatches.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        text,
-        multilanId: exactMatch,
-      });
-      continue;
-    }
-
-    // Pass 2: Fuzzy match
-    const fuzzyResults = searchTranslationsWithScore(translationData, text);
-    if (fuzzyResults.length > 0 && fuzzyResults[0].score >= 0.3) {
-      result.fuzzyMatches.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        text,
-        suggestions: fuzzyResults.slice(0, 3),
-      });
-    } else {
-      result.unmatched.push({
-        nodeId: node.id,
-        nodeName: node.name,
-        text,
-      });
-    }
-  }
-
-  return result;
-}
-
-/**
- * Apply exact matches from bulk auto-link
- */
-export async function applyExactMatches(
-  matches: Array<{ nodeId: string; multilanId: string }>
-): Promise<number> {
-  let count = 0;
-  for (const match of matches) {
-    if (await linkTextNode(match.nodeId, match.multilanId)) {
-      count++;
-    }
-  }
-  return count;
 }
 
 /**

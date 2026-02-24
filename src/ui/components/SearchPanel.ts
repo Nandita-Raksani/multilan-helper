@@ -5,7 +5,6 @@ import { pluginBridge } from '../services/pluginBridge';
 import { getElementById } from '../utils/dom';
 import { escapeHtml, copyToClipboard, debounce } from '../utils/dom';
 
-
 // Status badge configuration - light bg with colored text (like GitHub labels)
 const STATUS_CONFIG: Record<MultilanStatus, { bg: string; text: string; label: string }> = {
   FINAL: { bg: 'rgba(16, 185, 129, 0.15)', text: '#059669', label: 'Final' },
@@ -63,6 +62,7 @@ function buildMetadataContent(metadataJson: string): string {
 
 export function initSearchPanel(): void {
   const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
+  const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
 
   // Global search input
   globalSearchInput.addEventListener('input', debounce(() => {
@@ -75,7 +75,29 @@ export function initSearchPanel(): void {
     }
   }, 200));
 
-  // Update hint based on edit permissions
+  // Highlight unlinked toggle
+  highlightBtn.addEventListener('click', () => {
+    const state = store.getState();
+    const newMode = !state.isHighlightMode;
+    store.setState({ isHighlightMode: newMode });
+    highlightBtn.classList.toggle('active', newMode);
+    highlightBtn.innerHTML = newMode ? 'Hide<br>unlinked' : 'Highlight<br>unlinked';
+
+    if (newMode) {
+      pluginBridge.highlightUnlinked(true, state.scope);
+      pluginBridge.getUnlinkedQueue(state.scope);
+    } else {
+      pluginBridge.highlightUnlinked(false, state.scope);
+      store.setState({ unlinkedQueue: [], unlinkedQueueIndex: 0 });
+    }
+  });
+
+  // Dev mode: hide highlight button
+  const state = store.getState();
+  if (!state.canEdit) {
+    highlightBtn.style.display = 'none';
+  }
+
   updateSearchHint();
 }
 
@@ -89,12 +111,77 @@ export function updateSearchHint(): void {
   }
 }
 
-export function updateSearchSelectedNode(): void {
-  // Hide the selected node banner - unlink is now in search results
-  const searchSelectedNode = getElementById<HTMLDivElement>('searchSelectedNode');
-  searchSelectedNode.style.display = 'none';
+// --- Highlight Queue ---
 
-  renderGlobalSearchResults();
+export function handleUnlinkedQueue(): void {
+  const state = store.getState();
+  const queue = state.unlinkedQueue;
+
+  if (queue.length === 0) {
+    getElementById('statusText').textContent = 'No unlinked text nodes found';
+    return;
+  }
+
+  getElementById('statusText').textContent = `${queue.length} unlinked node${queue.length > 1 ? 's' : ''} found`;
+  store.setState({ unlinkedQueueIndex: 0 });
+  selectQueueItem(0);
+}
+
+function selectQueueItem(index: number): void {
+  const state = store.getState();
+  const queue = state.unlinkedQueue;
+  if (index >= queue.length) {
+    exitHighlightMode();
+    getElementById('statusText').textContent = 'All unlinked nodes processed!';
+    return;
+  }
+
+  store.setState({ unlinkedQueueIndex: index });
+  pluginBridge.selectNode(queue[index].nodeId);
+}
+
+export function advanceQueue(): void {
+  const state = store.getState();
+  if (!state.isHighlightMode) return;
+
+  const nextIndex = state.unlinkedQueueIndex + 1;
+  selectQueueItem(nextIndex);
+}
+
+function exitHighlightMode(): void {
+  const state = store.getState();
+  store.setState({ isHighlightMode: false, unlinkedQueue: [], unlinkedQueueIndex: 0 });
+  pluginBridge.highlightUnlinked(false, state.scope);
+
+  const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
+  highlightBtn.classList.remove('active');
+  highlightBtn.innerHTML = 'Highlight<br>unlinked';
+}
+
+// --- Global Search Results ---
+
+/**
+ * Determine the corner badge for a search result card based on matchResult.
+ * Returns { css, label } or null if no badge needed.
+ */
+function getMatchBadgeForResult(resultId: string): { css: string; label: string } | null {
+  const state = store.getState();
+  const match = state.matchResult;
+  if (!match || !state.selectedNode) return null;
+
+  if (match.status === 'linked' && match.multilanId === resultId) {
+    return { css: 'match-badge-linked', label: 'Linked' };
+  }
+  if (match.status === 'exact' && match.multilanId === resultId) {
+    return { css: 'match-badge-exact', label: 'Match' };
+  }
+  if (match.status === 'close' && match.suggestions) {
+    const inSuggestions = match.suggestions.some(s => s.multilanId === resultId);
+    if (inSuggestions) {
+      return { css: 'match-badge-close', label: 'Close Match' };
+    }
+  }
+  return null;
 }
 
 export function renderGlobalSearchResults(): void {
@@ -110,47 +197,61 @@ export function renderGlobalSearchResults(): void {
 
   if (results.length === 0) {
     globalSearchResultsCount.textContent = '';
-    if (searchQuery) {
-      // Show helpful message when searching with a selected node
-      if (hasSelection && !isAlreadyLinked) {
-        const truncatedQuery = searchQuery.length > 40 ? searchQuery.slice(0, 40) + '...' : searchQuery;
-        globalSearchResults.innerHTML = `
-          <div class="empty-state">
-            <div class="no-match-title">No match found</div>
-            <div class="no-match-text">"${escapeHtml(truncatedQuery)}"</div>
-            <div class="no-match-hint">Try searching with fewer words or check if this text exists in translations.</div>
-          </div>
-        `;
-      } else {
-        globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
-      }
+    // Show a No Match card when an unlinked node is selected and no results found
+    if (hasSelection && !isAlreadyLinked && searchQuery) {
+      const truncatedText = searchQuery.length > 60 ? searchQuery.slice(0, 60) + '...' : searchQuery;
+      globalSearchResults.innerHTML = `
+        <div class="search-result-card search-result-card-none">
+          <span class="match-badge match-badge-none match-badge-corner">No Match</span>
+          <div class="no-match-selected-text">"${escapeHtml(truncatedText)}"</div>
+          <div class="no-match-hint">Search manually by only selecting this layer.</div>
+        </div>
+      `;
+    } else if (searchQuery) {
+      globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
     } else {
       globalSearchResults.innerHTML = '<div class="empty-state">Start typing to search translations</div>';
     }
     return;
   }
 
-  // Sort results: linked translation first, then rest in original order
-  const sortedResults = isAlreadyLinked
-    ? [...results].sort((a, b) => {
-        if (a.multilanId === isAlreadyLinked) return -1;
-        if (b.multilanId === isAlreadyLinked) return 1;
-        return 0;
-      })
-    : results;
+  // Sort results: linked translation first, then exact match, then close matches
+  const sortedResults = [...results].sort((a, b) => {
+    const badgeA = getMatchBadgeForResult(a.multilanId);
+    const badgeB = getMatchBadgeForResult(b.multilanId);
+    const priorityOrder: Record<string, number> = { 'Linked': 0, 'Match': 1, 'Close Match': 2 };
+    const prioA = badgeA ? (priorityOrder[badgeA.label] ?? 3) : 3;
+    const prioB = badgeB ? (priorityOrder[badgeB.label] ?? 3) : 3;
+    return prioA - prioB;
+  });
 
   globalSearchResultsCount.textContent = `${results.length} result${results.length > 1 ? 's' : ''} found`;
+
+  // Copy buttons for translation text: show for dev seat only
+  const showTextCopyButtons = !state.canEdit;
+
+  const copyIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
 
   globalSearchResults.innerHTML = sortedResults.map(result => {
     const isCurrentLink = isAlreadyLinked && state.selectedNode?.multilanId === result.multilanId;
     const metadataJson = getMetadataJson(result);
+    const matchBadge = getMatchBadgeForResult(result.multilanId);
+
+    // Card gets a tinted style for linked/exact/close
+    let cardClass = 'search-result-card';
+    if (matchBadge) {
+      if (matchBadge.label === 'Linked') cardClass += ' search-result-card-linked';
+      else if (matchBadge.label === 'Match') cardClass += ' search-result-card-exact';
+      else if (matchBadge.label === 'Close Match') cardClass += ' search-result-card-close';
+    }
 
     return `
-      <div class="search-result-card" data-multilan-id="${escapeHtml(result.multilanId)}">
+      <div class="${cardClass}" data-multilan-id="${escapeHtml(result.multilanId)}">
+        ${matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-corner">${matchBadge.label}</span>` : ''}
         <div class="search-result-header">
           <div class="search-result-id-row">
             <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
-            <button class="copy-btn icon-btn" data-text="${escapeHtml(result.multilanId)}" title="Copy ID"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+            <button class="copy-btn icon-btn" data-text="${escapeHtml(result.multilanId)}" title="Copy ID">${copyIconSvg}</button>
             ${getStatusBadge(result.metadata?.status)}
           </div>
         </div>
@@ -162,7 +263,7 @@ export function renderGlobalSearchResults(): void {
               <div class="translation-row ${lang === state.currentLang ? 'active' : ''}">
                 <span class="translation-lang">${lang.toUpperCase()}</span>
                 <span class="translation-text">${escapeHtml(text)}</span>
-                <button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+                ${showTextCopyButtons ? `<button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy">${copyIconSvg}</button>` : ''}
               </div>`;
             }
             return `
@@ -182,7 +283,6 @@ export function renderGlobalSearchResults(): void {
     `;
   }).join('');
 
-  // Add event handlers
   attachSearchResultHandlers();
 }
 
@@ -201,7 +301,7 @@ function attachSearchResultHandlers(): void {
     });
   });
 
-  // Link button handlers - read latest state at click time to avoid stale closures
+  // Link button handlers
   globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-link-result').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();

@@ -6,14 +6,8 @@ import {
   initLanguageBar,
   initTabs,
   initSearchPanel,
-  initLinksPanel,
-  initBulkLinkModal,
   initStatusBar,
-  updateSearchSelectedNode,
   renderGlobalSearchResults,
-  renderTextList,
-  showBulkLinkModal,
-  renderBulkLinkResults,
   setStatus,
   setBuildTimestamp,
   setViewMode,
@@ -24,6 +18,7 @@ import {
   updateSearchHint,
   hideLanguageBar
 } from './components';
+import { handleUnlinkedQueue, advanceQueue } from './components/SearchPanel';
 
 /**
  * Get user's preferred language from browser settings
@@ -69,8 +64,7 @@ function handlePluginMessage(msg: PluginMessage): void {
       if (msg.buildTimestamp) {
         setBuildTimestamp(msg.buildTimestamp);
       }
-      renderTextList();
-      updateSearchSelectedNode();
+      renderGlobalSearchResults();
       break;
     }
 
@@ -79,34 +73,28 @@ function handlePluginMessage(msg: PluginMessage): void {
         textNodes: msg.textNodes || []
       });
       if (msg.selectedNode !== undefined) {
-        store.setState({ selectedNode: msg.selectedNode || null });
-        updateSearchSelectedNode();
+        store.setState({
+          selectedNode: msg.selectedNode || null,
+          matchResult: msg.matchResult || null
+        });
+        renderGlobalSearchResults();
       }
-      renderTextList();
+      // In highlight mode, after a link/unlink the node list changed — advance queue
+      if (store.getState().isHighlightMode) {
+        advanceQueue();
+      }
       break;
 
     case 'selection-changed': {
       store.setState({
         selectedNode: msg.selectedNode || null,
-        hasSelection: msg.hasSelection || false
+        hasSelection: msg.hasSelection || false,
+        matchResult: msg.matchResult || null
       });
-      updateSearchSelectedNode();
 
-      const state = store.getState();
-
-      // Dev mode: auto-switch to selection data when something is selected, otherwise show page
-      if (!state.canEdit) {
-        if (msg.hasSelection && msg.selectionTextNodes) {
-          store.setState({ textNodes: msg.selectionTextNodes });
-        }
-        renderTextList();
-      } else if (state.scope === 'selection' && msg.selectionTextNodes) {
-        store.setState({ textNodes: msg.selectionTextNodes });
-        renderTextList();
-      }
-
-      // Auto-search when text is selected and Search tab is active
+      // Auto-search when text is selected — search results will re-render with badges
       if (getCurrentTab() === 'search') {
+        const state = store.getState();
         if (state.selectedNode) {
           const text = state.selectedNode.characters.slice(0, 30);
           triggerSearch(text);
@@ -118,7 +106,6 @@ function handlePluginMessage(msg: PluginMessage): void {
     }
 
     case 'language-switched': {
-      // Only show status when there's something noteworthy
       if (msg.missing && msg.missing.length > 0) {
         setStatus(`${msg.missing.length} missing translations (using English fallback)`);
       } else if (msg.success === 0) {
@@ -127,16 +114,14 @@ function handlePluginMessage(msg: PluginMessage): void {
       break;
     }
 
-    case 'bulk-auto-link-results':
-      store.setState({
-        bulkLinkResults: {
-          exactMatches: msg.exactMatches || [],
-          fuzzyMatches: msg.fuzzyMatches || [],
-          unmatched: msg.unmatched || []
-        }
-      });
-      renderBulkLinkResults();
-      showBulkLinkModal();
+    case 'match-detected':
+      store.setState({ matchResult: msg.matchResult || null });
+      renderGlobalSearchResults();
+      break;
+
+    case 'unlinked-queue':
+      store.setState({ unlinkedQueue: msg.unlinkedQueue || [] });
+      handleUnlinkedQueue();
       break;
 
     case 'global-search-results':
@@ -157,8 +142,6 @@ function init(): void {
   initLanguageBar();
   initTabs();
   initSearchPanel();
-  initLinksPanel();
-  initBulkLinkModal();
   initStatusBar();
 
   // Subscribe to plugin messages

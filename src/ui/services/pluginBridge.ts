@@ -85,26 +85,17 @@ class PluginBridge {
     });
   }
 
-  bulkAutoLink(scope: 'page' | 'selection'): void {
+  detectMatch(text: string): void {
     this.send({
-      type: 'bulk-auto-link',
-      scope
+      type: 'detect-match',
+      text
     });
   }
 
-  applyExactMatches(confirmations: Array<{ nodeId: string; multilanId: string }>, scope: 'page' | 'selection'): void {
+  getUnlinkedQueue(scope: 'page' | 'selection'): void {
     this.send({
-      type: 'apply-exact-matches',
-      confirmations,
+      type: 'get-unlinked-queue',
       scope
-    });
-  }
-
-  confirmFuzzyLink(nodeId: string, multilanId: string): void {
-    this.send({
-      type: 'confirm-fuzzy-link',
-      nodeId,
-      multilanId
     });
   }
 

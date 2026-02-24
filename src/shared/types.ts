@@ -58,39 +58,21 @@ export interface SearchResult {
   metadata?: MultilanMetadata;
 }
 
-// Bulk auto-link match item types
-export interface ExactMatch {
+// Match detection types
+export type MatchStatus = 'linked' | 'exact' | 'close' | 'none';
+
+export interface MatchDetectionResult {
+  status: MatchStatus;
+  multilanId?: string;
+  suggestions?: Array<SearchResult & { score: number }>;
+  translations?: TranslationEntry;
+  metadata?: MultilanMetadata;
+}
+
+export interface UnlinkedQueueItem {
   nodeId: string;
   nodeName: string;
-  text: string;
-  multilanId: string;
-}
-
-export interface FuzzyMatch {
-  nodeId: string;
-  nodeName: string;
-  text: string;
-  suggestions: Array<SearchResult & { score: number }>;
-}
-
-export interface UnmatchedItem {
-  nodeId: string;
-  nodeName: string;
-  text: string;
-}
-
-// Bulk auto-link results
-export interface BulkMatchResult {
-  exactMatches: ExactMatch[];
-  fuzzyMatches: FuzzyMatch[];
-  unmatched: UnmatchedItem[];
-}
-
-// UI state bulk link results
-export interface BulkLinkResults {
-  exactMatches: ExactMatch[];
-  fuzzyMatches: FuzzyMatch[];
-  unmatched: UnmatchedItem[];
+  characters: string;
 }
 
 // Plugin message types (UI -> Plugin)
@@ -104,9 +86,8 @@ export type PluginMessageType =
   | "refresh"
   | "lookup-multilanId"
   | "mark-as-placeholder"
-  | "bulk-auto-link"
-  | "apply-exact-matches"
-  | "confirm-fuzzy-link"
+  | "detect-match"
+  | "get-unlinked-queue"
   | "global-search"
   | "create-linked-text"
   | "highlight-unlinked"
@@ -119,7 +100,8 @@ export type UIMessageType =
   | "selection-changed"
   | "language-switched"
   | "lookup-result"
-  | "bulk-auto-link-results"
+  | "match-detected"
+  | "unlinked-queue"
   | "global-search-results"
   | "search-results"
   | "text-created";
@@ -134,7 +116,6 @@ export interface PluginMessage {
   multilanId?: string;
   searchQuery?: string;
   text?: string;
-  confirmations?: Array<{ nodeId: string; multilanId: string }>;
   highlight?: boolean;
   // Plugin -> UI fields
   canEdit?: boolean;
@@ -147,9 +128,8 @@ export interface PluginMessage {
   success?: number;
   missing?: string[];
   results?: SearchResult[];
-  exactMatches?: ExactMatch[];
-  fuzzyMatches?: FuzzyMatch[];
-  unmatched?: UnmatchedItem[];
+  matchResult?: MatchDetectionResult;
+  unlinkedQueue?: UnlinkedQueueItem[];
   hasSelection?: boolean;
 }
 

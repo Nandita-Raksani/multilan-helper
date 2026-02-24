@@ -18,6 +18,7 @@ import {
   globalSearchTranslations,
   searchTranslations,
   detectLanguage,
+  detectMatch,
 } from "./services/translationService";
 import {
   getAllTextNodesInfo,
@@ -37,7 +38,6 @@ import {
   unlinkTextNode,
   markAsPlaceholder,
   switchLanguage,
-  bulkAutoLink,
   createLinkedTextNode,
 } from "./services/linkingService";
 
@@ -193,16 +193,34 @@ async function initialize(): Promise<void> {
   });
 }
 
-// Handle selection change
+// Handle selection change — auto-detect matches for unlinked nodes
 figma.on("selectionchange", () => {
   const selectedNode = getSelectedTextNodeInfo(getTranslations);
   const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
   const hasSelection = figma.currentPage.selection.length > 0;
+
+  // Auto-detect match for selected text node
+  let matchResult = undefined;
+  if (selectedNode) {
+    if (selectedNode.multilanId) {
+      // Already linked
+      matchResult = {
+        status: 'linked' as const,
+        multilanId: selectedNode.multilanId,
+        translations: selectedNode.translations || undefined,
+      };
+    } else {
+      // Unlinked — run match detection
+      matchResult = detectMatch(translationData, selectedNode.characters, metadataData);
+    }
+  }
+
   figma.ui.postMessage({
     type: "selection-changed",
     selectedNode,
     selectionTextNodes,
     hasSelection,
+    matchResult,
   });
 });
 
@@ -343,80 +361,32 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       }
       break;
 
-    case "bulk-auto-link":
-      if (!canEdit()) {
-        figma.notify("You don't have edit permissions", { error: true });
-        return;
-      }
-      {
-        figma.notify("Scanning for matches...");
-        const result = bulkAutoLink(translationData, msg.scope || "page");
-        const totalFound = result.exactMatches.length + result.fuzzyMatches.length;
-        if (totalFound > 0) {
-          figma.notify(
-            `Found ${result.exactMatches.length} exact + ${result.fuzzyMatches.length} fuzzy matches`
-          );
-        } else {
-          figma.notify("No matches found for unlinked text nodes");
-        }
+    case "detect-match":
+      if (msg.text) {
+        const matchResult = detectMatch(translationData, msg.text, metadataData);
         figma.ui.postMessage({
-          type: "bulk-auto-link-results",
-          ...result,
+          type: "match-detected",
+          matchResult,
         });
       }
       break;
 
-    case "apply-exact-matches":
-      if (!canEdit()) {
-        figma.notify("You don't have edit permissions", { error: true });
-        return;
-      }
-      if (msg.confirmations && msg.confirmations.length > 0) {
-        try {
-          let successCount = 0;
-          let failCount = 0;
-          for (const match of msg.confirmations) {
-            // Pass translationData to enable variable binding (but no language = don't change text)
-            const success = await linkTextNode(match.nodeId, match.multilanId, translationData);
-            if (success) {
-              successCount++;
-            } else {
-              failCount++;
-            }
-          }
-          if (failCount > 0) {
-            figma.notify(`Linked ${successCount} nodes, ${failCount} failed`, {
-              error: failCount > 0,
-            });
-          } else {
-            figma.notify(`Successfully linked ${successCount} text nodes`);
-          }
-          const textNodes = getAllTextNodesInfo(msg.scope || "page", getTranslations);
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
-        } catch (err) {
-          figma.notify(`Error linking nodes: ${err}`, { error: true });
-        }
-      } else {
-        figma.notify("No matches to apply");
-      }
+    case "get-unlinked-queue": {
+      const scope = msg.scope || "page";
+      const nodes = getTextNodesInScope(scope);
+      const unlinkedQueue = nodes
+        .filter(node => !getMultilanId(node) && node.characters.trim())
+        .map(node => ({
+          nodeId: node.id,
+          nodeName: node.name,
+          characters: node.characters,
+        }));
+      figma.ui.postMessage({
+        type: "unlinked-queue",
+        unlinkedQueue,
+      });
       break;
-
-    case "confirm-fuzzy-link":
-      if (!canEdit()) {
-        figma.notify("You don't have edit permissions", { error: true });
-        return;
-      }
-      if (msg.nodeId && msg.multilanId) {
-        // Pass translationData to enable variable binding
-        const success = await linkTextNode(msg.nodeId, msg.multilanId, translationData);
-        if (success) {
-          figma.notify(`Linked to ${msg.multilanId}`);
-          // Refresh text nodes list to update UI
-          const textNodes = getAllTextNodesInfo(msg.scope || "page", getTranslations);
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
-        }
-      }
-      break;
+    }
 
     case "global-search":
       if (msg.searchQuery) {
