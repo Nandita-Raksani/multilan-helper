@@ -60,9 +60,26 @@ function buildMetadataContent(metadataJson: string): string {
   }
 }
 
+function autoResizeTextarea(textarea: HTMLTextAreaElement): void {
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
+}
+
 export function initSearchPanel(): void {
-  const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
+  const globalSearchInput = getElementById<HTMLTextAreaElement>('globalSearchInput');
   const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
+
+  // Auto-resize on input
+  globalSearchInput.addEventListener('input', () => {
+    autoResizeTextarea(globalSearchInput);
+  });
+
+  // Prevent Enter from inserting newlines — trigger search instead
+  globalSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+    }
+  });
 
   // Global search input
   globalSearchInput.addEventListener('input', debounce(() => {
@@ -189,7 +206,7 @@ export function renderGlobalSearchResults(): void {
   let results = [...state.globalSearchResults];
   const hasSelection = state.selectedNode;
   const isAlreadyLinked = state.selectedNode?.multilanId;
-  const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
+  const globalSearchInput = getElementById<HTMLTextAreaElement>('globalSearchInput');
   const searchQuery = globalSearchInput.value.trim();
 
   const globalSearchResults = getElementById<HTMLDivElement>('globalSearchResults');
@@ -357,13 +374,15 @@ function attachSearchResultHandlers(): void {
 }
 
 export function setSearchQuery(query: string): void {
-  const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
+  const globalSearchInput = getElementById<HTMLTextAreaElement>('globalSearchInput');
   globalSearchInput.value = query;
+  autoResizeTextarea(globalSearchInput);
 }
 
 export function clearSearch(): void {
-  const globalSearchInput = getElementById<HTMLInputElement>('globalSearchInput');
+  const globalSearchInput = getElementById<HTMLTextAreaElement>('globalSearchInput');
   globalSearchInput.value = '';
+  autoResizeTextarea(globalSearchInput);
   store.setState({ globalSearchResults: [] });
   renderGlobalSearchResults();
 }
