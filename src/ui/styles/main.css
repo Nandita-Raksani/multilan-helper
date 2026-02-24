@@ -563,24 +563,10 @@ body {
   border-color: var(--figma-color-border-brand);
 }
 
-.search-result-card-linked {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.05);
-}
-
-.search-result-card-exact {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.05);
-}
-
-.search-result-card-close {
-  border-color: rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.05);
-}
-
+.search-result-card-linked,
+.search-result-card-exact,
+.search-result-card-close,
 .search-result-card-none {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.05);
 }
 
 .no-match-selected-text {

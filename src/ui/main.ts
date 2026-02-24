@@ -96,7 +96,7 @@ function handlePluginMessage(msg: PluginMessage): void {
       if (getCurrentTab() === 'search') {
         const state = store.getState();
         if (state.selectedNode) {
-          const text = state.selectedNode.characters.slice(0, 30);
+          const text = state.selectedNode.characters;
           triggerSearch(text);
         } else {
           clearSearch();
