@@ -36,39 +36,49 @@ function renderTranslations(translations: Record<string, string>, currentLang: s
   }).join('');
 }
 
+function renderNodeBubble(characters: string): string {
+  return `
+    <div class="selected-node-bubble">
+      <div class="selected-node-bubble-text">"${escapeHtml(characters)}"</div>
+    </div>
+    <div class="connector-arrow"></div>`;
+}
+
 function renderLinkedCard(item: FrameNodeMatchResult, currentLang: string, canEdit: boolean): string {
   const mr = item.matchResult;
-  const truncText = item.characters.length > 80 ? item.characters.slice(0, 80) + '...' : item.characters;
   return `
-    <div class="frame-node-card frame-node-card-linked" data-node-id="${escapeHtml(item.nodeId)}">
-      <div class="frame-node-card-header">
-        <span class="frame-node-text">"${escapeHtml(truncText)}"</span>
-        <span class="match-badge match-badge-linked">Linked</span>
+    <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
+      ${renderNodeBubble(item.characters)}
+      <div class="results-grouped">
+        <div class="frame-node-card frame-node-card-linked">
+          <div class="frame-node-id-row">
+            <span class="frame-node-id">${escapeHtml(mr.multilanId || '')}</span>
+            <button class="copy-btn icon-btn" data-text="${escapeHtml(mr.multilanId || '')}" title="Copy ID">${copyIconSvg}</button>
+            <span class="match-badge match-badge-linked">Linked</span>
+          </div>
+          ${mr.translations ? `<div class="translations-preview">${renderTranslations(mr.translations, currentLang)}</div>` : ''}
+          ${canEdit ? `<div class="frame-node-actions"><button class="btn-sm btn-sm-danger btn-frame-unlink" data-node-id="${escapeHtml(item.nodeId)}">Unlink</button></div>` : ''}
+        </div>
       </div>
-      <div class="frame-node-id-row">
-        <span class="frame-node-id">${escapeHtml(mr.multilanId || '')}</span>
-        <button class="copy-btn icon-btn" data-text="${escapeHtml(mr.multilanId || '')}" title="Copy ID">${copyIconSvg}</button>
-      </div>
-      ${mr.translations ? `<div class="translations-preview">${renderTranslations(mr.translations, currentLang)}</div>` : ''}
-      ${canEdit ? `<div class="frame-node-actions"><button class="btn-sm btn-sm-danger btn-frame-unlink" data-node-id="${escapeHtml(item.nodeId)}">Unlink</button></div>` : ''}
     </div>`;
 }
 
 function renderExactCard(item: FrameNodeMatchResult, currentLang: string, canEdit: boolean): string {
   const mr = item.matchResult;
-  const truncText = item.characters.length > 80 ? item.characters.slice(0, 80) + '...' : item.characters;
   return `
-    <div class="frame-node-card frame-node-card-exact" data-node-id="${escapeHtml(item.nodeId)}">
-      <div class="frame-node-card-header">
-        <span class="frame-node-text">"${escapeHtml(truncText)}"</span>
-        <span class="match-badge match-badge-exact">Match</span>
+    <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
+      ${renderNodeBubble(item.characters)}
+      <div class="results-grouped">
+        <div class="frame-node-card frame-node-card-exact">
+          <div class="frame-node-id-row">
+            <span class="frame-node-id">${escapeHtml(mr.multilanId || '')}</span>
+            <button class="copy-btn icon-btn" data-text="${escapeHtml(mr.multilanId || '')}" title="Copy ID">${copyIconSvg}</button>
+            <span class="match-badge match-badge-exact">Match</span>
+          </div>
+          ${mr.translations ? `<div class="translations-preview">${renderTranslations(mr.translations, currentLang)}</div>` : ''}
+          ${canEdit ? `<div class="frame-node-actions"><button class="btn-sm btn-sm-success btn-frame-link" data-node-id="${escapeHtml(item.nodeId)}" data-multilan-id="${escapeHtml(mr.multilanId || '')}">Link</button></div>` : ''}
+        </div>
       </div>
-      <div class="frame-node-id-row">
-        <span class="frame-node-id">${escapeHtml(mr.multilanId || '')}</span>
-        <button class="copy-btn icon-btn" data-text="${escapeHtml(mr.multilanId || '')}" title="Copy ID">${copyIconSvg}</button>
-      </div>
-      ${mr.translations ? `<div class="translations-preview">${renderTranslations(mr.translations, currentLang)}</div>` : ''}
-      ${canEdit ? `<div class="frame-node-actions"><button class="btn-sm btn-sm-success btn-frame-link" data-node-id="${escapeHtml(item.nodeId)}" data-multilan-id="${escapeHtml(mr.multilanId || '')}">Link</button></div>` : ''}
     </div>`;
 }
 
@@ -77,17 +87,17 @@ function renderCloseCard(item: FrameNodeMatchResult, currentLang: string, canEdi
   const suggestions = mr.suggestions || [];
   if (suggestions.length === 0) return renderNoneCard(item);
 
-  const truncText = item.characters.length > 80 ? item.characters.slice(0, 80) + '...' : item.characters;
   const currentIndex = carouselState.get(item.nodeId) || 0;
   const suggestion = suggestions[currentIndex];
 
   return `
-    <div class="frame-node-card frame-node-card-close" data-node-id="${escapeHtml(item.nodeId)}">
-      <div class="frame-node-card-header">
-        <span class="frame-node-text">"${escapeHtml(truncText)}"</span>
-        <span class="match-badge match-badge-close">Close Match</span>
+    <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
+      ${renderNodeBubble(item.characters)}
+      <div class="results-grouped">
+        <div class="frame-node-card frame-node-card-close">
+          ${renderSuggestionSlide(item.nodeId, suggestion, currentIndex, suggestions.length, currentLang, canEdit)}
+        </div>
       </div>
-      ${renderSuggestionSlide(item.nodeId, suggestion, currentIndex, suggestions.length, currentLang, canEdit)}
     </div>`;
 }
 
@@ -118,14 +128,12 @@ function renderSuggestionSlide(nodeId: string, suggestion: SearchResult & { scor
 }
 
 function renderNoneCard(item: FrameNodeMatchResult): string {
-  const truncText = item.characters.length > 80 ? item.characters.slice(0, 80) + '...' : item.characters;
   return `
-    <div class="frame-node-card frame-node-card-none" data-node-id="${escapeHtml(item.nodeId)}">
-      <div class="frame-node-card-header">
-        <span class="frame-node-text">"${escapeHtml(truncText)}"</span>
-        <span class="match-badge match-badge-none">No Match</span>
+    <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
+      ${renderNodeBubble(item.characters)}
+      <div class="results-grouped">
+        <div class="frame-node-hint">No translation found for this text.</div>
       </div>
-      <div class="frame-node-hint">No translation found for this text.</div>
     </div>`;
 }
 
@@ -201,11 +209,11 @@ function attachFramePanelHandlers(container: HTMLElement): void {
   const state = store.getState();
 
   // Card click → select/zoom node on canvas
-  container.querySelectorAll<HTMLElement>('.frame-node-card').forEach(card => {
-    card.addEventListener('click', (e) => {
+  container.querySelectorAll<HTMLElement>('.frame-node-group').forEach(group => {
+    group.addEventListener('click', (e) => {
       // Don't navigate if clicking a button
       if ((e.target as HTMLElement).closest('button')) return;
-      const nodeId = card.dataset.nodeId;
+      const nodeId = group.dataset.nodeId;
       if (nodeId) pluginBridge.selectNode(nodeId);
     });
   });

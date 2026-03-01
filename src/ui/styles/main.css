@@ -1012,19 +1012,26 @@ body {
 .frame-node-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
+}
+
+.frame-node-group {
+  cursor: pointer;
 }
 
 .frame-node-card {
   padding: 10px 12px;
   border: 1px solid var(--figma-color-border);
   border-radius: 8px;
-  cursor: pointer;
   transition: all 0.15s;
 }
 
-.frame-node-card:hover {
+.frame-node-group:hover .frame-node-card {
   background: var(--figma-color-bg-hover);
+  border-color: var(--figma-color-border-brand);
+}
+
+.frame-node-group:hover .selected-node-bubble {
   border-color: var(--figma-color-border-brand);
 }
 
@@ -1044,27 +1051,15 @@ body {
   border-left: 3px solid #ef4444;
 }
 
-.frame-node-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.frame-node-text {
-  font-size: 11px;
-  color: var(--figma-color-text);
-  word-break: break-word;
-  flex: 1;
-  min-width: 0;
-}
-
 .frame-node-id-row {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-bottom: 6px;
+}
+
+.frame-node-id-row .match-badge {
+  margin-left: auto;
 }
 
 .frame-node-id {
