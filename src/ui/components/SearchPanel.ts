@@ -363,6 +363,12 @@ export function renderGlobalSearchResults(): void {
 
   const globalSearchResults = getElementById<HTMLDivElement>('globalSearchResults');
   const globalSearchResultsCount = getElementById<HTMLDivElement>('globalSearchResultsCount');
+  const searchContainer = globalSearchInput.closest('.search-container') as HTMLElement | null;
+  const searchHint = searchContainer?.parentElement?.querySelector('.search-hint') as HTMLElement | null;
+
+  // Hide search bar when a node is selected (text is shown in the bubble)
+  if (searchContainer) searchContainer.style.display = hasSelection ? 'none' : '';
+  if (searchHint) searchHint.style.display = hasSelection ? 'none' : '';
 
   // Merge matchResult into search results so detected matches always appear
   const match = state.matchResult;
