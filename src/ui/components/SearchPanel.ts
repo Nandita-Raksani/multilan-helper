@@ -61,6 +61,11 @@ function buildMetadataContent(metadataJson: string): string {
   }
 }
 
+const copyIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+
+// Carousel state for single-node selection results
+let singleNodeCarouselIndex = 0;
+
 function autoResizeTextarea(textarea: HTMLTextAreaElement): void {
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
@@ -225,6 +230,129 @@ function getMatchBadgeForResult(resultId: string): { css: string; label: string 
   return null;
 }
 
+function renderResultCard(
+  result: SearchResult,
+  options: {
+    showCornerBadge: boolean;
+    hasSelection: boolean;
+    isCurrentLink: boolean;
+    canEdit: boolean;
+    currentLang: string;
+    showTextCopyButtons: boolean;
+  }
+): string {
+  const metadataJson = getMetadataJson(result);
+  const matchBadge = getMatchBadgeForResult(result.multilanId);
+
+  let cardClass = 'search-result-card';
+  if (options.showCornerBadge && matchBadge) {
+    if (matchBadge.label === 'Linked') cardClass += ' search-result-card-linked';
+    else if (matchBadge.label === 'Match') cardClass += ' search-result-card-exact';
+    else if (matchBadge.label === 'Close Match') cardClass += ' search-result-card-close';
+  }
+
+  return `
+    <div class="${cardClass}" data-multilan-id="${escapeHtml(result.multilanId)}">
+      ${options.showCornerBadge && matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-corner">${matchBadge.label}</span>` : ''}
+      <div class="search-result-header">
+        <div class="search-result-id-row">
+          <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
+          <button class="copy-btn icon-btn" data-text="${escapeHtml(result.multilanId)}" title="Copy ID">${copyIconSvg}</button>
+          ${getStatusBadge(result.metadata?.status)}
+          ${!options.showCornerBadge && matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-inline">${matchBadge.label}</span>` : ''}
+        </div>
+      </div>
+      <div class="translations-preview">
+        ${SUPPORTED_LANGUAGES.map(lang => {
+          const text = result.translations[lang];
+          if (text) {
+            return `
+            <div class="translation-row ${lang === options.currentLang ? 'active' : ''}">
+              <span class="translation-lang">${lang.toUpperCase()}</span>
+              <span class="translation-text">${escapeHtml(text)}</span>
+              ${options.showTextCopyButtons ? `<button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy">${copyIconSvg}</button>` : ''}
+            </div>`;
+          }
+          return `
+            <div class="translation-row ${lang === options.currentLang ? 'active' : ''} unavailable">
+              <span class="translation-lang">${lang.toUpperCase()}</span>
+              <span class="translation-text translation-unavailable"><em>Multilan not available</em></span>
+            </div>`;
+        }).join('')}
+      </div>
+      <div class="search-result-actions">
+        ${options.canEdit && options.hasSelection && !options.isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
+        ${options.isCurrentLink && options.canEdit ? `<button class="btn-unlink-result btn-sm btn-sm-danger" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
+        ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
+      </div>
+      ${metadataJson ? `<div class="metadata-info collapsed">${buildMetadataContent(metadataJson)}</div>` : ''}
+    </div>
+  `;
+}
+
+function renderSelectedNodeBubble(node: { characters: string }): string {
+  return `
+    <div class="selected-node-bubble">
+      <div class="selected-node-bubble-text">"${escapeHtml(node.characters)}"</div>
+    </div>
+  `;
+}
+
+function renderSelectedNodeLayout(
+  node: { characters: string; name: string; multilanId: string | null },
+  results: SearchResult[],
+  state: ReturnType<typeof store.getState>
+): string {
+  const isAlreadyLinked = node.multilanId;
+  const showTextCopyButtons = !state.canEdit;
+
+  // Clamp carousel index
+  if (singleNodeCarouselIndex >= results.length) singleNodeCarouselIndex = 0;
+  const current = results[singleNodeCarouselIndex];
+  const isCurrentLink = isAlreadyLinked && node.multilanId === current.multilanId;
+
+  const cardHtml = renderResultCard(current, {
+    showCornerBadge: false,
+    hasSelection: true,
+    isCurrentLink: !!isCurrentLink,
+    canEdit: state.canEdit,
+    currentLang: state.currentLang,
+    showTextCopyButtons,
+  });
+
+  const carouselNav = results.length > 1 ? `
+    <div class="frame-carousel-nav">
+      <button class="single-carousel-prev btn-sm btn-sm-outline" ${singleNodeCarouselIndex === 0 ? 'disabled' : ''}>&#8249;</button>
+      <span class="frame-carousel-dots">
+        ${results.map((_, i) =>
+          `<span class="frame-carousel-dot single-carousel-dot ${i === singleNodeCarouselIndex ? 'active' : ''}" data-index="${i}"></span>`
+        ).join('')}
+      </span>
+      <button class="single-carousel-next btn-sm btn-sm-outline" ${singleNodeCarouselIndex === results.length - 1 ? 'disabled' : ''}>&#8250;</button>
+    </div>` : '';
+
+  return `
+    ${renderSelectedNodeBubble(node)}
+    <div class="connector-arrow"></div>
+    <div class="results-grouped">
+      ${cardHtml}
+      ${carouselNav}
+    </div>
+  `;
+}
+
+function renderSelectedNodeNoMatch(
+  node: { characters: string; name: string },
+): string {
+  return `
+    ${renderSelectedNodeBubble(node)}
+    <div class="connector-arrow"></div>
+    <div class="results-grouped">
+      <div class="no-match-hint">No translations found. Search manually by only selecting this layer.</div>
+    </div>
+  `;
+}
+
 export function renderGlobalSearchResults(): void {
   const state = store.getState();
   let results = [...state.globalSearchResults];
@@ -257,16 +385,8 @@ export function renderGlobalSearchResults(): void {
 
   if (results.length === 0) {
     globalSearchResultsCount.textContent = '';
-    // Show a No Match card when an unlinked node is selected and no results found
     if (hasSelection && !isAlreadyLinked && searchQuery) {
-      const truncatedText = searchQuery.length > 60 ? searchQuery.slice(0, 60) + '...' : searchQuery;
-      globalSearchResults.innerHTML = `
-        <div class="search-result-card search-result-card-none">
-          <span class="match-badge match-badge-none match-badge-corner">No Match</span>
-          <div class="no-match-selected-text">"${escapeHtml(truncatedText)}"</div>
-          <div class="no-match-hint">Search manually by only selecting this layer.</div>
-        </div>
-      `;
+      globalSearchResults.innerHTML = renderSelectedNodeNoMatch(state.selectedNode!);
     } else if (searchQuery) {
       globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
     } else {
@@ -290,57 +410,24 @@ export function renderGlobalSearchResults(): void {
   // Copy buttons for translation text: show for dev seat only
   const showTextCopyButtons = !state.canEdit;
 
-  const copyIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+  // When a node is selected, use the grouped layout with bubble
+  if (hasSelection && results.length > 0) {
+    globalSearchResults.innerHTML = renderSelectedNodeLayout(state.selectedNode!, sortedResults, state);
+    attachSearchResultHandlers();
+    return;
+  }
 
+  // Flat layout (no selection — manual search)
   globalSearchResults.innerHTML = sortedResults.map(result => {
     const isCurrentLink = isAlreadyLinked && state.selectedNode?.multilanId === result.multilanId;
-    const metadataJson = getMetadataJson(result);
-    const matchBadge = getMatchBadgeForResult(result.multilanId);
-
-    // Card gets a tinted style for linked/exact/close
-    let cardClass = 'search-result-card';
-    if (matchBadge) {
-      if (matchBadge.label === 'Linked') cardClass += ' search-result-card-linked';
-      else if (matchBadge.label === 'Match') cardClass += ' search-result-card-exact';
-      else if (matchBadge.label === 'Close Match') cardClass += ' search-result-card-close';
-    }
-
-    return `
-      <div class="${cardClass}" data-multilan-id="${escapeHtml(result.multilanId)}">
-        ${matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-corner">${matchBadge.label}</span>` : ''}
-        <div class="search-result-header">
-          <div class="search-result-id-row">
-            <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
-            <button class="copy-btn icon-btn" data-text="${escapeHtml(result.multilanId)}" title="Copy ID">${copyIconSvg}</button>
-            ${getStatusBadge(result.metadata?.status)}
-          </div>
-        </div>
-        <div class="translations-preview">
-          ${SUPPORTED_LANGUAGES.map(lang => {
-            const text = result.translations[lang];
-            if (text) {
-              return `
-              <div class="translation-row ${lang === state.currentLang ? 'active' : ''}">
-                <span class="translation-lang">${lang.toUpperCase()}</span>
-                <span class="translation-text">${escapeHtml(text)}</span>
-                ${showTextCopyButtons ? `<button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy">${copyIconSvg}</button>` : ''}
-              </div>`;
-            }
-            return `
-              <div class="translation-row ${lang === state.currentLang ? 'active' : ''} unavailable">
-                <span class="translation-lang">${lang.toUpperCase()}</span>
-                <span class="translation-text translation-unavailable"><em>Multilan not available</em></span>
-              </div>`;
-          }).join('')}
-        </div>
-        <div class="search-result-actions">
-          ${state.canEdit && hasSelection && !isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
-          ${isCurrentLink && state.canEdit ? `<button class="btn-unlink-result btn-sm btn-sm-danger" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
-          ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
-        </div>
-        ${metadataJson ? `<div class="metadata-info collapsed">${buildMetadataContent(metadataJson)}</div>` : ''}
-      </div>
-    `;
+    return renderResultCard(result, {
+      showCornerBadge: true,
+      hasSelection: !!hasSelection,
+      isCurrentLink: !!isCurrentLink,
+      canEdit: state.canEdit,
+      currentLang: state.currentLang,
+      showTextCopyButtons,
+    });
   }).join('');
 
   attachSearchResultHandlers();
@@ -393,6 +480,34 @@ function attachSearchResultHandlers(): void {
         metadataInfo.classList.toggle('collapsed');
         btn.classList.toggle('active');
       }
+    });
+  });
+
+  // Single-node carousel handlers
+  globalSearchResults.querySelectorAll<HTMLButtonElement>('.single-carousel-prev').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (singleNodeCarouselIndex > 0) {
+        singleNodeCarouselIndex--;
+        renderGlobalSearchResults();
+      }
+    });
+  });
+
+  globalSearchResults.querySelectorAll<HTMLButtonElement>('.single-carousel-next').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      singleNodeCarouselIndex++;
+      renderGlobalSearchResults();
+    });
+  });
+
+  globalSearchResults.querySelectorAll<HTMLElement>('.single-carousel-dot').forEach(dot => {
+    dot.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const index = parseInt(dot.dataset.index || '0', 10);
+      singleNodeCarouselIndex = index;
+      renderGlobalSearchResults();
     });
   });
 }
