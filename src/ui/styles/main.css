@@ -1159,6 +1159,7 @@ body {
   color: var(--figma-color-text);
   word-break: break-word;
   line-height: 1.4;
+  user-select: none;
 }
 
 .connector-arrow {
@@ -1190,5 +1191,11 @@ body {
 
 .results-grouped > .search-result-card {
   margin-bottom: 8px;
+}
+
+.results-grouped .translation-row.active {
+  background: transparent;
+  border-left: none;
+  margin-left: 0;
 }
 
