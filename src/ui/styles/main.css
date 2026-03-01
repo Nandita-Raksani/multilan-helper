@@ -1193,7 +1193,8 @@ body {
   margin-bottom: 8px;
 }
 
-.results-grouped .translation-row.active {
+.results-grouped .translation-row.active,
+.frame-node-card .translation-row.active {
   background: transparent;
   border-left: none;
   margin-left: 0;
