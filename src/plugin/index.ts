@@ -51,7 +51,6 @@ let translationData: TranslationMap;
 let metadataData: MetadataMap;
 
 // Store highlight rectangle IDs for cleanup
-const highlightRects: string[] = [];
 
 
 // Initialize with .tra files (primary bundled source)
@@ -483,46 +482,17 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         const unlinkedNodes = nodes.filter(node => !getMultilanId(node));
 
         if (msg.highlight) {
-          // Highlight: create a rectangle around each unlinked text node
-          const highlightStroke: SolidPaint = {
-            type: "SOLID",
-            color: { r: 0.96, g: 0.62, b: 0.04 }, // Amber (#f59e0b) matching UI button
-            opacity: 1
-          };
-
-          let count = 0;
-          for (const node of unlinkedNodes) {
-            const rect = figma.createRectangle();
-            rect.name = `__highlight_${node.id}`;
-            rect.x = node.absoluteTransform[0][2] - 2;
-            rect.y = node.absoluteTransform[1][2] - 2;
-            rect.resize(node.width + 4, node.height + 4);
-            rect.fills = [];
-            rect.strokes = [highlightStroke];
-            rect.strokeWeight = 2;
-            rect.cornerRadius = 2;
-            rect.locked = true;
-
-            highlightRects.push(rect.id);
-            count++;
-          }
-
-          if (count > 0) {
-            figma.notify(`Highlighted ${count} unlinked text node${count > 1 ? 's' : ''}`);
+          // Select all unlinked text nodes using Figma's native selection
+          if (unlinkedNodes.length > 0) {
+            figma.currentPage.selection = unlinkedNodes;
+            figma.viewport.scrollAndZoomIntoView(unlinkedNodes);
+            figma.notify(`Selected ${unlinkedNodes.length} unlinked text node${unlinkedNodes.length > 1 ? 's' : ''}`);
           } else {
             figma.notify("No unlinked text nodes found");
           }
         } else {
-          // Unhighlight: find and remove all highlight rectangles by name prefix
-          const rects = figma.currentPage.findAll(n =>
-            n.type === "RECTANGLE" && n.name.startsWith("__highlight_")
-          );
-          for (const rect of rects) {
-            rect.remove();
-          }
-          highlightRects.length = 0;
-
-          figma.notify(`Removed ${rects.length} highlight${rects.length !== 1 ? 's' : ''}`);
+          // Clear selection when exiting highlight mode
+          figma.currentPage.selection = [];
         }
       }
       break;

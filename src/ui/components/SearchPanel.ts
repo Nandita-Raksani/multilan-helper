@@ -151,7 +151,6 @@ export function handleUnlinkedQueue(): void {
 
   getElementById('statusText').textContent = `${queue.length} unlinked node${queue.length > 1 ? 's' : ''} found`;
   store.setState({ unlinkedQueueIndex: 0 });
-  selectQueueItem(0);
 }
 
 function selectQueueItem(index: number): void {
