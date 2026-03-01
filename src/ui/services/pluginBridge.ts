@@ -107,6 +107,10 @@ class PluginBridge {
     });
   }
 
+  clearSelection(): void {
+    this.send({ type: 'clear-selection' });
+  }
+
 }
 
 export const pluginBridge = new PluginBridge();

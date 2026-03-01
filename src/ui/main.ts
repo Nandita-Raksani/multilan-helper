@@ -75,19 +75,21 @@ function handlePluginMessage(msg: PluginMessage): void {
       store.setState({
         textNodes: msg.textNodes || []
       });
-      if (msg.selectionTextNodes !== undefined) {
-        store.setState({
-          selectionTextNodes: msg.selectionTextNodes || [],
-          frameMatchResults: msg.frameMatchResults || [],
-        });
+      if (!store.getState().suppressFrameMode) {
+        if (msg.selectionTextNodes !== undefined) {
+          store.setState({
+            selectionTextNodes: msg.selectionTextNodes || [],
+            frameMatchResults: msg.frameMatchResults || [],
+          });
+        }
+        if (msg.selectedNode !== undefined) {
+          store.setState({
+            selectedNode: msg.selectedNode || null,
+            matchResult: msg.matchResult || null
+          });
+        }
       }
-      if (msg.selectedNode !== undefined) {
-        store.setState({
-          selectedNode: msg.selectedNode || null,
-          matchResult: msg.matchResult || null
-        });
-      }
-      if (isFrameMode()) {
+      if (!store.getState().suppressFrameMode && isFrameMode()) {
         renderFramePanel();
       } else {
         renderGlobalSearchResults();
@@ -99,6 +101,22 @@ function handlePluginMessage(msg: PluginMessage): void {
       break;
 
     case 'selection-changed': {
+      // Skip UI updates during highlight mode — the queue controls navigation
+      if (store.getState().isHighlightMode) {
+        store.setState({
+          selectedNode: msg.selectedNode || null,
+          hasSelection: msg.hasSelection || false,
+          matchResult: msg.matchResult || null
+        });
+        break;
+      }
+
+      // After exiting highlight mode, ignore stale messages until selection is cleared
+      if (store.getState().suppressFrameMode) {
+        if (msg.hasSelection) break;
+        store.setState({ suppressFrameMode: false });
+      }
+
       store.setState({
         selectedNode: msg.selectedNode || null,
         selectionTextNodes: msg.selectionTextNodes || [],

@@ -13,6 +13,7 @@ export interface UIState {
   selectionTextNodes: TextNodeInfo[];
   frameMatchResults: FrameNodeMatchResult[];
   isHighlightMode: boolean;
+  suppressFrameMode: boolean;
   globalSearchResults: SearchResult[];
   allTranslations: unknown[];
   translationCount: number;
@@ -34,6 +35,7 @@ class Store {
     selectionTextNodes: [],
     frameMatchResults: [],
     isHighlightMode: false,
+    suppressFrameMode: false,
     globalSearchResults: [],
     allTranslations: [],
     translationCount: 0

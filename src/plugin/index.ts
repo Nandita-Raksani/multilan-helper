@@ -222,8 +222,12 @@ async function initialize(): Promise<void> {
 // Handle selection change — auto-detect matches for unlinked nodes
 figma.on("selectionchange", () => {
   let selectedNode = getSelectedTextNodeInfo(getTranslations);
-  const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
   const hasSelection = figma.currentPage.selection.length > 0;
+
+  // Only gather selection text nodes when something is actually selected
+  const selectionTextNodes = hasSelection
+    ? getAllTextNodesInfo("selection", getTranslations)
+    : [];
 
   // If no single text node selected, use the first text node found in selection
   if (!selectedNode && selectionTextNodes.length > 0) {
@@ -521,6 +525,10 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           figma.notify(`Removed ${rects.length} highlight${rects.length !== 1 ? 's' : ''}`);
         }
       }
+      break;
+
+    case "clear-selection":
+      figma.currentPage.selection = [];
       break;
 
     case "close":

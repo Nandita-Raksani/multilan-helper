@@ -98,6 +98,7 @@ export type PluginMessageType =
   | "global-search"
   | "create-linked-text"
   | "highlight-unlinked"
+  | "clear-selection"
   | "close";
 
 // UI message types (Plugin -> UI)

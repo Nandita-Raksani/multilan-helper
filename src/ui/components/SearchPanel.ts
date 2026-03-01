@@ -2,6 +2,7 @@ import type { SearchResult, MultilanStatus } from '../../shared/types';
 import { SUPPORTED_LANGUAGES } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
+import { showSearchBar } from './FramePanel';
 import { getElementById } from '../utils/dom';
 import { escapeHtml, copyToClipboard, debounce } from '../utils/dom';
 
@@ -100,12 +101,16 @@ export function initSearchPanel(): void {
     highlightBtn.classList.toggle('active', newMode);
     highlightBtn.innerHTML = newMode ? 'Hide<br>unlinked' : 'Highlight<br>unlinked';
 
+    // Use selection scope when a frame/layer is selected, otherwise full page
+    const effectiveScope = state.hasSelection ? 'selection' : 'page';
+
     if (newMode) {
-      pluginBridge.highlightUnlinked(true, state.scope);
-      pluginBridge.getUnlinkedQueue(state.scope);
+      pluginBridge.highlightUnlinked(true, effectiveScope);
+      pluginBridge.getUnlinkedQueue(effectiveScope);
     } else {
-      pluginBridge.highlightUnlinked(false, state.scope);
-      store.setState({ unlinkedQueue: [], unlinkedQueueIndex: 0 });
+      pluginBridge.highlightUnlinked(false, effectiveScope);
+      pluginBridge.clearSelection();
+      resetAfterHighlight();
     }
   });
 
@@ -165,14 +170,33 @@ export function advanceQueue(): void {
   selectQueueItem(nextIndex);
 }
 
-function exitHighlightMode(): void {
-  const state = store.getState();
-  store.setState({ isHighlightMode: false, unlinkedQueue: [], unlinkedQueueIndex: 0 });
-  pluginBridge.highlightUnlinked(false, state.scope);
+function resetAfterHighlight(): void {
+  store.setState({
+    isHighlightMode: false,
+    suppressFrameMode: true,
+    unlinkedQueue: [],
+    unlinkedQueueIndex: 0,
+    selectionTextNodes: [],
+    frameMatchResults: [],
+    selectedNode: null,
+    matchResult: null,
+    hasSelection: false,
+  });
 
   const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
   highlightBtn.classList.remove('active');
   highlightBtn.innerHTML = 'Highlight<br>unlinked';
+
+  getElementById('statusText').textContent = `${store.getState().translationCount || 0} translations loaded`;
+  showSearchBar();
+  clearSearch();
+}
+
+function exitHighlightMode(): void {
+  const state = store.getState();
+  pluginBridge.highlightUnlinked(false, state.scope);
+  pluginBridge.clearSelection();
+  resetAfterHighlight();
 }
 
 // --- Global Search Results ---
