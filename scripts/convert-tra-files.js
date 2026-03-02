@@ -198,6 +198,31 @@ function convertTraFiles() {
   console.log('Done! Converted files are in src/translations/converted/');
 }
 
+/**
+ * Deduplicate .tra lines by ID (first occurrence wins)
+ */
+function deduplicateTraContent(content) {
+  const seen = new Set();
+  const lines = content.split('\n');
+  const unique = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // Extract ID (digits before the first comma)
+    const match = trimmed.match(/^(\d+),/);
+    if (match) {
+      const id = match[1];
+      if (!seen.has(id)) {
+        seen.add(id);
+        unique.push(trimmed);
+      }
+    }
+  }
+
+  return { content: unique.join('\n'), totalLines: lines.filter(l => l.trim()).length, uniqueLines: unique.length };
+}
+
 // Also export a function to generate a TypeScript module with the content
 function generateTraModule() {
   const traDir = path.join(__dirname, '..', 'src', 'translations');
@@ -231,8 +256,13 @@ function generateTraModule() {
 
     if (parts.length > 0) {
       const merged = parts.join('\n');
+      const { content: deduplicated, totalLines, uniqueLines } = deduplicateTraContent(merged);
+      const removed = totalLines - uniqueLines;
+      if (removed > 0) {
+        console.log(`  ${lang}: ${uniqueLines} unique IDs (${removed} duplicates removed)`);
+      }
       // Escape backticks and backslashes for template literal
-      const escaped = merged.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+      const escaped = deduplicated.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
       moduleContent += `  ${lang}: \`${escaped}\`,\n`;
     } else {
       console.log(`  ${file}: NOT FOUND in any folder - using empty string`);

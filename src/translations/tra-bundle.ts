@@ -64,8 +64,7 @@ export const traFileContents = {
 10060,"Enable notifications","All"
 10061,"Two-factor authentication","All"
 10062,"Change password","All"
-10063,"Account deleted successfully","All"
-`,
+10063,"Account deleted successfully","All"`,
   fr: `10001,"Soumettre","All"
 10002,"Annuler","All"
 10003,"Bienvenue","All"
@@ -128,8 +127,7 @@ export const traFileContents = {
 10060,"Activer les notifications","All"
 10061,"Authentification à deux facteurs","All"
 10062,"Changer le mot de passe","All"
-10063,"Compte supprimé avec succès","All"
-`,
+10063,"Compte supprimé avec succès","All"`,
   nl: `10001,"Indienen","All"
 10002,"Annuleren","All"
 10003,"Welkom","All"
@@ -192,8 +190,7 @@ export const traFileContents = {
 10060,"Meldingen inschakelen","All"
 10061,"Tweefactorauthenticatie","All"
 10062,"Wachtwoord wijzigen","All"
-10063,"Account succesvol verwijderd","All"
-`,
+10063,"Account succesvol verwijderd","All"`,
   de: `10001,"Einreichen","All"
 10002,"Abbrechen","All"
 10003,"Willkommen","All"
@@ -256,6 +253,5 @@ export const traFileContents = {
 10060,"Benachrichtigungen aktivieren","All"
 10061,"Zwei-Faktor-Authentifizierung","All"
 10062,"Passwort ändern","All"
-10063,"Konto erfolgreich gelöscht","All"
-`,
+10063,"Konto erfolgreich gelöscht","All"`,
 };
