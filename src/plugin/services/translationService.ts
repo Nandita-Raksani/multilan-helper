@@ -349,7 +349,7 @@ export function detectMatch(
 
   // Pass 2: Fuzzy match
   const fuzzyResults = searchTranslationsWithScore(translationData, trimmed, 5);
-  const filtered = fuzzyResults.filter(r => r.score >= 0.3);
+  const filtered = fuzzyResults.filter(r => r.score >= 0.8);
 
   if (filtered.length > 0) {
     // Attach metadata to suggestions

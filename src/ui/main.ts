@@ -133,8 +133,10 @@ function handlePluginMessage(msg: PluginMessage): void {
         if (getCurrentTab() === 'search') {
           const state = store.getState();
           if (state.selectedNode) {
-            const text = state.selectedNode.characters;
-            triggerSearch(text);
+            // Show only detectMatch results (exact or top 5 close matches at ≥80%)
+            // No auto global search — keeps single-node consistent with multi-node
+            store.setState({ globalSearchResults: [] });
+            renderGlobalSearchResults();
           } else {
             clearSearch();
           }
