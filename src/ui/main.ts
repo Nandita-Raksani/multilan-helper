@@ -21,7 +21,7 @@ import {
   isFrameMode,
   showSearchBar
 } from './components';
-import { handleUnlinkedQueue, advanceQueue } from './components/SearchPanel';
+import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic } from './components/SearchPanel';
 
 /**
  * Get user's preferred language from browser settings
@@ -101,6 +101,8 @@ function handlePluginMessage(msg: PluginMessage): void {
       break;
 
     case 'selection-changed': {
+      const highlightUnlinkedBtn = document.getElementById('highlightUnlinkedBtn') as HTMLButtonElement | null;
+
       // Skip UI updates during highlight mode — the queue controls navigation
       if (store.getState().isHighlightMode) {
         store.setState({
@@ -108,6 +110,10 @@ function handlePluginMessage(msg: PluginMessage): void {
           hasSelection: msg.hasSelection || false,
           matchResult: msg.matchResult || null
         });
+        // If selection is lost during highlight mode, exit it
+        if (!msg.hasSelection) {
+          exitHighlightModePublic();
+        }
         break;
       }
 
@@ -124,6 +130,18 @@ function handlePluginMessage(msg: PluginMessage): void {
         hasSelection: msg.hasSelection || false,
         matchResult: msg.matchResult || null
       });
+
+      // Enable/disable highlight button based on selection
+      if (highlightUnlinkedBtn) {
+        highlightUnlinkedBtn.disabled = !msg.hasSelection;
+        if (msg.hasSelection) {
+          highlightUnlinkedBtn.innerHTML = 'Highlight<br>unlinked';
+          highlightUnlinkedBtn.title = 'Show unlinked text nodes on canvas';
+        } else {
+          highlightUnlinkedBtn.innerHTML = 'Select a layer<br>to highlight';
+          highlightUnlinkedBtn.title = 'Select a frame or layer first';
+        }
+      }
 
       if (isFrameMode()) {
         renderFramePanel();

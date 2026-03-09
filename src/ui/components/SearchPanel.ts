@@ -98,22 +98,27 @@ export function initSearchPanel(): void {
     }
   }, 200));
 
+  // Disable by default — enabled only when something is selected
+  highlightBtn.disabled = true;
+  highlightBtn.innerHTML = 'Select a layer<br>to highlight';
+  highlightBtn.title = 'Select a frame or layer first';
+
   // Highlight unlinked toggle
   highlightBtn.addEventListener('click', () => {
     const state = store.getState();
+    if (!state.hasSelection) return;
+
     const newMode = !state.isHighlightMode;
     store.setState({ isHighlightMode: newMode });
     highlightBtn.classList.toggle('active', newMode);
     highlightBtn.innerHTML = newMode ? 'Hide<br>unlinked' : 'Highlight<br>unlinked';
-
-    // Use selection scope when a frame/layer is selected, otherwise full page
-    const effectiveScope = state.hasSelection ? 'selection' : 'page';
+    highlightBtn.title = newMode ? 'Hide unlinked text nodes' : 'Show unlinked text nodes on canvas';
 
     if (newMode) {
-      pluginBridge.highlightUnlinked(true, effectiveScope);
-      pluginBridge.getUnlinkedQueue(effectiveScope);
+      pluginBridge.highlightUnlinked(true, 'selection');
+      pluginBridge.getUnlinkedQueue('selection');
     } else {
-      pluginBridge.highlightUnlinked(false, effectiveScope);
+      pluginBridge.highlightUnlinked(false, 'selection');
       pluginBridge.clearSelection();
       resetAfterHighlight();
     }
@@ -129,12 +134,9 @@ export function initSearchPanel(): void {
 }
 
 export function updateSearchHint(): void {
-  const state = store.getState();
   const searchHint = document.querySelector('.search-hint');
   if (searchHint) {
-    searchHint.textContent = state.canEdit
-      ? 'Search translations, then Copy or Link text nodes.'
-      : 'Search translations and copy text. Select language to preview.';
+    (searchHint as HTMLElement).style.display = 'none';
   }
 }
 
@@ -189,11 +191,17 @@ function resetAfterHighlight(): void {
 
   const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
   highlightBtn.classList.remove('active');
-  highlightBtn.innerHTML = 'Highlight<br>unlinked';
+  highlightBtn.disabled = true;
+  highlightBtn.innerHTML = 'Select a layer<br>to highlight';
+  highlightBtn.title = 'Select a frame or layer first';
 
   getElementById('statusText').textContent = `${store.getState().translationCount || 0} translations loaded`;
   showSearchBar();
   clearSearch();
+}
+
+export function exitHighlightModePublic(): void {
+  exitHighlightMode();
 }
 
 function exitHighlightMode(): void {
@@ -346,8 +354,9 @@ function renderSelectedNodeNoMatch(
   return `
     ${renderSelectedNodeBubble(node)}
     <div class="connector-arrow"></div>
-    <div class="results-grouped">
-      <div class="no-match-hint">No translations found. Search manually by only selecting this layer.</div>
+    <div class="results-grouped" style="position:relative">
+      <span class="match-badge match-badge-none match-badge-corner">No match</span>
+      <div class="no-match-hint">Search manually by only selecting this layer.</div>
     </div>
   `;
 }
@@ -395,7 +404,7 @@ export function renderGlobalSearchResults(): void {
     } else if (searchQuery) {
       globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
     } else {
-      globalSearchResults.innerHTML = '<div class="empty-state">Start typing to search translations</div>';
+      globalSearchResults.innerHTML = '';
     }
     return;
   }

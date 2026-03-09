@@ -132,7 +132,12 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
     <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
       ${renderNodeBubble(item.characters)}
       <div class="results-grouped">
-        <div class="frame-node-hint">No translation found for this text.</div>
+        <div class="frame-node-card frame-node-card-none">
+          <div class="frame-node-id-row" style="margin-bottom:0">
+            <span class="frame-node-hint" style="margin:0">Search manually by only selecting this layer.</span>
+            <span class="match-badge match-badge-none">No match</span>
+          </div>
+        </div>
       </div>
     </div>`;
 }
