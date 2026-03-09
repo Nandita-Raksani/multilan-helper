@@ -260,14 +260,14 @@ function renderResultCard(
 
   return `
     <div class="${cardClass}" data-multilan-id="${escapeHtml(result.multilanId)}">
-      ${options.showCornerBadge && matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-corner">${matchBadge.label}</span>` : ''}
+      ${options.showCornerBadge && matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-corner">${result.score !== undefined && result.score < 1 ? `${Math.round(result.score * 100)}% ` : ''}${matchBadge.label}</span>` : ''}
       <div class="search-result-header">
         <div class="search-result-id-row">
           <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
           <button class="copy-btn icon-btn" data-text="${escapeHtml(result.multilanId)}" title="Copy ID">${copyIconSvg}</button>
           ${getStatusBadge(result.metadata?.status)}
-          ${result.score !== undefined && result.score < 1 ? `<span class="frame-score">${Math.round(result.score * 100)}%</span>` : ''}
-          ${!options.showCornerBadge && matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-inline">${matchBadge.label}</span>` : ''}
+          ${result.score !== undefined && result.score < 1 ? `<span class="frame-score" style="margin-left:auto">${Math.round(result.score * 100)}%</span>` : ''}
+          ${!options.showCornerBadge && matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-inline" ${result.score !== undefined ? 'style="margin-left:0"' : ''}>${matchBadge.label}</span>` : ''}
         </div>
       </div>
       <div class="translations-preview">

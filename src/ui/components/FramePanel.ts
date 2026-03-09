@@ -108,7 +108,8 @@ function renderSuggestionSlide(nodeId: string, suggestion: SearchResult & { scor
       <div class="frame-node-id-row">
         <span class="frame-node-id">${escapeHtml(suggestion.multilanId)}</span>
         <button class="copy-btn icon-btn" data-text="${escapeHtml(suggestion.multilanId)}" title="Copy ID">${copyIconSvg}</button>
-        <span class="frame-score">${scorePercent}%</span>
+        <span class="frame-score" style="margin-left:auto">${scorePercent}%</span>
+        <span class="match-badge match-badge-close" style="margin-left:0">Close Match</span>
       </div>
       <div class="translations-preview">${renderTranslations(suggestion.translations, currentLang)}</div>
       <div class="frame-node-actions">
