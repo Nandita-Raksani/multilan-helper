@@ -24,12 +24,12 @@ function renderTranslations(translations: Record<string, string>, currentLang: s
   return SUPPORTED_LANGUAGES.map(lang => {
     const text = translations[lang];
     if (text) {
-      return `<div class="translation-row ${lang === currentLang ? 'active' : ''}">
+      return `<div class="translation-row ">
         <span class="translation-lang">${lang.toUpperCase()}</span>
         <span class="translation-text">${escapeHtml(text)}</span>
       </div>`;
     }
-    return `<div class="translation-row ${lang === currentLang ? 'active' : ''}">
+    return `<div class="translation-row ">
       <span class="translation-lang">${lang.toUpperCase()}</span>
       <span class="translation-text translation-unavailable"><em>N/A</em></span>
     </div>`;

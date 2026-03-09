@@ -266,6 +266,7 @@ function renderResultCard(
           <span class="search-result-id">${escapeHtml(result.multilanId)}</span>
           <button class="copy-btn icon-btn" data-text="${escapeHtml(result.multilanId)}" title="Copy ID">${copyIconSvg}</button>
           ${getStatusBadge(result.metadata?.status)}
+          ${result.score !== undefined && result.score < 1 ? `<span class="frame-score">${Math.round(result.score * 100)}%</span>` : ''}
           ${!options.showCornerBadge && matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-inline">${matchBadge.label}</span>` : ''}
         </div>
       </div>
@@ -274,7 +275,7 @@ function renderResultCard(
           const text = result.translations[lang];
           if (text) {
             return `
-            <div class="translation-row ${lang === options.currentLang ? 'active' : ''}">
+            <div class="translation-row">
               <span class="translation-lang">${lang.toUpperCase()}</span>
               <span class="translation-text">${escapeHtml(text)}</span>
               ${options.showTextCopyButtons ? `<button class="copy-btn icon-btn" data-text="${escapeHtml(text)}" title="Copy">${copyIconSvg}</button>` : ''}
@@ -395,7 +396,7 @@ export function renderGlobalSearchResults(): void {
     } else if (match.status === 'close' && match.suggestions) {
       for (const suggestion of match.suggestions) {
         if (!existingIds.has(suggestion.multilanId)) {
-          results.unshift({ multilanId: suggestion.multilanId, translations: suggestion.translations, metadata: suggestion.metadata });
+          results.unshift({ multilanId: suggestion.multilanId, translations: suggestion.translations, metadata: suggestion.metadata, score: suggestion.score });
           existingIds.add(suggestion.multilanId);
         }
       }

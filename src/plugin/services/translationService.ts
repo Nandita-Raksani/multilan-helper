@@ -117,17 +117,43 @@ export function applyVariables(
 /**
  * Calculate match score between query and text
  */
+/**
+ * Levenshtein edit distance between two strings
+ */
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
 export function calculateMatchScore(query: string, text: string): number {
   const lowerQuery = query.toLowerCase();
   const lowerText = text.toLowerCase();
 
   if (lowerText === lowerQuery) return 1;
-  if (lowerText.includes(lowerQuery)) return 0.7;
-  if (lowerQuery.includes(lowerText)) return 0.5;
-  if (lowerQuery.split(" ").some((word) => word.length > 2 && lowerText.includes(word))) {
-    return 0.3;
-  }
-  return 0;
+
+  // Levenshtein-based similarity
+  const maxLen = Math.max(lowerQuery.length, lowerText.length);
+  if (maxLen === 0) return 0;
+  const distance = levenshteinDistance(lowerQuery, lowerText);
+  const similarity = 1 - distance / maxLen;
+
+  // Also check substring containment for a boost
+  if (lowerText.includes(lowerQuery)) return Math.max(similarity, 0.7);
+  if (lowerQuery.includes(lowerText)) return Math.max(similarity, 0.5);
+
+  // Filter out noise — require meaningful similarity
+  return similarity >= 0.4 ? similarity : 0;
 }
 
 /**
@@ -190,16 +216,8 @@ export function searchTranslationsWithScore(
 
     // Check translation text match in any language
     for (const text of Object.values(langs)) {
-      const lowerText = text.toLowerCase();
-      if (lowerText === lowerQuery) {
-        bestScore = 1;
-      } else if (lowerText.includes(lowerQuery)) {
-        bestScore = Math.max(bestScore, 0.6);
-      } else if (lowerQuery.includes(lowerText)) {
-        bestScore = Math.max(bestScore, 0.5);
-      } else if (lowerQuery.split(" ").some((word) => word.length > 2 && lowerText.includes(word))) {
-        bestScore = Math.max(bestScore, 0.3);
-      }
+      const score = calculateMatchScore(query, text);
+      bestScore = Math.max(bestScore, score);
     }
 
     if (bestScore > 0) {
@@ -267,8 +285,9 @@ export function buildTextToIdMap(translationData: TranslationMap): Map<string, s
 
   for (const [multilanId, langs] of Object.entries(translationData)) {
     for (const text of Object.values(langs)) {
-      if (!textToMultilanId.has(text)) {
-        textToMultilanId.set(text, multilanId);
+      const lower = text.toLowerCase();
+      if (!textToMultilanId.has(lower)) {
+        textToMultilanId.set(lower, multilanId);
       }
     }
   }
@@ -333,9 +352,9 @@ export function detectMatch(
     return { status: 'none' };
   }
 
-  // Pass 1: Exact match
+  // Pass 1: Exact match (case-insensitive)
   const textToIdMap = buildTextToIdMap(translationData);
-  const exactId = textToIdMap.get(trimmed);
+  const exactId = textToIdMap.get(trimmed.toLowerCase());
   if (exactId) {
     const translations = translationData[exactId];
     const metadata = metadataMap ? metadataMap[exactId] : undefined;
