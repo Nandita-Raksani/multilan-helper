@@ -88,6 +88,7 @@ export type PluginMessageType =
   | "switch-language"
   | "search"
   | "link-node"
+  | "link-node-with-variables"
   | "unlink-node"
   | "select-node"
   | "refresh"
@@ -112,7 +113,8 @@ export type UIMessageType =
   | "unlinked-queue"
   | "global-search-results"
   | "search-results"
-  | "text-created";
+  | "text-created"
+  | "prompt-variables";
 
 // Combined message type for both directions
 export interface PluginMessage {
@@ -125,6 +127,9 @@ export interface PluginMessage {
   searchQuery?: string;
   text?: string;
   highlight?: boolean;
+  variables?: Record<string, string>;
+  variableNames?: string[];
+  translationTemplate?: string;
   // Plugin -> UI fields
   canEdit?: boolean;
   textNodes?: TextNodeInfo[];

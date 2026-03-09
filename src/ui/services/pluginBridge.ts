@@ -55,6 +55,16 @@ class PluginBridge {
     });
   }
 
+  linkNodeWithVariables(nodeId: string, multilanId: string, language: Language, variables: Record<string, string>): void {
+    this.send({
+      type: 'link-node-with-variables',
+      nodeId,
+      multilanId,
+      language,
+      variables
+    });
+  }
+
   unlinkNode(nodeId: string): void {
     this.send({
       type: 'unlink-node',

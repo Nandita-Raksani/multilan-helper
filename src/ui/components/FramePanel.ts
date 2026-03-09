@@ -134,7 +134,7 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
       <div class="results-grouped">
         <div class="frame-node-card frame-node-card-none">
           <div class="frame-node-id-row" style="margin-bottom:0">
-            <span class="frame-node-hint" style="margin:0">Search manually by only selecting this layer.</span>
+            <span class="frame-node-hint" style="margin:0">No translations found</span>
             <span class="match-badge match-badge-none">No match</span>
           </div>
         </div>

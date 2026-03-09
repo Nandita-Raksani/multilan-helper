@@ -354,9 +354,13 @@ function renderSelectedNodeNoMatch(
   return `
     ${renderSelectedNodeBubble(node)}
     <div class="connector-arrow"></div>
-    <div class="results-grouped" style="position:relative">
-      <span class="match-badge match-badge-none match-badge-corner">No match</span>
-      <div class="no-match-hint">Search manually by only selecting this layer.</div>
+    <div class="results-grouped">
+      <div class="frame-node-card frame-node-card-none">
+        <div class="frame-node-id-row" style="margin-bottom:0">
+          <span class="frame-node-hint" style="margin:0">No translations found</span>
+          <span class="match-badge match-badge-none">No match</span>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -374,12 +378,13 @@ export function renderGlobalSearchResults(): void {
   const searchContainer = globalSearchInput.closest('.search-container') as HTMLElement | null;
   const searchHint = searchContainer?.parentElement?.querySelector('.search-hint') as HTMLElement | null;
 
-  // Hide search bar when a node is selected (text is shown in the bubble)
-  if (searchContainer) searchContainer.style.display = hasSelection ? 'none' : '';
-  if (searchHint) searchHint.style.display = hasSelection ? 'none' : '';
-
   // Merge matchResult into search results so detected matches always appear
   const match = state.matchResult;
+
+  // Hide search bar when a node is selected, except for no-match nodes
+  const isNoMatch = hasSelection && match?.status === 'none';
+  if (searchContainer) searchContainer.style.display = (hasSelection && !isNoMatch) ? 'none' : '';
+  if (searchHint) searchHint.style.display = 'none';
   if (match && hasSelection) {
     const existingIds = new Set(results.map(r => r.multilanId));
 
@@ -399,7 +404,7 @@ export function renderGlobalSearchResults(): void {
 
   if (results.length === 0) {
     globalSearchResultsCount.textContent = '';
-    if (hasSelection && !isAlreadyLinked && searchQuery) {
+    if (hasSelection && !isAlreadyLinked && match?.status === 'none') {
       globalSearchResults.innerHTML = renderSelectedNodeNoMatch(state.selectedNode!);
     } else if (searchQuery) {
       globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
@@ -423,6 +428,22 @@ export function renderGlobalSearchResults(): void {
 
   // Copy buttons for translation text: show for dev seat only
   const showTextCopyButtons = !state.canEdit;
+
+  // No-match node with manual search results: show bubble + flat cards with Link buttons
+  if (isNoMatch && results.length > 0) {
+    const bubbleHtml = renderSelectedNodeNoMatch(state.selectedNode!);
+    const cardsHtml = sortedResults.map(result => renderResultCard(result, {
+      showCornerBadge: true,
+      hasSelection: true,
+      isCurrentLink: false,
+      canEdit: state.canEdit,
+      currentLang: state.currentLang,
+      showTextCopyButtons,
+    })).join('');
+    globalSearchResults.innerHTML = bubbleHtml + cardsHtml;
+    attachSearchResultHandlers();
+    return;
+  }
 
   // When a node is selected, use the grouped layout with bubble
   if (hasSelection && results.length > 0) {

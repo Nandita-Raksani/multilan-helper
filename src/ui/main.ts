@@ -22,6 +22,7 @@ import {
   showSearchBar
 } from './components';
 import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic } from './components/SearchPanel';
+import { showVariablePrompt } from './components/VariablePromptModal';
 
 /**
  * Get user's preferred language from browser settings
@@ -190,6 +191,18 @@ function handlePluginMessage(msg: PluginMessage): void {
     case 'text-created':
       setStatus(`Created text node linked to ${msg.multilanId}`);
       pluginBridge.refresh(store.getState().scope);
+      break;
+
+    case 'prompt-variables':
+      if (msg.nodeId && msg.multilanId && msg.variableNames && msg.translationTemplate) {
+        showVariablePrompt({
+          nodeId: msg.nodeId,
+          multilanId: msg.multilanId,
+          language: msg.language || 'en',
+          variableNames: msg.variableNames,
+          translationTemplate: msg.translationTemplate,
+        });
+      }
       break;
 
   }

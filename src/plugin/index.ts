@@ -16,11 +16,13 @@ import { createAdapter } from "../adapters";
 import { TraFileData } from "../adapters/types/traFile.types";
 import {
   getAllTranslations,
+  getTranslation,
   isLanguage,
   globalSearchTranslations,
   searchTranslations,
   detectLanguage,
   detectMatch,
+  applyVariables,
 } from "./services/translationService";
 import {
   getAllTextNodesInfo,
@@ -34,6 +36,9 @@ import {
   clearExpectedText,
   removeMultilanIdFromName,
   loadNodeFont,
+  getTextNodeById,
+  updateNodeText,
+  setExpectedText,
 } from "./services/nodeService";
 import {
   linkTextNode,
@@ -319,6 +324,32 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.nodeId && msg.multilanId) {
+        // Check if translation has ###variable### placeholders
+        const lang = msg.language || 'en';
+        const translation = getTranslation(translationData, msg.multilanId, lang);
+        if (translation && translation.includes('###')) {
+          const varPattern = /###([^#]+)###/g;
+          const variableNames: string[] = [];
+          let varMatch;
+          while ((varMatch = varPattern.exec(translation)) !== null) {
+            if (!variableNames.includes(varMatch[1])) {
+              variableNames.push(varMatch[1]);
+            }
+          }
+          if (variableNames.length > 0) {
+            // Prompt UI for variable values before linking
+            figma.ui.postMessage({
+              type: 'prompt-variables',
+              nodeId: msg.nodeId,
+              multilanId: msg.multilanId,
+              language: msg.language,
+              variableNames,
+              translationTemplate: translation,
+            });
+            return;
+          }
+        }
+
         const success = await linkTextNode(
           msg.nodeId,
           msg.multilanId,
@@ -326,8 +357,51 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           msg.language
         );
         if (success) {
+          // Update node text with translation
+          if (translation) {
+            const node = await getTextNodeById(msg.nodeId);
+            if (node) {
+              await updateNodeText(node, translation);
+              setExpectedText(node, translation);
+            }
+          }
           figma.notify(`Linked to ${msg.multilanId}`);
           // Refresh
+          const textNodes = getAllTextNodesInfo("page", getTranslations);
+          const selectedNode = getSelectedTextNodeInfo(getTranslations);
+          const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
+          const frameMatchResults = selectionTextNodes.length > 1
+            ? buildFrameMatchResults(selectionTextNodes)
+            : undefined;
+          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode, selectionTextNodes, frameMatchResults });
+        }
+      }
+      break;
+
+    case "link-node-with-variables":
+      if (!canEdit()) {
+        figma.notify("You don't have edit permissions", { error: true });
+        return;
+      }
+      if (msg.nodeId && msg.multilanId && msg.variables) {
+        const success = await linkTextNode(
+          msg.nodeId,
+          msg.multilanId,
+          translationData,
+          msg.language
+        );
+        if (success) {
+          const lang = msg.language || 'en';
+          let translation = getTranslation(translationData, msg.multilanId, lang);
+          if (translation) {
+            translation = applyVariables(translation, msg.variables);
+            const node = await getTextNodeById(msg.nodeId);
+            if (node) {
+              await updateNodeText(node, translation);
+              setExpectedText(node, translation);
+            }
+          }
+          figma.notify(`Linked to ${msg.multilanId}`);
           const textNodes = getAllTextNodesInfo("page", getTranslations);
           const selectedNode = getSelectedTextNodeInfo(getTranslations);
           const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
