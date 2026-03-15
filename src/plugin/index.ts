@@ -51,30 +51,35 @@ import {
 // Build timestamp - update this when translations are updated
 const BUILD_TIMESTAMP = "2026-01-18 12:00";
 
-// Translation data loaded from bundled .tra files (with JSON fallback)
+// Folder names derived from the bundle keys
+const FOLDER_NAMES = Object.keys(traFileContents);
+
+// Current active folder and translation data
+let currentFolder: string = FOLDER_NAMES[0] || "EB";
 let translationData: TranslationMap;
 let metadataData: MetadataMap;
 
-// Store highlight rectangle IDs for cleanup
-
-
-// Initialize with .tra files (primary bundled source)
-// Uses tra-bundle.ts which has been pre-converted to UTF-8
-function initializeTraFileData(): boolean {
+// Initialize with .tra files for a specific folder
+function initializeTraFileData(folder: string): boolean {
   try {
+    const folderData = traFileContents[folder];
+    if (!folderData) {
+      console.error(`Folder "${folder}" not found in bundle`);
+      return false;
+    }
     const traData: TraFileData = {
-      en: traFileContents.en,
-      fr: traFileContents.fr,
-      nl: traFileContents.nl,
-      de: traFileContents.de,
+      en: folderData.en || '',
+      fr: folderData.fr || '',
+      nl: folderData.nl || '',
+      de: folderData.de || '',
     };
     const adapter = createAdapter(traData, "tra-files");
     translationData = adapter.getTranslationMap();
     metadataData = adapter.getMetadataMap();
-    console.log(`Loaded ${Object.keys(translationData).length} translations from .tra files`);
+    console.log(`Loaded ${Object.keys(translationData).length} translations from folder "${folder}"`);
     return true;
   } catch (error) {
-    console.error('Failed to parse .tra files:', error);
+    console.error(`Failed to parse .tra files for folder "${folder}":`, error);
     return false;
   }
 }
@@ -88,14 +93,21 @@ function initializeBundledData(): void {
 }
 
 // Initialize with fallback chain: .tra files -> JSON
-function initializeWithFallback(): void {
-  if (!initializeTraFileData()) {
+async function initializeWithFallback(): Promise<void> {
+  // Load saved folder preference
+  try {
+    const saved = await figma.clientStorage.getAsync('selectedFolder');
+    if (saved && FOLDER_NAMES.includes(saved)) {
+      currentFolder = saved;
+    }
+  } catch {
+    // Use default folder
+  }
+
+  if (!initializeTraFileData(currentFolder)) {
     initializeBundledData();
   }
 }
-
-// Initialize with fallback chain: .tra files -> JSON
-initializeWithFallback();
 
 // Helper to get translations for a multilanId
 const getTranslations = (multilanId: string) => getAllTranslations(translationData, multilanId);
@@ -220,6 +232,8 @@ async function initialize(): Promise<void> {
     translationCount: Object.keys(translationData).length,
     buildTimestamp: BUILD_TIMESTAMP,
     detectedLanguage,
+    folderNames: FOLDER_NAMES,
+    folderName: currentFolder,
   });
 }
 
@@ -575,11 +589,20 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       figma.currentPage.selection = [];
       break;
 
+    case "switch-folder":
+      if (msg.folderName && FOLDER_NAMES.includes(msg.folderName)) {
+        currentFolder = msg.folderName;
+        await figma.clientStorage.setAsync('selectedFolder', currentFolder);
+        initializeTraFileData(currentFolder);
+        await initialize();
+      }
+      break;
+
     case "close":
       figma.closePlugin();
       break;
   }
 };
 
-// Start
-initialize();
+// Start — wait for saved folder to load before initializing
+initializeWithFallback().then(() => initialize());

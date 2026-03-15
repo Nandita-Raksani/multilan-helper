@@ -117,6 +117,10 @@ class PluginBridge {
     });
   }
 
+  switchFolder(folderName: string): void {
+    this.send({ type: 'switch-folder', folderName });
+  }
+
   clearSelection(): void {
     this.send({ type: 'clear-selection' });
   }

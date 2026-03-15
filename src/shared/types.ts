@@ -100,6 +100,7 @@ export type PluginMessageType =
   | "create-linked-text"
   | "highlight-unlinked"
   | "clear-selection"
+  | "switch-folder"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -130,6 +131,8 @@ export interface PluginMessage {
   variables?: Record<string, string>;
   variableNames?: string[];
   translationTemplate?: string;
+  folderName?: string;
+  folderNames?: string[];
   // Plugin -> UI fields
   canEdit?: boolean;
   textNodes?: TextNodeInfo[];

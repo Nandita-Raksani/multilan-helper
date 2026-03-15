@@ -17,6 +17,8 @@ export interface UIState {
   globalSearchResults: SearchResult[];
   allTranslations: unknown[];
   translationCount: number;
+  currentFolder: string;
+  folderNames: string[];
 }
 
 type StateListener = (state: UIState) => void;
@@ -38,7 +40,9 @@ class Store {
     suppressFrameMode: false,
     globalSearchResults: [],
     allTranslations: [],
-    translationCount: 0
+    translationCount: 0,
+    currentFolder: 'EB',
+    folderNames: []
   };
 
   private listeners: Set<StateListener> = new Set();

@@ -7,6 +7,8 @@ import {
   initTabs,
   initSearchPanel,
   initStatusBar,
+  initFolderSelector,
+  renderFolderButtons,
   renderGlobalSearchResults,
   setStatus,
   setBuildTimestamp,
@@ -48,12 +50,17 @@ function handlePluginMessage(msg: PluginMessage): void {
         ? msg.detectedLanguage
         : browserLang;
 
+      const folderNames = msg.folderNames || [];
+      const currentFolder = msg.folderName || folderNames[0] || 'EB';
+
       store.setState({
         canEdit: msg.canEdit,
         textNodes: msg.textNodes || [],
         selectedNode: msg.selectedNode || null,
         currentLang: initialLang,
-        translationCount: msg.translationCount || 0
+        translationCount: msg.translationCount || 0,
+        folderNames,
+        currentFolder
       });
 
       if (!msg.canEdit) {
@@ -61,6 +68,7 @@ function handlePluginMessage(msg: PluginMessage): void {
         hideLanguageBar();
       }
 
+      renderFolderButtons(folderNames, currentFolder);
       setActiveLanguage(initialLang);
       updateSearchHint();
 
@@ -210,6 +218,7 @@ function handlePluginMessage(msg: PluginMessage): void {
 
 function init(): void {
   // Initialize all components
+  initFolderSelector();
   initLanguageBar();
   initTabs();
   initSearchPanel();
