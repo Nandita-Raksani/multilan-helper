@@ -62,8 +62,8 @@ const FOLDER_NAMES = BUNDLE_FOLDER_NAMES;
 
 // Current active folder and translation data
 let currentFolder: string = FOLDER_NAMES[0] || "EB";
-let translationData: TranslationMap;
-let metadataData: MetadataMap;
+let translationData: TranslationMap = {};
+let metadataData: MetadataMap = {};
 
 // Initialize with .tra files for a specific folder
 function initializeTraFileData(folder: string): boolean {
