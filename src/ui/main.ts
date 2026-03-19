@@ -23,6 +23,7 @@ import {
   isFrameMode,
   showSearchBar
 } from './components';
+import { handleFrameMatchResult, clearCloseMatchSearchState } from './components/FramePanel';
 import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic } from './components/SearchPanel';
 import { showVariablePrompt } from './components/VariablePromptModal';
 
@@ -109,7 +110,44 @@ function handlePluginMessage(msg: PluginMessage): void {
       }
       break;
 
+    case 'node-updated': {
+      // Incremental update — patch the single changed node in the list
+      if (msg.nodeInfo) {
+        const state = store.getState();
+        const updatedNodes = state.textNodes.map(n =>
+          n.id === msg.nodeInfo!.id ? msg.nodeInfo! : n
+        );
+        store.setState({ textNodes: updatedNodes });
+      }
+      if (!store.getState().suppressFrameMode) {
+        if (msg.selectionTextNodes !== undefined) {
+          store.setState({
+            selectionTextNodes: msg.selectionTextNodes || [],
+            frameMatchResults: msg.frameMatchResults || [],
+          });
+        }
+        if (msg.selectedNode !== undefined) {
+          store.setState({
+            selectedNode: msg.selectedNode || null,
+            matchResult: msg.matchResult || null
+          });
+        }
+      }
+      if (!store.getState().suppressFrameMode && isFrameMode()) {
+        renderFramePanel();
+      } else {
+        renderGlobalSearchResults();
+      }
+      if (store.getState().isHighlightMode) {
+        advanceQueue();
+      }
+      break;
+    }
+
     case 'selection-changed': {
+      // Reset per-node close-match search state on new selection
+      clearCloseMatchSearchState();
+
       const highlightUnlinkedBtn = document.getElementById('highlightUnlinkedBtn') as HTMLButtonElement | null;
 
       // Skip UI updates during highlight mode — the queue controls navigation
@@ -181,10 +219,21 @@ function handlePluginMessage(msg: PluginMessage): void {
       break;
     }
 
-    case 'match-detected':
-      store.setState({ matchResult: msg.matchResult || null });
-      renderGlobalSearchResults();
+    case 'match-detected': {
+      // Guard: only apply if the result matches the currently selected node
+      const currentSelectedNode = store.getState().selectedNode;
+      const isRelevant = !msg.nodeId || !currentSelectedNode || currentSelectedNode.id === msg.nodeId;
+      if (isRelevant) {
+        store.setState({ matchResult: msg.matchResult || null });
+        if (isFrameMode()) {
+          renderFramePanel();
+        } else {
+          showSearchBar();
+          renderGlobalSearchResults();
+        }
+      }
       break;
+    }
 
     case 'unlinked-queue':
       store.setState({ unlinkedQueue: msg.unlinkedQueue || [] });
@@ -200,6 +249,24 @@ function handlePluginMessage(msg: PluginMessage): void {
       setStatus(`Created text node linked to ${msg.multilanId}`);
       pluginBridge.refresh(store.getState().scope);
       break;
+
+    case 'frame-match-result': {
+      // On-demand fuzzy result for a single node in frame mode
+      if (msg.nodeId && msg.matchResult) {
+        handleFrameMatchResult(msg.nodeId, msg.matchResult.status);
+        const state = store.getState();
+        const updatedResults = state.frameMatchResults.map(r =>
+          r.nodeId === msg.nodeId
+            ? { ...r, matchResult: msg.matchResult! }
+            : r
+        );
+        store.setState({ frameMatchResults: updatedResults });
+        if (isFrameMode()) {
+          renderFramePanel();
+        }
+      }
+      break;
+    }
 
     case 'prompt-variables':
       if (msg.nodeId && msg.multilanId && msg.variableNames && msg.translationTemplate) {

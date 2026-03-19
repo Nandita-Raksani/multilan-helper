@@ -7,10 +7,33 @@ import { escapeHtml, copyToClipboard } from '../utils/dom';
 // Carousel state: tracks current suggestion index per nodeId
 const carouselState = new Map<string, number>();
 
+// Tracks nodes where close-match search is in progress or completed with no results
+const closeMatchSearchState = new Map<string, 'searching' | 'no-results'>();
+
 const copyIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
 
 export function isFrameMode(): boolean {
   return store.getState().selectionTextNodes.length > 1;
+}
+
+/**
+ * Called when a per-node close-match search completes.
+ * Updates the search state so the card renders the correct status.
+ */
+export function handleFrameMatchResult(nodeId: string, status: string): void {
+  if (status === 'none') {
+    closeMatchSearchState.set(nodeId, 'no-results');
+  } else {
+    // Got results (close/exact) — clear search state, card will render differently
+    closeMatchSearchState.delete(nodeId);
+  }
+}
+
+/**
+ * Clear close-match search state (e.g. on new selection).
+ */
+export function clearCloseMatchSearchState(): void {
+  closeMatchSearchState.clear();
 }
 
 export function showSearchBar(): void {
@@ -129,15 +152,28 @@ function renderSuggestionSlide(nodeId: string, suggestion: SearchResult & { scor
 }
 
 function renderNoneCard(item: FrameNodeMatchResult): string {
+  const canEdit = store.getState().canEdit;
+  const searchState = closeMatchSearchState.get(item.nodeId);
+
+  let actionHtml = '';
+  if (searchState === 'searching') {
+    actionHtml = '<div class="frame-node-actions"><span class="frame-node-hint">Searching...</span></div>';
+  } else if (searchState === 'no-results') {
+    actionHtml = '<div class="frame-node-actions"><span class="frame-node-hint">No close matches found</span></div>';
+  } else if (canEdit) {
+    actionHtml = `<div class="frame-node-actions"><button class="btn-sm btn-sm-outline btn-find-close" data-node-id="${escapeHtml(item.nodeId)}" data-text="${escapeHtml(item.characters)}">Find close matches</button></div>`;
+  }
+
   return `
     <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
       ${renderNodeBubble(item.characters)}
       <div class="results-grouped">
         <div class="frame-node-card frame-node-card-none">
           <div class="frame-node-id-row" style="margin-bottom:0">
-            <span class="frame-node-hint" style="margin:0">No translations found</span>
+            <span class="frame-node-hint" style="margin:0">No exact match</span>
             <span class="match-badge match-badge-none">No match</span>
           </div>
+          ${actionHtml}
         </div>
       </div>
     </div>`;
@@ -276,6 +312,18 @@ function attachFramePanelHandlers(container: HTMLElement): void {
       const current = carouselState.get(nodeId) || 0;
       carouselState.set(nodeId, current + 1);
       renderFramePanel();
+    });
+  });
+
+  // Find close matches buttons (on-demand fuzzy search per node)
+  container.querySelectorAll<HTMLButtonElement>('.btn-find-close').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const nodeId = btn.dataset.nodeId!;
+      const text = btn.dataset.text!;
+      closeMatchSearchState.set(nodeId, 'searching');
+      renderFramePanel();
+      pluginBridge.findCloseMatches(nodeId, text);
     });
   });
 

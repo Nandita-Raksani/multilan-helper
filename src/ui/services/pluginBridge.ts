@@ -121,6 +121,10 @@ class PluginBridge {
     this.send({ type: 'switch-folder', folderName });
   }
 
+  findCloseMatches(nodeId: string, text: string): void {
+    this.send({ type: 'find-close-matches', nodeId, text });
+  }
+
   clearSelection(): void {
     this.send({ type: 'clear-selection' });
   }

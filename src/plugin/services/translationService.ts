@@ -115,44 +115,67 @@ export function applyVariables(
 }
 
 /**
- * Calculate match score between query and text
+ * Levenshtein edit distance between two strings.
+ * Uses 2-row approach (O(n) space) with optional early termination.
  */
-/**
- * Levenshtein edit distance between two strings
- */
-function levenshteinDistance(a: string, b: string): number {
+function levenshteinDistance(a: string, b: string, maxDistance?: number): number {
   const m = a.length;
   const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1]
-        ? dp[i - 1][j - 1]
-        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+
+  // Quick rejection by length difference
+  if (maxDistance !== undefined && Math.abs(m - n) > maxDistance) return maxDistance + 1;
+
+  // Ensure a is the shorter string for optimal space usage
+  if (m > n) return levenshteinDistance(b, a, maxDistance);
+
+  let prev = new Uint16Array(m + 1);
+  let curr = new Uint16Array(m + 1);
+  for (let j = 0; j <= m; j++) prev[j] = j;
+
+  for (let i = 1; i <= n; i++) {
+    curr[0] = i;
+    let rowMin = i;
+    for (let j = 1; j <= m; j++) {
+      curr[j] = a[j - 1] === b[i - 1]
+        ? prev[j - 1]
+        : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
+      if (curr[j] < rowMin) rowMin = curr[j];
     }
+    if (maxDistance !== undefined && rowMin > maxDistance) return maxDistance + 1;
+    [prev, curr] = [curr, prev];
   }
-  return dp[m][n];
+  return prev[m];
 }
 
+/**
+ * Calculate match score between query and text
+ */
 export function calculateMatchScore(query: string, text: string): number {
   const lowerQuery = query.toLowerCase();
   const lowerText = text.toLowerCase();
 
   if (lowerText === lowerQuery) return 1;
 
-  // Levenshtein-based similarity
   const maxLen = Math.max(lowerQuery.length, lowerText.length);
   if (maxLen === 0) return 0;
-  const distance = levenshteinDistance(lowerQuery, lowerText);
+
+  // Levenshtein with early termination at similarity < 0.4
+  const maxDistance = Math.floor(0.6 * maxLen);
+  const distance = levenshteinDistance(lowerQuery, lowerText, maxDistance);
+
+  if (distance > maxDistance) {
+    // Levenshtein too far — still check substring containment as fallback
+    if (lowerText.includes(lowerQuery)) return 0.7;
+    if (lowerQuery.includes(lowerText)) return 0.5;
+    return 0;
+  }
+
   const similarity = 1 - distance / maxLen;
 
-  // Also check substring containment for a boost
+  // Boost for substring matches (preserves original behavior)
   if (lowerText.includes(lowerQuery)) return Math.max(similarity, 0.7);
   if (lowerQuery.includes(lowerText)) return Math.max(similarity, 0.5);
 
-  // Filter out noise — require meaningful similarity
   return similarity >= 0.4 ? similarity : 0;
 }
 
@@ -278,6 +301,132 @@ export function globalSearchTranslations(
 }
 
 /**
+ * Chunked async search — processes entries in batches to avoid blocking the main thread.
+ * Yields to the event loop between chunks via setTimeout(0).
+ */
+const CHUNK_SIZE = 10000;
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+export async function searchTranslationsWithScoreAsync(
+  translationData: TranslationMap,
+  query: string,
+  limit: number = 10
+): Promise<Array<SearchResult & { score: number }>> {
+  const results: Array<SearchResult & { score: number }> = [];
+  const lowerQuery = query.toLowerCase();
+  const entries = Object.entries(translationData);
+
+  for (let i = 0; i < entries.length; i++) {
+    const [multilanId, langs] = entries[i];
+    let bestScore = 0;
+
+    if (multilanId.toLowerCase().includes(lowerQuery)) {
+      bestScore = Math.max(bestScore, 0.8);
+    }
+
+    for (const text of Object.values(langs)) {
+      const score = calculateMatchScore(query, text);
+      bestScore = Math.max(bestScore, score);
+    }
+
+    if (bestScore > 0) {
+      results.push({ multilanId, translations: langs, score: bestScore });
+    }
+
+    // Yield every CHUNK_SIZE entries
+    if ((i + 1) % CHUNK_SIZE === 0) {
+      await yieldToEventLoop();
+    }
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, limit);
+}
+
+/**
+ * Async version of detectMatch — uses chunked fuzzy search.
+ */
+export async function detectMatchAsync(
+  translationData: TranslationMap,
+  text: string,
+  metadataMap?: MetadataMap
+): Promise<MatchDetectionResult> {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return { status: 'none' };
+  }
+
+  // Pass 1: Exact match (cached, O(1))
+  const textToIdMap = getTextToIdMap(translationData);
+  const exactId = textToIdMap.get(trimmed.toLowerCase());
+  if (exactId) {
+    const translations = translationData[exactId];
+    const metadata = metadataMap ? metadataMap[exactId] : undefined;
+    return { status: 'exact', multilanId: exactId, translations, metadata };
+  }
+
+  // Pass 2: Chunked fuzzy match (yields between chunks)
+  const fuzzyResults = await searchTranslationsWithScoreAsync(translationData, trimmed, 5);
+  const filtered = fuzzyResults.filter(r => r.score >= 0.8);
+
+  if (filtered.length > 0) {
+    const suggestions = filtered.map(r => ({
+      ...r,
+      metadata: metadataMap ? metadataMap[r.multilanId] : undefined,
+    }));
+    return { status: 'close', suggestions };
+  }
+
+  return { status: 'none' };
+}
+
+/**
+ * Async version of globalSearchTranslations — uses chunked iteration.
+ */
+export async function globalSearchTranslationsAsync(
+  translationData: TranslationMap,
+  query: string,
+  limit: number = 30,
+  metadataMap?: MetadataMap
+): Promise<SearchResult[]> {
+  const results: Array<SearchResult & { score: number }> = [];
+  const entries = Object.entries(translationData);
+
+  for (let i = 0; i < entries.length; i++) {
+    const [multilanId, langs] = entries[i];
+    let bestScore = 0;
+
+    if (multilanId === query) {
+      bestScore = 1;
+    } else if (multilanId.includes(query)) {
+      bestScore = Math.max(bestScore, 0.9);
+    }
+
+    for (const text of Object.values(langs)) {
+      const score = calculateMatchScore(query, text);
+      bestScore = Math.max(bestScore, score);
+    }
+
+    if (bestScore > 0) {
+      const metadata = metadataMap ? metadataMap[multilanId] : undefined;
+      results.push({ multilanId, translations: langs, score: bestScore, metadata });
+    }
+
+    if ((i + 1) % CHUNK_SIZE === 0) {
+      await yieldToEventLoop();
+    }
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, limit).map(({ multilanId, translations, metadata }) => ({
+    multilanId, translations, metadata,
+  }));
+}
+
+/**
  * Build reverse lookup map: text -> multilanId for exact matching
  */
 export function buildTextToIdMap(translationData: TranslationMap): Map<string, string> {
@@ -293,6 +442,43 @@ export function buildTextToIdMap(translationData: TranslationMap): Map<string, s
   }
 
   return textToMultilanId;
+}
+
+// Cached textToIdMap — built once, invalidated on folder switch
+let cachedTextToIdMap: Map<string, string> | null = null;
+let cachedTextToIdMapSource: TranslationMap | null = null;
+
+/**
+ * Get or build the cached text-to-ID map.
+ * O(1) after first call for the same translationData reference.
+ */
+export function getTextToIdMap(translationData: TranslationMap): Map<string, string> {
+  if (cachedTextToIdMap && cachedTextToIdMapSource === translationData) {
+    return cachedTextToIdMap;
+  }
+  cachedTextToIdMap = buildTextToIdMap(translationData);
+  cachedTextToIdMapSource = translationData;
+  return cachedTextToIdMap;
+}
+
+/**
+ * Invalidate the cached text-to-ID map (call on folder switch / data reload).
+ */
+export function invalidateTextToIdMapCache(): void {
+  cachedTextToIdMap = null;
+  cachedTextToIdMapSource = null;
+}
+
+/**
+ * Fast exact-match lookup using the cached map. Returns multilanId or null.
+ */
+export function exactMatchLookup(
+  translationData: TranslationMap,
+  text: string
+): string | null {
+  const trimmed = text.trim().toLowerCase();
+  if (!trimmed) return null;
+  return getTextToIdMap(translationData).get(trimmed) || null;
 }
 
 /**
@@ -352,8 +538,8 @@ export function detectMatch(
     return { status: 'none' };
   }
 
-  // Pass 1: Exact match (case-insensitive)
-  const textToIdMap = buildTextToIdMap(translationData);
+  // Pass 1: Exact match (case-insensitive) — uses cached map
+  const textToIdMap = getTextToIdMap(translationData);
   const exactId = textToIdMap.get(trimmed.toLowerCase());
   if (exactId) {
     const translations = translationData[exactId];

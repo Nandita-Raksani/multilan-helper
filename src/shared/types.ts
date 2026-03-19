@@ -59,7 +59,7 @@ export interface SearchResult {
 }
 
 // Match detection types
-export type MatchStatus = 'linked' | 'exact' | 'close' | 'none';
+export type MatchStatus = 'linked' | 'exact' | 'close' | 'none' | 'searching';
 
 export interface MatchDetectionResult {
   status: MatchStatus;
@@ -101,12 +101,14 @@ export type PluginMessageType =
   | "highlight-unlinked"
   | "clear-selection"
   | "switch-folder"
+  | "find-close-matches"
   | "close";
 
 // UI message types (Plugin -> UI)
 export type UIMessageType =
   | "init"
   | "text-nodes-updated"
+  | "node-updated"
   | "selection-changed"
   | "language-switched"
   | "lookup-result"
@@ -115,7 +117,8 @@ export type UIMessageType =
   | "global-search-results"
   | "search-results"
   | "text-created"
-  | "prompt-variables";
+  | "prompt-variables"
+  | "frame-match-result";
 
 // Combined message type for both directions
 export interface PluginMessage {
@@ -135,6 +138,7 @@ export interface PluginMessage {
   folderNames?: string[];
   // Plugin -> UI fields
   canEdit?: boolean;
+  nodeInfo?: TextNodeInfo;
   textNodes?: TextNodeInfo[];
   selectedNode?: TextNodeInfo | null;
   selectionTextNodes?: TextNodeInfo[];

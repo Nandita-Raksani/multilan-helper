@@ -19,10 +19,14 @@ import {
   getTranslation,
   isLanguage,
   globalSearchTranslations,
+  globalSearchTranslationsAsync,
   searchTranslations,
   detectLanguage,
   detectMatch,
+  detectMatchAsync,
   applyVariables,
+  invalidateTextToIdMapCache,
+  exactMatchLookup,
 } from "./services/translationService";
 import {
   getAllTextNodesInfo,
@@ -39,6 +43,7 @@ import {
   getTextNodeById,
   updateNodeText,
   setExpectedText,
+  buildTextNodeInfo,
 } from "./services/nodeService";
 import {
   linkTextNode,
@@ -62,11 +67,13 @@ let metadataData: MetadataMap;
 // Initialize with .tra files for a specific folder
 function initializeTraFileData(folder: string): boolean {
   try {
-    const folderData = traFileContents[folder];
-    if (!folderData) {
+    const folderFactory = traFileContents[folder];
+    if (!folderFactory) {
       console.error(`Folder "${folder}" not found in bundle`);
       return false;
     }
+    // Lazy evaluation — folder data is only materialized here
+    const folderData = folderFactory();
     const traData: TraFileData = {
       en: folderData.en || '',
       fr: folderData.fr || '',
@@ -76,6 +83,7 @@ function initializeTraFileData(folder: string): boolean {
     const adapter = createAdapter(traData, "tra-files");
     translationData = adapter.getTranslationMap();
     metadataData = adapter.getMetadataMap();
+    invalidateTextToIdMapCache();
     console.log(`Loaded ${Object.keys(translationData).length} translations from folder "${folder}"`);
     return true;
   } catch (error) {
@@ -89,6 +97,7 @@ function initializeBundledData(): void {
   const adapter = createAdapter(bundledApiData);
   translationData = adapter.getTranslationMap();
   metadataData = adapter.getMetadataMap();
+  invalidateTextToIdMapCache();
   console.log(`Loaded ${Object.keys(translationData).length} translations from bundled JSON`);
 }
 
@@ -165,7 +174,8 @@ function autoUnlinkModifiedNodes(scope: "page" | "selection"): number {
   return unlinkedCount;
 }
 
-// Build per-node match results for frame/multi-selection mode
+// Build per-node match results for frame/multi-selection mode.
+// Uses exact-match only (cached O(1) lookup) — no fuzzy/Levenshtein.
 function buildFrameMatchResults(nodes: TextNodeInfo[]): FrameNodeMatchResult[] {
   return nodes.map(node => {
     let matchResult;
@@ -178,7 +188,20 @@ function buildFrameMatchResults(nodes: TextNodeInfo[]): FrameNodeMatchResult[] {
         metadata,
       };
     } else {
-      matchResult = detectMatch(translationData, node.characters, metadataData);
+      // Exact match only for multi-selection — O(1) per node
+      const exactId = exactMatchLookup(translationData, node.characters);
+      if (exactId) {
+        const translations = translationData[exactId];
+        const metadata = metadataData ? metadataData[exactId] : undefined;
+        matchResult = {
+          status: 'exact' as const,
+          multilanId: exactId,
+          translations,
+          metadata,
+        };
+      } else {
+        matchResult = { status: 'none' as const };
+      }
     }
     return {
       nodeId: node.id,
@@ -190,31 +213,60 @@ function buildFrameMatchResults(nodes: TextNodeInfo[]): FrameNodeMatchResult[] {
 }
 
 // Initialize: send initial data to UI
+// Scans the page once and reuses the result for all operations.
 async function initialize(): Promise<void> {
+  // Single page scan — reused by all steps below
+  const allPageNodes = getTextNodesInScope("page");
+
   // Auto-unlink nodes that have been modified by designers
-  const unlinkedCount = autoUnlinkModifiedNodes("page");
+  let unlinkedCount = 0;
+  for (const node of allPageNodes) {
+    const multilanId = getMultilanId(node);
+    if (!multilanId) continue;
+
+    if (isTextModified(node)) {
+      removeMultilanIdFromName(node);
+      clearMultilanId(node);
+      clearExpectedText(node);
+      unlinkedCount++;
+      continue;
+    }
+
+    const expectedText = getExpectedText(node);
+    if (!expectedText) {
+      const translations = getTranslations(multilanId);
+      if (translations) {
+        const currentText = node.characters;
+        const matchesAnyTranslation = Object.values(translations).some(
+          (text) => text === currentText
+        );
+        if (!matchesAnyTranslation) {
+          removeMultilanIdFromName(node);
+          clearMultilanId(node);
+          unlinkedCount++;
+        }
+      }
+    }
+  }
   if (unlinkedCount > 0) {
     figma.notify(`Auto-unlinked ${unlinkedCount} modified node${unlinkedCount > 1 ? 's' : ''}`);
   }
 
-  // Preload fonts for all linked text nodes so language switching is instant
-  const allPageNodes = getTextNodesInScope("page");
+  // Preload fonts for linked text nodes — parallelized
+  const fontPromises: Promise<void>[] = [];
   for (const node of allPageNodes) {
     if (getMultilanId(node)) {
-      try {
-        await loadNodeFont(node);
-      } catch {
-        // Font load failed, will retry during switch if needed
-      }
+      fontPromises.push(loadNodeFont(node).catch(() => {}));
     }
   }
+  await Promise.all(fontPromises);
 
-  const textNodes = getAllTextNodesInfo("page", getTranslations);
+  // Build text node info from the already-scanned nodes
+  const textNodes = allPageNodes.map(n => buildTextNodeInfo(n, getTranslations));
   const selectedNode = getSelectedTextNodeInfo(getTranslations);
 
-  // Detect current language from linked nodes
-  const allNodes = getTextNodesInScope("page");
-  const linkedNodes = allNodes
+  // Detect current language from linked nodes (reusing allPageNodes)
+  const linkedNodes = allPageNodes
     .map((node) => {
       const multilanId = getMultilanId(node);
       return multilanId ? { multilanId, characters: node.characters } : null;
@@ -237,8 +289,20 @@ async function initialize(): Promise<void> {
   });
 }
 
-// Handle selection change — auto-detect matches for unlinked nodes
+// Handle selection change — debounced, with deferred fuzzy matching
+let selectionChangeTimer: ReturnType<typeof setTimeout> | null = null;
+
 figma.on("selectionchange", () => {
+  if (selectionChangeTimer !== null) {
+    clearTimeout(selectionChangeTimer);
+  }
+  selectionChangeTimer = setTimeout(() => {
+    selectionChangeTimer = null;
+    handleSelectionChange();
+  }, 100);
+});
+
+function handleSelectionChange(): void {
   let selectedNode = getSelectedTextNodeInfo(getTranslations);
   const hasSelection = figma.currentPage.selection.length > 0;
 
@@ -252,7 +316,7 @@ figma.on("selectionchange", () => {
     selectedNode = selectionTextNodes[0];
   }
 
-  // Auto-detect match for selected text node
+  // Auto-detect match for selected text node — exact only, fuzzy deferred
   let matchResult = undefined;
   if (selectedNode) {
     if (selectedNode.multilanId) {
@@ -265,12 +329,35 @@ figma.on("selectionchange", () => {
         metadata,
       };
     } else {
-      // Unlinked — run match detection
-      matchResult = detectMatch(translationData, selectedNode.characters, metadataData);
+      // Unlinked — fast exact match only
+      const exactId = exactMatchLookup(translationData, selectedNode.characters);
+      if (exactId) {
+        const translations = translationData[exactId];
+        const metadata = metadataData ? metadataData[exactId] : undefined;
+        matchResult = {
+          status: 'exact' as const,
+          multilanId: exactId,
+          translations,
+          metadata,
+        };
+      } else {
+        // Show 'searching' while deferred fuzzy runs
+        matchResult = { status: 'searching' as const };
+        const nodeChars = selectedNode.characters;
+        const nodeId = selectedNode.id;
+        // Chunked async — yields between batches so Figma stays responsive
+        detectMatchAsync(translationData, nodeChars, metadataData).then(fuzzyResult => {
+          figma.ui.postMessage({
+            type: "match-detected",
+            matchResult: fuzzyResult,
+            nodeId,
+          });
+        });
+      }
     }
   }
 
-  // Build frame match results for multi-selection
+  // Build frame match results for multi-selection (exact-match only, no Levenshtein)
   const frameMatchResults = selectionTextNodes.length > 1
     ? buildFrameMatchResults(selectionTextNodes)
     : undefined;
@@ -283,7 +370,7 @@ figma.on("selectionchange", () => {
     matchResult,
     frameMatchResults,
   });
-});
+}
 
 // Handle messages from UI
 figma.ui.onmessage = async (msg: PluginMessage) => {
@@ -372,22 +459,28 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         );
         if (success) {
           // Update node text with translation
-          if (translation) {
-            const node = await getTextNodeById(msg.nodeId);
-            if (node) {
+          const node = await getTextNodeById(msg.nodeId);
+          if (node) {
+            if (translation) {
               await updateNodeText(node, translation);
               setExpectedText(node, translation);
             }
+            figma.notify(`Linked to ${msg.multilanId}`);
+            // Incremental update — only send the changed node + selection context
+            const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
+            const selectedNode = getSelectedTextNodeInfo(getTranslations);
+            const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
+            const frameMatchResults = selectionTextNodes.length > 1
+              ? buildFrameMatchResults(selectionTextNodes)
+              : undefined;
+            figma.ui.postMessage({
+              type: "node-updated",
+              nodeInfo: updatedNodeInfo,
+              selectedNode,
+              selectionTextNodes,
+              frameMatchResults,
+            });
           }
-          figma.notify(`Linked to ${msg.multilanId}`);
-          // Refresh
-          const textNodes = getAllTextNodesInfo("page", getTranslations);
-          const selectedNode = getSelectedTextNodeInfo(getTranslations);
-          const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
-          const frameMatchResults = selectionTextNodes.length > 1
-            ? buildFrameMatchResults(selectionTextNodes)
-            : undefined;
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode, selectionTextNodes, frameMatchResults });
         }
       }
       break;
@@ -407,22 +500,28 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         if (success) {
           const lang = msg.language || 'en';
           let translation = getTranslation(translationData, msg.multilanId, lang);
-          if (translation) {
-            translation = applyVariables(translation, msg.variables);
-            const node = await getTextNodeById(msg.nodeId);
-            if (node) {
+          const node = await getTextNodeById(msg.nodeId);
+          if (node) {
+            if (translation) {
+              translation = applyVariables(translation, msg.variables);
               await updateNodeText(node, translation);
               setExpectedText(node, translation);
             }
+            figma.notify(`Linked to ${msg.multilanId}`);
+            const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
+            const selectedNode = getSelectedTextNodeInfo(getTranslations);
+            const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
+            const frameMatchResults = selectionTextNodes.length > 1
+              ? buildFrameMatchResults(selectionTextNodes)
+              : undefined;
+            figma.ui.postMessage({
+              type: "node-updated",
+              nodeInfo: updatedNodeInfo,
+              selectedNode,
+              selectionTextNodes,
+              frameMatchResults,
+            });
           }
-          figma.notify(`Linked to ${msg.multilanId}`);
-          const textNodes = getAllTextNodesInfo("page", getTranslations);
-          const selectedNode = getSelectedTextNodeInfo(getTranslations);
-          const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
-          const frameMatchResults = selectionTextNodes.length > 1
-            ? buildFrameMatchResults(selectionTextNodes)
-            : undefined;
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode, selectionTextNodes, frameMatchResults });
         }
       }
       break;
@@ -433,16 +532,25 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         return;
       }
       if (msg.nodeId) {
+        const node = await getTextNodeById(msg.nodeId);
         const success = await unlinkTextNode(msg.nodeId);
         if (success) {
           figma.notify("Unlinked");
-          const textNodes = getAllTextNodesInfo("page", getTranslations);
-          const selectedNode = getSelectedTextNodeInfo(getTranslations);
-          const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
-          const frameMatchResults = selectionTextNodes.length > 1
-            ? buildFrameMatchResults(selectionTextNodes)
-            : undefined;
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode, selectionTextNodes, frameMatchResults });
+          if (node) {
+            const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
+            const selectedNode = getSelectedTextNodeInfo(getTranslations);
+            const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
+            const frameMatchResults = selectionTextNodes.length > 1
+              ? buildFrameMatchResults(selectionTextNodes)
+              : undefined;
+            figma.ui.postMessage({
+              type: "node-updated",
+              nodeInfo: updatedNodeInfo,
+              selectedNode,
+              selectionTextNodes,
+              frameMatchResults,
+            });
+          }
         }
       }
       break;
@@ -492,19 +600,20 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         if (msg.text) {
           await markAsPlaceholder(textNode, msg.text);
           figma.notify("Marked as placeholder");
-          const textNodes = getAllTextNodesInfo("page", getTranslations);
+          const updatedNodeInfo = buildTextNodeInfo(textNode, getTranslations);
           const selectedNode = getSelectedTextNodeInfo(getTranslations);
-          figma.ui.postMessage({ type: "text-nodes-updated", textNodes, selectedNode });
+          figma.ui.postMessage({ type: "node-updated", nodeInfo: updatedNodeInfo, selectedNode });
         }
       }
       break;
 
     case "detect-match":
       if (msg.text) {
-        const matchResult = detectMatch(translationData, msg.text, metadataData);
-        figma.ui.postMessage({
-          type: "match-detected",
-          matchResult,
+        detectMatchAsync(translationData, msg.text, metadataData).then(matchResult => {
+          figma.ui.postMessage({
+            type: "match-detected",
+            matchResult,
+          });
         });
       }
       break;
@@ -528,10 +637,25 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "global-search":
       if (msg.searchQuery) {
-        const results = globalSearchTranslations(translationData, msg.searchQuery, 30, metadataData);
-        figma.ui.postMessage({
-          type: "global-search-results",
-          results,
+        globalSearchTranslationsAsync(translationData, msg.searchQuery, 30, metadataData).then(results => {
+          figma.ui.postMessage({
+            type: "global-search-results",
+            results,
+          });
+        });
+      }
+      break;
+
+    case "find-close-matches":
+      // On-demand fuzzy match for a single node in frame mode
+      if (msg.nodeId && msg.text) {
+        const findNodeId = msg.nodeId;
+        detectMatchAsync(translationData, msg.text, metadataData).then(matchResult => {
+          figma.ui.postMessage({
+            type: "frame-match-result",
+            nodeId: findNodeId,
+            matchResult,
+          });
         });
       }
       break;

@@ -383,9 +383,27 @@ export function renderGlobalSearchResults(): void {
   const match = state.matchResult;
 
   // Hide search bar when a node is selected, except for no-match nodes
+  const isSearching = hasSelection && match?.status === 'searching';
   const isNoMatch = hasSelection && match?.status === 'none';
-  if (searchContainer) searchContainer.style.display = (hasSelection && !isNoMatch) ? 'none' : '';
+  if (searchContainer) searchContainer.style.display = (hasSelection && !isNoMatch && !isSearching) ? 'none' : '';
   if (searchHint) searchHint.style.display = 'none';
+
+  // Show loading state while deferred fuzzy match is running
+  if (isSearching) {
+    globalSearchResultsCount.textContent = '';
+    globalSearchResults.innerHTML = `
+      ${renderSelectedNodeBubble(state.selectedNode!)}
+      <div class="connector-arrow"></div>
+      <div class="results-grouped">
+        <div class="frame-node-card frame-node-card-none">
+          <div class="frame-node-id-row" style="margin-bottom:0">
+            <span class="frame-node-hint" style="margin:0">Looking for matches...</span>
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+
   if (match && hasSelection) {
     const existingIds = new Set(results.map(r => r.multilanId));
 
