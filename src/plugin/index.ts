@@ -2,7 +2,8 @@
 // Runs in Figma's sandbox environment
 
 import bundledApiData from "../translations/api-data.json";
-import { traFileContents } from "../translations/tra-bundle";
+import { traFileContentsCompressed, FOLDER_NAMES as BUNDLE_FOLDER_NAMES } from "../translations/tra-bundle";
+import { decompressBase64 } from "../translations/decompress";
 import {
   TranslationMap,
   MetadataMap,
@@ -56,8 +57,8 @@ import {
 // Build timestamp - update this when translations are updated
 const BUILD_TIMESTAMP = "2026-01-18 12:00";
 
-// Folder names derived from the bundle keys
-const FOLDER_NAMES = Object.keys(traFileContents);
+// Folder names from the bundle
+const FOLDER_NAMES = BUNDLE_FOLDER_NAMES;
 
 // Current active folder and translation data
 let currentFolder: string = FOLDER_NAMES[0] || "EB";
@@ -67,18 +68,17 @@ let metadataData: MetadataMap;
 // Initialize with .tra files for a specific folder
 function initializeTraFileData(folder: string): boolean {
   try {
-    const folderFactory = traFileContents[folder];
-    if (!folderFactory) {
+    const compressed = traFileContentsCompressed[folder];
+    if (!compressed) {
       console.error(`Folder "${folder}" not found in bundle`);
       return false;
     }
-    // Lazy evaluation — folder data is only materialized here
-    const folderData = folderFactory();
+    // Decompress on demand — only the active folder is inflated
     const traData: TraFileData = {
-      en: folderData.en || '',
-      fr: folderData.fr || '',
-      nl: folderData.nl || '',
-      de: folderData.de || '',
+      en: decompressBase64(compressed.en),
+      fr: decompressBase64(compressed.fr),
+      nl: decompressBase64(compressed.nl),
+      de: decompressBase64(compressed.de),
     };
     const adapter = createAdapter(traData, "tra-files");
     translationData = adapter.getTranslationMap();
