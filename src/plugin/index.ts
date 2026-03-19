@@ -1,7 +1,6 @@
 // Multilan Helper Plugin - Main entry point
 // Runs in Figma's sandbox environment
 
-import bundledApiData from "../translations/api-data.json";
 import { traFileContentsCompressed, FOLDER_NAMES as BUNDLE_FOLDER_NAMES } from "../translations/tra-bundle";
 import { decompressBase64 } from "../translations/decompress";
 import {
@@ -15,6 +14,7 @@ import {
 } from "../shared/types";
 import { createAdapter } from "../adapters";
 import { TraFileData } from "../adapters/types/traFile.types";
+
 import {
   getAllTranslations,
   getTranslation,
@@ -92,18 +92,8 @@ function initializeTraFileData(folder: string): boolean {
   }
 }
 
-// Initialize with bundled JSON data (fallback)
-function initializeBundledData(): void {
-  const adapter = createAdapter(bundledApiData);
-  translationData = adapter.getTranslationMap();
-  metadataData = adapter.getMetadataMap();
-  invalidateTextToIdMapCache();
-  console.log(`Loaded ${Object.keys(translationData).length} translations from bundled JSON`);
-}
-
-// Initialize with fallback chain: .tra files -> JSON
-async function initializeWithFallback(): Promise<void> {
-  // Load saved folder preference
+// Load saved folder preference and initialize translation data
+async function initializeWithFolder(): Promise<void> {
   try {
     const saved = await figma.clientStorage.getAsync('selectedFolder');
     if (saved && FOLDER_NAMES.includes(saved)) {
@@ -114,7 +104,7 @@ async function initializeWithFallback(): Promise<void> {
   }
 
   if (!initializeTraFileData(currentFolder)) {
-    initializeBundledData();
+    console.error(`Failed to load translations for folder "${currentFolder}"`);
   }
 }
 
@@ -729,4 +719,4 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 };
 
 // Start — wait for saved folder to load before initializing
-initializeWithFallback().then(() => initialize());
+initializeWithFolder().then(() => initialize());
