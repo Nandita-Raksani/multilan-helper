@@ -166,42 +166,72 @@ function autoUnlinkModifiedNodes(scope: "page" | "selection"): number {
   return unlinkedCount;
 }
 
-// Build per-node match results for frame/multi-selection mode.
-// Uses exact-match only (cached O(1) lookup) — no fuzzy/Levenshtein.
-function buildFrameMatchResults(nodes: TextNodeInfo[]): FrameNodeMatchResult[] {
-  return nodes.map(node => {
-    let matchResult;
-    if (node.multilanId) {
-      const metadata = metadataData ? metadataData[node.multilanId] : undefined;
+// Build match result for a single node (exact-match only, O(1)).
+function buildSingleFrameMatchResult(node: TextNodeInfo): FrameNodeMatchResult {
+  let matchResult;
+  if (node.multilanId) {
+    const metadata = metadataData ? metadataData[node.multilanId] : undefined;
+    matchResult = {
+      status: 'linked' as const,
+      multilanId: node.multilanId,
+      translations: node.translations || undefined,
+      metadata,
+    };
+  } else {
+    const exactId = exactMatchLookup(translationData, node.characters);
+    if (exactId) {
+      const translations = translationData[exactId];
+      const metadata = metadataData ? metadataData[exactId] : undefined;
       matchResult = {
-        status: 'linked' as const,
-        multilanId: node.multilanId,
-        translations: node.translations || undefined,
+        status: 'exact' as const,
+        multilanId: exactId,
+        translations,
         metadata,
       };
     } else {
-      // Exact match only for multi-selection — O(1) per node
-      const exactId = exactMatchLookup(translationData, node.characters);
-      if (exactId) {
-        const translations = translationData[exactId];
-        const metadata = metadataData ? metadataData[exactId] : undefined;
-        matchResult = {
-          status: 'exact' as const,
-          multilanId: exactId,
-          translations,
-          metadata,
-        };
-      } else {
-        matchResult = { status: 'none' as const };
-      }
+      matchResult = { status: 'none' as const };
     }
-    return {
-      nodeId: node.id,
-      nodeName: node.name,
-      characters: node.characters,
-      matchResult,
-    };
-  });
+  }
+  return {
+    nodeId: node.id,
+    nodeName: node.name,
+    characters: node.characters,
+    matchResult,
+  };
+}
+
+// Build per-node match results for frame/multi-selection mode.
+// Uses exact-match only (cached O(1) lookup) — no fuzzy/Levenshtein.
+function buildFrameMatchResults(nodes: TextNodeInfo[]): FrameNodeMatchResult[] {
+  return nodes.map(buildSingleFrameMatchResult);
+}
+
+/**
+ * Patch a single changed node in the selection lists and frame match results.
+ * Avoids re-scanning the entire selection tree via findAll().
+ */
+function patchNodeInSelection(
+  changedNode: TextNode,
+  previousSelectionTextNodes: TextNodeInfo[],
+  previousFrameMatchResults: FrameNodeMatchResult[] | undefined
+): { selectionTextNodes: TextNodeInfo[]; frameMatchResults: FrameNodeMatchResult[] | undefined } {
+  const updatedInfo = buildTextNodeInfo(changedNode, getTranslations);
+
+  // Patch the node in selectionTextNodes
+  const selectionTextNodes = previousSelectionTextNodes.map(n =>
+    n.id === changedNode.id ? updatedInfo : n
+  );
+
+  // Patch only the changed node's frame match result
+  let frameMatchResults = previousFrameMatchResults;
+  if (previousFrameMatchResults && previousFrameMatchResults.length > 1) {
+    const updatedMatch = buildSingleFrameMatchResult(updatedInfo);
+    frameMatchResults = previousFrameMatchResults.map(r =>
+      r.nodeId === changedNode.id ? updatedMatch : r
+    );
+  }
+
+  return { selectionTextNodes, frameMatchResults };
 }
 
 // Initialize: send initial data to UI
@@ -281,6 +311,10 @@ async function initialize(): Promise<void> {
   });
 }
 
+// Cached selection data — reused by link/unlink to avoid full re-scan
+let lastSelectionTextNodes: TextNodeInfo[] = [];
+let lastFrameMatchResults: FrameNodeMatchResult[] | undefined = undefined;
+
 // Handle selection change — debounced, with deferred fuzzy matching
 let selectionChangeTimer: ReturnType<typeof setTimeout> | null = null;
 // Cancellation token for in-flight fuzzy match (selection change)
@@ -353,6 +387,10 @@ function handleSelectionChange(): void {
   const frameMatchResults = selectionTextNodes.length > 1
     ? buildFrameMatchResults(selectionTextNodes)
     : undefined;
+
+  // Cache for incremental patching in link/unlink handlers
+  lastSelectionTextNodes = selectionTextNodes;
+  lastFrameMatchResults = frameMatchResults;
 
   figma.ui.postMessage({
     type: "selection-changed",
@@ -458,19 +496,18 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
               setExpectedText(node, translation);
             }
             figma.notify(`Linked to ${msg.multilanId}`);
-            // Incremental update — only send the changed node + selection context
+            // Incremental update — patch only the changed node, skip full re-scan
             const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
             const selectedNode = getSelectedTextNodeInfo(getTranslations);
-            const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
-            const frameMatchResults = selectionTextNodes.length > 1
-              ? buildFrameMatchResults(selectionTextNodes)
-              : undefined;
+            const patched = patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
+            lastSelectionTextNodes = patched.selectionTextNodes;
+            lastFrameMatchResults = patched.frameMatchResults;
             figma.ui.postMessage({
               type: "node-updated",
               nodeInfo: updatedNodeInfo,
               selectedNode,
-              selectionTextNodes,
-              frameMatchResults,
+              selectionTextNodes: patched.selectionTextNodes,
+              frameMatchResults: patched.frameMatchResults,
             });
           }
         }
@@ -502,16 +539,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
             figma.notify(`Linked to ${msg.multilanId}`);
             const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
             const selectedNode = getSelectedTextNodeInfo(getTranslations);
-            const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
-            const frameMatchResults = selectionTextNodes.length > 1
-              ? buildFrameMatchResults(selectionTextNodes)
-              : undefined;
+            const patched = patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
+            lastSelectionTextNodes = patched.selectionTextNodes;
+            lastFrameMatchResults = patched.frameMatchResults;
             figma.ui.postMessage({
               type: "node-updated",
               nodeInfo: updatedNodeInfo,
               selectedNode,
-              selectionTextNodes,
-              frameMatchResults,
+              selectionTextNodes: patched.selectionTextNodes,
+              frameMatchResults: patched.frameMatchResults,
             });
           }
         }
@@ -531,16 +567,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           if (node) {
             const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
             const selectedNode = getSelectedTextNodeInfo(getTranslations);
-            const selectionTextNodes = getAllTextNodesInfo("selection", getTranslations);
-            const frameMatchResults = selectionTextNodes.length > 1
-              ? buildFrameMatchResults(selectionTextNodes)
-              : undefined;
+            const patched = patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
+            lastSelectionTextNodes = patched.selectionTextNodes;
+            lastFrameMatchResults = patched.frameMatchResults;
             figma.ui.postMessage({
               type: "node-updated",
               nodeInfo: updatedNodeInfo,
               selectedNode,
-              selectionTextNodes,
-              frameMatchResults,
+              selectionTextNodes: patched.selectionTextNodes,
+              frameMatchResults: patched.frameMatchResults,
             });
           }
         }
