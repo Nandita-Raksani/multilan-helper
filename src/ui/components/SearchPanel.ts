@@ -119,7 +119,7 @@ export function initSearchPanel(): void {
 
   // Disable by default — enabled only when something is selected
   highlightBtn.disabled = true;
-  highlightBtn.removeAttribute('title');
+  highlightBtn.title = 'Select a layer to highlight';
 
   // Highlight unlinked toggle
   highlightBtn.addEventListener('click', () => {
@@ -214,7 +214,7 @@ function resetAfterHighlight(): void {
   highlightBtn.classList.remove('active');
   highlightBtn.disabled = true;
   highlightBtn.innerHTML = 'Highlight<br>unlinked';
-  highlightBtn.removeAttribute('title');
+  highlightBtn.title = 'Select a layer to highlight';
 
   getElementById('statusText').textContent = `${store.getState().translationCount || 0} translations loaded`;
   showSearchBar();
