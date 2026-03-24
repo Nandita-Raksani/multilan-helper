@@ -301,25 +301,63 @@ export function globalSearchTranslations(
 }
 
 /**
+ * Cancellation token for async operations.
+ * Call cancel() to abort any in-flight search using this token.
+ */
+export interface CancellationToken {
+  cancelled: boolean;
+  cancel(): void;
+}
+
+export function createCancellationToken(): CancellationToken {
+  const token: CancellationToken = {
+    cancelled: false,
+    cancel() { token.cancelled = true; },
+  };
+  return token;
+}
+
+/**
  * Chunked async search — processes entries in batches to avoid blocking the main thread.
  * Yields to the event loop between chunks via setTimeout(0).
+ *
+ * Key perf improvements over brute-force:
+ * - Small chunk size (500) so Figma stays responsive between yields
+ * - Pre-filter by length difference before running Levenshtein
+ * - Cancellation token to abort stale searches
  */
-const CHUNK_SIZE = 10000;
+const CHUNK_SIZE = 500;
 
 function yieldToEventLoop(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 0));
 }
 
+/**
+ * Quick pre-filter: can this text possibly score >= threshold against query?
+ * Rejects entries where the length difference alone makes a match impossible.
+ */
+function couldMatch(queryLen: number, textLen: number, maxLenRatio: number): boolean {
+  if (textLen === 0) return false;
+  // If lengths differ too much, Levenshtein distance will exceed threshold
+  const ratio = queryLen > textLen ? textLen / queryLen : queryLen / textLen;
+  return ratio >= maxLenRatio;
+}
+
 export async function searchTranslationsWithScoreAsync(
   translationData: TranslationMap,
   query: string,
-  limit: number = 10
+  limit: number = 10,
+  cancellationToken?: CancellationToken
 ): Promise<Array<SearchResult & { score: number }>> {
   const results: Array<SearchResult & { score: number }> = [];
   const lowerQuery = query.toLowerCase();
+  const queryLen = lowerQuery.length;
   const entries = Object.entries(translationData);
 
   for (let i = 0; i < entries.length; i++) {
+    // Check cancellation before each chunk
+    if (cancellationToken?.cancelled) return [];
+
     const [multilanId, langs] = entries[i];
     let bestScore = 0;
 
@@ -328,19 +366,27 @@ export async function searchTranslationsWithScoreAsync(
     }
 
     for (const text of Object.values(langs)) {
+      // Pre-filter: skip texts where length difference makes match impossible
+      // A score >= 0.4 requires length ratio >= 0.4 (Levenshtein-based)
+      if (!couldMatch(queryLen, text.length, 0.3)) continue;
+
       const score = calculateMatchScore(query, text);
       bestScore = Math.max(bestScore, score);
+      // Early exit: perfect match found for this entry
+      if (bestScore >= 1) break;
     }
 
     if (bestScore > 0) {
       results.push({ multilanId, translations: langs, score: bestScore });
     }
 
-    // Yield every CHUNK_SIZE entries
+    // Yield every CHUNK_SIZE entries to keep Figma responsive
     if ((i + 1) % CHUNK_SIZE === 0) {
       await yieldToEventLoop();
     }
   }
+
+  if (cancellationToken?.cancelled) return [];
 
   results.sort((a, b) => b.score - a.score);
   return results.slice(0, limit);
@@ -348,11 +394,13 @@ export async function searchTranslationsWithScoreAsync(
 
 /**
  * Async version of detectMatch — uses chunked fuzzy search.
+ * Supports cancellation to abort stale searches when selection changes.
  */
 export async function detectMatchAsync(
   translationData: TranslationMap,
   text: string,
-  metadataMap?: MetadataMap
+  metadataMap?: MetadataMap,
+  cancellationToken?: CancellationToken
 ): Promise<MatchDetectionResult> {
   const trimmed = text.trim();
   if (!trimmed) {
@@ -368,8 +416,15 @@ export async function detectMatchAsync(
     return { status: 'exact', multilanId: exactId, translations, metadata };
   }
 
+  // Check cancellation before starting expensive fuzzy search
+  if (cancellationToken?.cancelled) return { status: 'none' };
+
   // Pass 2: Chunked fuzzy match (yields between chunks)
-  const fuzzyResults = await searchTranslationsWithScoreAsync(translationData, trimmed, 5);
+  const fuzzyResults = await searchTranslationsWithScoreAsync(translationData, trimmed, 5, cancellationToken);
+
+  // Check cancellation after fuzzy search completes
+  if (cancellationToken?.cancelled) return { status: 'none' };
+
   const filtered = fuzzyResults.filter(r => r.score >= 0.8);
 
   if (filtered.length > 0) {
@@ -385,17 +440,22 @@ export async function detectMatchAsync(
 
 /**
  * Async version of globalSearchTranslations — uses chunked iteration.
+ * Supports cancellation to abort stale searches.
  */
 export async function globalSearchTranslationsAsync(
   translationData: TranslationMap,
   query: string,
   limit: number = 30,
-  metadataMap?: MetadataMap
+  metadataMap?: MetadataMap,
+  cancellationToken?: CancellationToken
 ): Promise<SearchResult[]> {
   const results: Array<SearchResult & { score: number }> = [];
   const entries = Object.entries(translationData);
+  const queryLen = query.length;
 
   for (let i = 0; i < entries.length; i++) {
+    if (cancellationToken?.cancelled) return [];
+
     const [multilanId, langs] = entries[i];
     let bestScore = 0;
 
@@ -406,8 +466,10 @@ export async function globalSearchTranslationsAsync(
     }
 
     for (const text of Object.values(langs)) {
+      if (!couldMatch(queryLen, text.length, 0.3)) continue;
       const score = calculateMatchScore(query, text);
       bestScore = Math.max(bestScore, score);
+      if (bestScore >= 1) break;
     }
 
     if (bestScore > 0) {
@@ -419,6 +481,8 @@ export async function globalSearchTranslationsAsync(
       await yieldToEventLoop();
     }
   }
+
+  if (cancellationToken?.cancelled) return [];
 
   results.sort((a, b) => b.score - a.score);
   return results.slice(0, limit).map(({ multilanId, translations, metadata }) => ({

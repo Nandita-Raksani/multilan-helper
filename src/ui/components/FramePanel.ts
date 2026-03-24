@@ -10,6 +10,9 @@ const carouselState = new Map<string, number>();
 // Tracks nodes where close-match search is in progress or completed with no results
 const closeMatchSearchState = new Map<string, 'searching' | 'no-results'>();
 
+// Cached sort order — set once on initial frame render, preserved across re-renders
+let cachedSortOrder: string[] | null = null;
+
 const copyIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
 
 export function isFrameMode(): boolean {
@@ -34,6 +37,7 @@ export function handleFrameMatchResult(nodeId: string, status: string): void {
  */
 export function clearCloseMatchSearchState(): void {
   closeMatchSearchState.clear();
+  cachedSortOrder = null;
 }
 
 export function showSearchBar(): void {
@@ -155,15 +159,38 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
   const canEdit = store.getState().canEdit;
   const searchState = closeMatchSearchState.get(item.nodeId);
 
-  let actionHtml = '';
+  // Fuzzy search in progress
   if (searchState === 'searching') {
-    actionHtml = '<div class="frame-node-actions"><span class="frame-node-hint">Searching...</span></div>';
-  } else if (searchState === 'no-results') {
-    actionHtml = '<div class="frame-node-actions"><span class="frame-node-hint">No close matches found</span></div>';
-  } else if (canEdit) {
-    actionHtml = `<div class="frame-node-actions"><button class="btn-sm btn-sm-outline btn-find-close" data-node-id="${escapeHtml(item.nodeId)}" data-text="${escapeHtml(item.characters)}">Find close matches</button></div>`;
+    return `
+      <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
+        ${renderNodeBubble(item.characters)}
+        <div class="results-grouped">
+          <div class="frame-node-card frame-node-card-none">
+            <div class="frame-node-id-row" style="margin-bottom:0">
+              <span class="searching-hint"><span class="searching-spinner"></span> Looking for close matches&hellip;</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
   }
 
+  // Fuzzy search completed with no results — single consolidated message
+  if (searchState === 'no-results') {
+    return `
+      <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
+        ${renderNodeBubble(item.characters)}
+        <div class="results-grouped">
+          <div class="frame-node-card frame-node-card-none">
+            <div class="frame-node-id-row" style="margin-bottom:0">
+              <span class="frame-node-hint" style="margin:0">No matching translations found</span>
+              <span class="match-badge match-badge-none">No match</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Initial state — show button to trigger fuzzy search
   return `
     <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
       ${renderNodeBubble(item.characters)}
@@ -171,9 +198,9 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
         <div class="frame-node-card frame-node-card-none">
           <div class="frame-node-id-row" style="margin-bottom:0">
             <span class="frame-node-hint" style="margin:0">No exact match</span>
-            <span class="match-badge match-badge-none">No match</span>
+            ${!canEdit ? '<span class="match-badge match-badge-none">No match</span>' : ''}
           </div>
-          ${actionHtml}
+          ${canEdit ? `<div class="frame-node-actions" style="justify-content:flex-end"><button class="btn-sm btn-sm-brand btn-find-close" data-node-id="${escapeHtml(item.nodeId)}" data-text="${escapeHtml(item.characters)}">Find close match</button></div>` : ''}
         </div>
       </div>
     </div>`;
@@ -207,7 +234,15 @@ export function renderFramePanel(): void {
   }
   framePanel.style.display = 'block';
 
-  const sorted = sortResults(results);
+  // Sort only on first render for this selection, then preserve card positions
+  if (!cachedSortOrder || cachedSortOrder.length !== results.length) {
+    const initialSort = sortResults(results);
+    cachedSortOrder = initialSort.map(r => r.nodeId);
+  }
+  const orderMap = new Map(cachedSortOrder.map((id, i) => [id, i]));
+  const sorted = [...results].sort((a, b) =>
+    (orderMap.get(a.nodeId) ?? 0) - (orderMap.get(b.nodeId) ?? 0)
+  );
   const linkedCount = results.filter(r => r.matchResult.status === 'linked').length;
   const unmatchedCount = results.filter(r => r.matchResult.status === 'none').length;
 

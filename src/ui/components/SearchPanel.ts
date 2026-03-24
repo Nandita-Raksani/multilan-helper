@@ -66,6 +66,15 @@ const copyIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
 // Carousel state for single-node selection results
 let singleNodeCarouselIndex = 0;
 
+// On-demand fuzzy search state for single-node selection
+// 'idle' = not searched yet, 'searching' = in progress, 'done' = completed (no results)
+let singleNodeFuzzyState: 'idle' | 'searching' | 'done' = 'idle';
+
+/** Reset the on-demand fuzzy search state (call on selection change). */
+export function resetSingleNodeSearchState(): void {
+  singleNodeFuzzyState = 'idle';
+}
+
 function autoResizeTextarea(textarea: HTMLTextAreaElement): void {
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
@@ -129,6 +138,9 @@ export function initSearchPanel(): void {
   if (!state.canEdit) {
     highlightBtn.style.display = 'none';
   }
+
+  // Set up delegated event handling for search results (once, not per-render)
+  initSearchResultDelegation();
 
   updateSearchHint();
 }
@@ -352,15 +364,50 @@ function renderSelectedNodeLayout(
 function renderSelectedNodeNoMatch(
   node: { characters: string; name: string },
 ): string {
+  const canEdit = store.getState().canEdit;
+
+  // Show spinner while on-demand fuzzy search is running
+  if (singleNodeFuzzyState === 'searching') {
+    return `
+      ${renderSelectedNodeBubble(node)}
+      <div class="connector-arrow"></div>
+      <div class="results-grouped">
+        <div class="frame-node-card frame-node-card-none">
+          <div class="frame-node-id-row" style="margin-bottom:0">
+            <span class="searching-hint"><span class="searching-spinner"></span> Looking for close matches&hellip;</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Fuzzy search completed with no results — single consolidated message
+  if (singleNodeFuzzyState === 'done') {
+    return `
+      ${renderSelectedNodeBubble(node)}
+      <div class="connector-arrow"></div>
+      <div class="results-grouped">
+        <div class="frame-node-card frame-node-card-none">
+          <div class="frame-node-id-row" style="margin-bottom:0">
+            <span class="frame-node-hint" style="margin:0">No matching translations found</span>
+            <span class="match-badge match-badge-none">No match</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Initial state — show button to trigger fuzzy search
   return `
     ${renderSelectedNodeBubble(node)}
     <div class="connector-arrow"></div>
     <div class="results-grouped">
       <div class="frame-node-card frame-node-card-none">
         <div class="frame-node-id-row" style="margin-bottom:0">
-          <span class="frame-node-hint" style="margin:0">No translations found</span>
-          <span class="match-badge match-badge-none">No match</span>
+          <span class="frame-node-hint" style="margin:0">No exact match found</span>
+          ${!canEdit ? '<span class="match-badge match-badge-none">No match</span>' : ''}
         </div>
+        ${canEdit ? '<div class="frame-node-actions" style="justify-content:flex-end"><button class="btn-sm btn-sm-brand btn-find-close-single">Find close match</button></div>' : ''}
       </div>
     </div>
   `;
@@ -382,27 +429,16 @@ export function renderGlobalSearchResults(): void {
   // Merge matchResult into search results so detected matches always appear
   const match = state.matchResult;
 
-  // Hide search bar when a node is selected, except for no-match nodes
-  const isSearching = hasSelection && match?.status === 'searching';
-  const isNoMatch = hasSelection && match?.status === 'none';
-  if (searchContainer) searchContainer.style.display = (hasSelection && !isNoMatch && !isSearching) ? 'none' : '';
-  if (searchHint) searchHint.style.display = 'none';
-
-  // Show loading state while deferred fuzzy match is running
-  if (isSearching) {
-    globalSearchResultsCount.textContent = '';
-    globalSearchResults.innerHTML = `
-      ${renderSelectedNodeBubble(state.selectedNode!)}
-      <div class="connector-arrow"></div>
-      <div class="results-grouped">
-        <div class="frame-node-card frame-node-card-none">
-          <div class="frame-node-id-row" style="margin-bottom:0">
-            <span class="frame-node-hint" style="margin:0">Looking for matches...</span>
-          </div>
-        </div>
-      </div>`;
-    return;
+  // Clear searching state when fuzzy results arrive
+  if (singleNodeFuzzyState === 'searching' && match && match.status !== 'searching') {
+    // Fuzzy finished — mark 'done' if no results, otherwise clear (results will render)
+    singleNodeFuzzyState = (match.status === 'none') ? 'done' : 'idle';
   }
+
+  // Hide search bar when a node is selected, except for no-match/searching nodes
+  const isNoMatchArea = hasSelection && (match?.status === 'none' || singleNodeFuzzyState !== 'idle');
+  if (searchContainer) searchContainer.style.display = (hasSelection && !isNoMatchArea) ? 'none' : '';
+  if (searchHint) searchHint.style.display = 'none';
 
   if (match && hasSelection) {
     const existingIds = new Set(results.map(r => r.multilanId));
@@ -423,8 +459,9 @@ export function renderGlobalSearchResults(): void {
 
   if (results.length === 0) {
     globalSearchResultsCount.textContent = '';
-    if (hasSelection && !isAlreadyLinked && match?.status === 'none') {
+    if (hasSelection && !isAlreadyLinked && (match?.status === 'none' || singleNodeFuzzyState !== 'idle')) {
       globalSearchResults.innerHTML = renderSelectedNodeNoMatch(state.selectedNode!);
+      // Event handlers are delegated — no per-render attachment needed
     } else if (searchQuery) {
       globalSearchResults.innerHTML = '<div class="empty-state">No translations found</div>';
     } else {
@@ -449,7 +486,7 @@ export function renderGlobalSearchResults(): void {
   const showTextCopyButtons = !state.canEdit;
 
   // No-match node with manual search results: show bubble + flat cards with Link buttons
-  if (isNoMatch && results.length > 0) {
+  if (isNoMatchArea && results.length > 0) {
     const bubbleHtml = renderSelectedNodeNoMatch(state.selectedNode!);
     const cardsHtml = sortedResults.map(result => renderResultCard(result, {
       showCornerBadge: true,
@@ -460,14 +497,12 @@ export function renderGlobalSearchResults(): void {
       showTextCopyButtons,
     })).join('');
     globalSearchResults.innerHTML = bubbleHtml + cardsHtml;
-    attachSearchResultHandlers();
     return;
   }
 
   // When a node is selected, use the grouped layout with bubble
   if (hasSelection && results.length > 0) {
     globalSearchResults.innerHTML = renderSelectedNodeLayout(state.selectedNode!, sortedResults, state);
-    attachSearchResultHandlers();
     return;
   }
 
@@ -483,50 +518,50 @@ export function renderGlobalSearchResults(): void {
       showTextCopyButtons,
     });
   }).join('');
-
-  attachSearchResultHandlers();
 }
 
-function attachSearchResultHandlers(): void {
-  const globalSearchResults = getElementById<HTMLDivElement>('globalSearchResults');
+/** Set up a single delegated click handler on the results container (called once in initSearchPanel). */
+function initSearchResultDelegation(): void {
+  const container = getElementById<HTMLDivElement>('globalSearchResults');
 
-  // Copy button handlers (ID + translation text)
-  globalSearchResults.querySelectorAll<HTMLButtonElement>('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  container.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const btn = target.closest('button') as HTMLButtonElement | null;
+    const dot = target.closest('.single-carousel-dot') as HTMLElement | null;
+
+    // Copy button
+    if (btn?.classList.contains('copy-btn')) {
       e.stopPropagation();
       const text = btn.dataset.text!;
       if (copyToClipboard(text)) {
         btn.classList.add('copied');
         setTimeout(() => btn.classList.remove('copied'), 1000);
       }
-    });
-  });
+      return;
+    }
 
-  // Link button handlers
-  globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-link-result').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    // Link button
+    if (btn?.classList.contains('btn-link-result')) {
       e.stopPropagation();
       const multilanId = btn.dataset.id!;
       const currentState = store.getState();
       if (!currentState.selectedNode) return;
       pluginBridge.linkNode(currentState.selectedNode.id, multilanId, currentState.currentLang);
-    });
-  });
+      return;
+    }
 
-  // Unlink button handlers
-  globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-unlink-result').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    // Unlink button
+    if (btn?.classList.contains('btn-unlink-result')) {
       e.stopPropagation();
       const currentState = store.getState();
       if (currentState.selectedNode) {
         pluginBridge.unlinkNode(currentState.selectedNode.id);
       }
-    });
-  });
+      return;
+    }
 
-  // Info toggle handlers
-  globalSearchResults.querySelectorAll<HTMLButtonElement>('.btn-info-toggle').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    // Info toggle
+    if (btn?.classList.contains('btn-info-toggle')) {
       e.stopPropagation();
       const card = btn.closest('.search-result-card');
       const metadataInfo = card?.querySelector('.metadata-info');
@@ -534,35 +569,46 @@ function attachSearchResultHandlers(): void {
         metadataInfo.classList.toggle('collapsed');
         btn.classList.toggle('active');
       }
-    });
-  });
+      return;
+    }
 
-  // Single-node carousel handlers
-  globalSearchResults.querySelectorAll<HTMLButtonElement>('.single-carousel-prev').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    // Find close match (single-node on-demand fuzzy)
+    if (btn?.classList.contains('btn-find-close-single')) {
+      e.stopPropagation();
+      const node = store.getState().selectedNode;
+      if (!node) return;
+      singleNodeFuzzyState = 'searching';
+      renderGlobalSearchResults();
+      pluginBridge.detectMatch(node.characters);
+      return;
+    }
+
+    // Carousel prev
+    if (btn?.classList.contains('single-carousel-prev')) {
       e.stopPropagation();
       if (singleNodeCarouselIndex > 0) {
         singleNodeCarouselIndex--;
         renderGlobalSearchResults();
       }
-    });
-  });
+      return;
+    }
 
-  globalSearchResults.querySelectorAll<HTMLButtonElement>('.single-carousel-next').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    // Carousel next
+    if (btn?.classList.contains('single-carousel-next')) {
       e.stopPropagation();
       singleNodeCarouselIndex++;
       renderGlobalSearchResults();
-    });
-  });
+      return;
+    }
 
-  globalSearchResults.querySelectorAll<HTMLElement>('.single-carousel-dot').forEach(dot => {
-    dot.addEventListener('click', (e) => {
+    // Carousel dot
+    if (dot) {
       e.stopPropagation();
       const index = parseInt(dot.dataset.index || '0', 10);
       singleNodeCarouselIndex = index;
       renderGlobalSearchResults();
-    });
+      return;
+    }
   });
 }
 

@@ -735,6 +735,15 @@ body {
   opacity: 0.85;
 }
 
+.btn-sm-brand {
+  background: var(--figma-color-bg-brand);
+  color: white;
+}
+
+.btn-sm-brand:hover {
+  opacity: 0.85;
+}
+
 .btn-sm-success {
   background: #10b981;
   color: white;
@@ -1314,5 +1323,36 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Searching spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.searching-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--figma-color-border);
+  border-top-color: var(--figma-color-text-secondary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.searching-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--figma-color-text-secondary);
+  animation: pulse-opacity 1.5s ease-in-out infinite;
 }
 

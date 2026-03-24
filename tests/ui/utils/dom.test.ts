@@ -20,7 +20,7 @@ describe("dom utilities", () => {
   describe("escapeHtml", () => {
     it("should escape HTML special characters", () => {
       expect(escapeHtml("<script>alert('xss')</script>")).toBe(
-        "&lt;script&gt;alert('xss')&lt;/script&gt;"
+        "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"
       );
     });
 
@@ -28,9 +28,9 @@ describe("dom utilities", () => {
       expect(escapeHtml("Tom & Jerry")).toBe("Tom &amp; Jerry");
     });
 
-    it("should preserve quotes (textContent only escapes < > &)", () => {
-      // Note: textContent doesn't escape quotes - they're safe in HTML text nodes
-      expect(escapeHtml('"quoted"')).toBe('"quoted"');
+    it("should escape quotes for safe attribute use", () => {
+      expect(escapeHtml('"quoted"')).toBe("&quot;quoted&quot;");
+      expect(escapeHtml("it's")).toBe("it&#39;s");
     });
 
     it("should handle empty string", () => {

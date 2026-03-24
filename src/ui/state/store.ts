@@ -46,6 +46,8 @@ class Store {
   };
 
   private listeners: Set<StateListener> = new Set();
+  private batchDepth = 0;
+  private batchDirty = false;
 
   getState(): UIState {
     return this.state;
@@ -53,7 +55,29 @@ class Store {
 
   setState(partial: Partial<UIState>): void {
     this.state = { ...this.state, ...partial };
-    this.notify();
+    if (this.batchDepth > 0) {
+      // Inside a batch — defer notification until batch ends
+      this.batchDirty = true;
+    } else {
+      this.notify();
+    }
+  }
+
+  /**
+   * Batch multiple setState calls into a single notification.
+   * Usage: store.batch(() => { store.setState({...}); store.setState({...}); });
+   */
+  batch(fn: () => void): void {
+    this.batchDepth++;
+    try {
+      fn();
+    } finally {
+      this.batchDepth--;
+      if (this.batchDepth === 0 && this.batchDirty) {
+        this.batchDirty = false;
+        this.notify();
+      }
+    }
   }
 
   subscribe(listener: StateListener): () => void {

@@ -24,7 +24,7 @@ import {
   showSearchBar
 } from './components';
 import { handleFrameMatchResult, clearCloseMatchSearchState } from './components/FramePanel';
-import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic } from './components/SearchPanel';
+import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic, resetSingleNodeSearchState } from './components/SearchPanel';
 import { showVariablePrompt } from './components/VariablePromptModal';
 
 /**
@@ -82,29 +82,30 @@ function handlePluginMessage(msg: PluginMessage): void {
     }
 
     case 'text-nodes-updated':
-      store.setState({
-        textNodes: msg.textNodes || []
+      store.batch(() => {
+        store.setState({
+          textNodes: msg.textNodes || []
+        });
+        if (!store.getState().suppressFrameMode) {
+          if (msg.selectionTextNodes !== undefined) {
+            store.setState({
+              selectionTextNodes: msg.selectionTextNodes || [],
+              frameMatchResults: msg.frameMatchResults || [],
+            });
+          }
+          if (msg.selectedNode !== undefined) {
+            store.setState({
+              selectedNode: msg.selectedNode || null,
+              matchResult: msg.matchResult || null
+            });
+          }
+        }
       });
-      if (!store.getState().suppressFrameMode) {
-        if (msg.selectionTextNodes !== undefined) {
-          store.setState({
-            selectionTextNodes: msg.selectionTextNodes || [],
-            frameMatchResults: msg.frameMatchResults || [],
-          });
-        }
-        if (msg.selectedNode !== undefined) {
-          store.setState({
-            selectedNode: msg.selectedNode || null,
-            matchResult: msg.matchResult || null
-          });
-        }
-      }
       if (!store.getState().suppressFrameMode && isFrameMode()) {
         renderFramePanel();
       } else {
         renderGlobalSearchResults();
       }
-      // In highlight mode, after a link/unlink the node list changed — advance queue
       if (store.getState().isHighlightMode) {
         advanceQueue();
       }
@@ -112,27 +113,29 @@ function handlePluginMessage(msg: PluginMessage): void {
 
     case 'node-updated': {
       // Incremental update — patch the single changed node in the list
-      if (msg.nodeInfo) {
-        const state = store.getState();
-        const updatedNodes = state.textNodes.map(n =>
-          n.id === msg.nodeInfo!.id ? msg.nodeInfo! : n
-        );
-        store.setState({ textNodes: updatedNodes });
-      }
-      if (!store.getState().suppressFrameMode) {
-        if (msg.selectionTextNodes !== undefined) {
-          store.setState({
-            selectionTextNodes: msg.selectionTextNodes || [],
-            frameMatchResults: msg.frameMatchResults || [],
-          });
+      store.batch(() => {
+        if (msg.nodeInfo) {
+          const state = store.getState();
+          const updatedNodes = state.textNodes.map(n =>
+            n.id === msg.nodeInfo!.id ? msg.nodeInfo! : n
+          );
+          store.setState({ textNodes: updatedNodes });
         }
-        if (msg.selectedNode !== undefined) {
-          store.setState({
-            selectedNode: msg.selectedNode || null,
-            matchResult: msg.matchResult || null
-          });
+        if (!store.getState().suppressFrameMode) {
+          if (msg.selectionTextNodes !== undefined) {
+            store.setState({
+              selectionTextNodes: msg.selectionTextNodes || [],
+              frameMatchResults: msg.frameMatchResults || [],
+            });
+          }
+          if (msg.selectedNode !== undefined) {
+            store.setState({
+              selectedNode: msg.selectedNode || null,
+              matchResult: msg.matchResult || null
+            });
+          }
         }
-      }
+      });
       if (!store.getState().suppressFrameMode && isFrameMode()) {
         renderFramePanel();
       } else {
@@ -147,6 +150,7 @@ function handlePluginMessage(msg: PluginMessage): void {
     case 'selection-changed': {
       // Reset per-node close-match search state on new selection
       clearCloseMatchSearchState();
+      resetSingleNodeSearchState();
 
       const highlightUnlinkedBtn = document.getElementById('highlightUnlinkedBtn') as HTMLButtonElement | null;
 

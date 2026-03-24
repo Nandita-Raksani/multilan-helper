@@ -28,7 +28,9 @@ import {
   applyVariables,
   invalidateTextToIdMapCache,
   exactMatchLookup,
+  createCancellationToken,
 } from "./services/translationService";
+import type { CancellationToken } from "./services/translationService";
 import {
   getAllTextNodesInfo,
   getSelectedTextNodeInfo,
@@ -281,6 +283,10 @@ async function initialize(): Promise<void> {
 
 // Handle selection change — debounced, with deferred fuzzy matching
 let selectionChangeTimer: ReturnType<typeof setTimeout> | null = null;
+// Cancellation token for in-flight fuzzy match (selection change)
+let selectionFuzzyToken: CancellationToken | null = null;
+// Cancellation token for in-flight global search
+let globalSearchToken: CancellationToken | null = null;
 
 figma.on("selectionchange", () => {
   if (selectionChangeTimer !== null) {
@@ -304,6 +310,12 @@ function handleSelectionChange(): void {
   // If no single text node selected, use the first text node found in selection
   if (!selectedNode && selectionTextNodes.length > 0) {
     selectedNode = selectionTextNodes[0];
+  }
+
+  // Cancel any in-flight fuzzy match from a previous selection
+  if (selectionFuzzyToken) {
+    selectionFuzzyToken.cancel();
+    selectionFuzzyToken = null;
   }
 
   // Auto-detect match for selected text node — exact only, fuzzy deferred
@@ -331,18 +343,8 @@ function handleSelectionChange(): void {
           metadata,
         };
       } else {
-        // Show 'searching' while deferred fuzzy runs
-        matchResult = { status: 'searching' as const };
-        const nodeChars = selectedNode.characters;
-        const nodeId = selectedNode.id;
-        // Chunked async — yields between batches so Figma stays responsive
-        detectMatchAsync(translationData, nodeChars, metadataData).then(fuzzyResult => {
-          figma.ui.postMessage({
-            type: "match-detected",
-            matchResult: fuzzyResult,
-            nodeId,
-          });
-        });
+        // No exact match — report 'none', fuzzy is on-demand via UI button
+        matchResult = { status: 'none' as const };
       }
     }
   }
@@ -599,11 +601,20 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "detect-match":
       if (msg.text) {
-        detectMatchAsync(translationData, msg.text, metadataData).then(matchResult => {
-          figma.ui.postMessage({
-            type: "match-detected",
-            matchResult,
-          });
+        // Cancel previous selection fuzzy if still running
+        if (selectionFuzzyToken) {
+          selectionFuzzyToken.cancel();
+        }
+        const detectToken = createCancellationToken();
+        selectionFuzzyToken = detectToken;
+        detectMatchAsync(translationData, msg.text, metadataData, detectToken).then(matchResult => {
+          if (!detectToken.cancelled) {
+            selectionFuzzyToken = null;
+            figma.ui.postMessage({
+              type: "match-detected",
+              matchResult,
+            });
+          }
         });
       }
       break;
@@ -627,11 +638,20 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "global-search":
       if (msg.searchQuery) {
-        globalSearchTranslationsAsync(translationData, msg.searchQuery, 30, metadataData).then(results => {
-          figma.ui.postMessage({
-            type: "global-search-results",
-            results,
-          });
+        // Cancel previous global search if still running
+        if (globalSearchToken) {
+          globalSearchToken.cancel();
+        }
+        const gsToken = createCancellationToken();
+        globalSearchToken = gsToken;
+        globalSearchTranslationsAsync(translationData, msg.searchQuery, 30, metadataData, gsToken).then(results => {
+          if (!gsToken.cancelled) {
+            globalSearchToken = null;
+            figma.ui.postMessage({
+              type: "global-search-results",
+              results,
+            });
+          }
         });
       }
       break;
@@ -640,12 +660,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       // On-demand fuzzy match for a single node in frame mode
       if (msg.nodeId && msg.text) {
         const findNodeId = msg.nodeId;
-        detectMatchAsync(translationData, msg.text, metadataData).then(matchResult => {
-          figma.ui.postMessage({
-            type: "frame-match-result",
-            nodeId: findNodeId,
-            matchResult,
-          });
+        const frameToken = createCancellationToken();
+        detectMatchAsync(translationData, msg.text, metadataData, frameToken).then(matchResult => {
+          if (!frameToken.cancelled) {
+            figma.ui.postMessage({
+              type: "frame-match-result",
+              nodeId: findNodeId,
+              matchResult,
+            });
+          }
         });
       }
       break;
