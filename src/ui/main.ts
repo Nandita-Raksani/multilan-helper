@@ -185,9 +185,12 @@ function handlePluginMessage(msg: PluginMessage): void {
       // Enable/disable highlight button based on selection
       if (highlightUnlinkedBtn) {
         highlightUnlinkedBtn.disabled = !msg.hasSelection;
-        highlightUnlinkedBtn.title = msg.hasSelection
-          ? 'Show unlinked text nodes on canvas'
-          : 'Select a layer to highlight';
+        // Native title only when enabled; JS tooltip handles disabled state
+        if (msg.hasSelection) {
+          highlightUnlinkedBtn.title = 'Show unlinked text nodes on canvas';
+        } else {
+          highlightUnlinkedBtn.removeAttribute('title');
+        }
       }
 
       if (isFrameMode()) {

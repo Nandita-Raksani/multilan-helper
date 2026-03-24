@@ -119,7 +119,28 @@ export function initSearchPanel(): void {
 
   // Disable by default — enabled only when something is selected
   highlightBtn.disabled = true;
-  highlightBtn.title = 'Select a layer to highlight';
+
+  // JS-based tooltip for disabled state — shows faster than native title
+  let tooltipEl: HTMLElement | null = null;
+  let tooltipTimer: ReturnType<typeof setTimeout> | null = null;
+
+  highlightBtn.addEventListener('mouseenter', () => {
+    if (!highlightBtn.disabled) return;
+    tooltipTimer = setTimeout(() => {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'custom-tooltip';
+      tooltipEl.textContent = 'Select a layer to highlight';
+      document.body.appendChild(tooltipEl);
+      const rect = highlightBtn.getBoundingClientRect();
+      tooltipEl.style.top = (rect.bottom + 6) + 'px';
+      tooltipEl.style.right = (document.documentElement.clientWidth - rect.right) + 'px';
+    }, 150);
+  });
+
+  highlightBtn.addEventListener('mouseleave', () => {
+    if (tooltipTimer) { clearTimeout(tooltipTimer); tooltipTimer = null; }
+    if (tooltipEl) { tooltipEl.remove(); tooltipEl = null; }
+  });
 
   // Highlight unlinked toggle
   highlightBtn.addEventListener('click', () => {
@@ -214,7 +235,7 @@ function resetAfterHighlight(): void {
   highlightBtn.classList.remove('active');
   highlightBtn.disabled = true;
   highlightBtn.innerHTML = 'Highlight<br>unlinked';
-  highlightBtn.title = 'Select a layer to highlight';
+  highlightBtn.removeAttribute('title');
 
   getElementById('statusText').textContent = `${store.getState().translationCount || 0} translations loaded`;
   showSearchBar();
