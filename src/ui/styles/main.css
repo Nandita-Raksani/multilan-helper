@@ -1026,7 +1026,14 @@ body {
   color: #0d99ff;
 }
 
-.highlight-btn:hover {
+.highlight-btn:disabled {
+  border-color: var(--figma-color-border);
+  color: var(--figma-color-text-tertiary);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.highlight-btn:hover:not(:disabled) {
   background: rgba(13, 153, 255, 0.1);
 }
 
