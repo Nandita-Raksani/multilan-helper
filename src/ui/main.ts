@@ -24,7 +24,7 @@ import {
   showSearchBar
 } from './components';
 import { handleFrameMatchResult, clearCloseMatchSearchState } from './components/FramePanel';
-import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic, resetSingleNodeSearchState } from './components/SearchPanel';
+import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic, resetSingleNodeSearchState, handleSingleNodeFuzzyResult } from './components/SearchPanel';
 import { showVariablePrompt } from './components/VariablePromptModal';
 
 /**
@@ -228,6 +228,10 @@ function handlePluginMessage(msg: PluginMessage): void {
       const currentSelectedNode = store.getState().selectedNode;
       const isRelevant = !msg.nodeId || !currentSelectedNode || currentSelectedNode.id === msg.nodeId;
       if (isRelevant) {
+        // Transition fuzzy state before setting store/rendering
+        if (msg.matchResult) {
+          handleSingleNodeFuzzyResult(msg.matchResult.status);
+        }
         store.setState({ matchResult: msg.matchResult || null });
         if (isFrameMode()) {
           renderFramePanel();

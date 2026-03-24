@@ -75,6 +75,16 @@ export function resetSingleNodeSearchState(): void {
   singleNodeFuzzyState = 'idle';
 }
 
+/** Called when fuzzy results arrive from match-detected message. */
+export function handleSingleNodeFuzzyResult(status: string): void {
+  if (singleNodeFuzzyState !== 'searching') return;
+  if (status === 'close' || status === 'exact') {
+    singleNodeFuzzyState = 'idle'; // results will render normally
+  } else {
+    singleNodeFuzzyState = 'done'; // no results found
+  }
+}
+
 function autoResizeTextarea(textarea: HTMLTextAreaElement): void {
   textarea.style.height = 'auto';
   textarea.style.height = textarea.scrollHeight + 'px';
@@ -318,27 +328,72 @@ function renderSelectedNodeBubble(node: { characters: string }): string {
   `;
 }
 
+function renderCloseMatchCard(
+  result: SearchResult,
+  canEdit: boolean,
+  currentLang: string,
+  isCurrentLink: boolean
+): string {
+  const scorePercent = result.score !== undefined ? Math.round(result.score * 100) : null;
+  const badgeLabel = isCurrentLink ? 'Linked' : 'Close Match';
+  const badgeCss = isCurrentLink ? 'match-badge-linked' : 'match-badge-close';
+  const cardCss = isCurrentLink ? 'frame-node-card-linked' : 'frame-node-card-close';
+
+  return `
+    <div class="frame-node-card ${cardCss}">
+      <div class="frame-node-id-row">
+        <span class="frame-node-id">${escapeHtml(result.multilanId)}</span>
+        <button class="copy-btn icon-btn" data-text="${escapeHtml(result.multilanId)}" title="Copy ID">${copyIconSvg}</button>
+        ${scorePercent !== null && scorePercent < 100 ? `<span class="frame-score" style="margin-left:auto">${scorePercent}%</span>` : ''}
+        <span class="match-badge ${badgeCss}" ${scorePercent !== null ? 'style="margin-left:0"' : 'style="margin-left:auto"'}>${badgeLabel}</span>
+      </div>
+      <div class="translations-preview">
+        ${SUPPORTED_LANGUAGES.map(lang => {
+          const text = result.translations[lang];
+          if (text) {
+            return `<div class="translation-row">
+              <span class="translation-lang">${lang.toUpperCase()}</span>
+              <span class="translation-text">${escapeHtml(text)}</span>
+            </div>`;
+          }
+          return `<div class="translation-row unavailable">
+            <span class="translation-lang">${lang.toUpperCase()}</span>
+            <span class="translation-text translation-unavailable"><em>Multilan not available</em></span>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="frame-node-actions">
+        ${canEdit && !isCurrentLink ? `<button class="btn-sm btn-sm-success btn-link-result" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
+        ${canEdit && isCurrentLink ? `<button class="btn-sm btn-sm-danger btn-unlink-result" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
+      </div>
+    </div>`;
+}
+
 function renderSelectedNodeLayout(
   node: { characters: string; name: string; multilanId: string | null },
   results: SearchResult[],
   state: ReturnType<typeof store.getState>
 ): string {
   const isAlreadyLinked = node.multilanId;
-  const showTextCopyButtons = !state.canEdit;
+  const match = state.matchResult;
+  const isCloseMatchResult = match?.status === 'close';
 
   // Clamp carousel index
   if (singleNodeCarouselIndex >= results.length) singleNodeCarouselIndex = 0;
   const current = results[singleNodeCarouselIndex];
   const isCurrentLink = isAlreadyLinked && node.multilanId === current.multilanId;
 
-  const cardHtml = renderResultCard(current, {
-    showCornerBadge: false,
-    hasSelection: true,
-    isCurrentLink: !!isCurrentLink,
-    canEdit: state.canEdit,
-    currentLang: state.currentLang,
-    showTextCopyButtons,
-  });
+  // Use frame-style card for close match results (from on-demand fuzzy)
+  const cardHtml = isCloseMatchResult
+    ? renderCloseMatchCard(current, state.canEdit, state.currentLang, !!isCurrentLink)
+    : renderResultCard(current, {
+        showCornerBadge: false,
+        hasSelection: true,
+        isCurrentLink: !!isCurrentLink,
+        canEdit: state.canEdit,
+        currentLang: state.currentLang,
+        showTextCopyButtons: !state.canEdit,
+      });
 
   const carouselNav = results.length > 1 ? `
     <div class="frame-carousel-nav">
@@ -429,14 +484,15 @@ export function renderGlobalSearchResults(): void {
   // Merge matchResult into search results so detected matches always appear
   const match = state.matchResult;
 
-  // Clear searching state when fuzzy results arrive
-  if (singleNodeFuzzyState === 'searching' && match && match.status !== 'searching') {
-    // Fuzzy finished — mark 'done' if no results, otherwise clear (results will render)
-    singleNodeFuzzyState = (match.status === 'none') ? 'done' : 'idle';
-  }
+  // Note: singleNodeFuzzyState transitions are handled by handleFuzzyResult(),
+  // called from main.ts when match-detected arrives — not in the render function.
 
-  // Hide search bar when a node is selected, except for no-match/searching nodes
-  const isNoMatchArea = hasSelection && (match?.status === 'none' || singleNodeFuzzyState !== 'idle');
+  // Show search bar area for: initial no-match (button), searching (spinner), done (no results)
+  const isNoMatchArea = hasSelection && (
+    (match?.status === 'none' && singleNodeFuzzyState === 'idle') ||
+    singleNodeFuzzyState === 'searching' ||
+    singleNodeFuzzyState === 'done'
+  );
   if (searchContainer) searchContainer.style.display = (hasSelection && !isNoMatchArea) ? 'none' : '';
   if (searchHint) searchHint.style.display = 'none';
 
