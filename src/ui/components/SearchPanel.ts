@@ -119,8 +119,7 @@ export function initSearchPanel(): void {
 
   // Disable by default — enabled only when something is selected
   highlightBtn.disabled = true;
-  highlightBtn.innerHTML = 'Select a layer<br>to highlight';
-  highlightBtn.title = 'Select a frame or layer first';
+  highlightBtn.title = 'Select a layer to highlight';
 
   // Highlight unlinked toggle
   highlightBtn.addEventListener('click', () => {
@@ -214,8 +213,8 @@ function resetAfterHighlight(): void {
   const highlightBtn = getElementById<HTMLButtonElement>('highlightUnlinkedBtn');
   highlightBtn.classList.remove('active');
   highlightBtn.disabled = true;
-  highlightBtn.innerHTML = 'Select a layer<br>to highlight';
-  highlightBtn.title = 'Select a frame or layer first';
+  highlightBtn.innerHTML = 'Highlight<br>unlinked';
+  highlightBtn.title = 'Select a layer to highlight';
 
   getElementById('statusText').textContent = `${store.getState().translationCount || 0} translations loaded`;
   showSearchBar();
