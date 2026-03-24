@@ -1031,6 +1031,24 @@ body {
   color: var(--figma-color-text-tertiary);
   cursor: default;
   opacity: 0.5;
+  position: relative;
+}
+
+.highlight-btn:disabled:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--figma-color-bg-inverse);
+  color: var(--figma-color-text-onbrand);
+  font-size: 10px;
+  font-weight: 400;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
 }
 
 .highlight-btn:hover:not(:disabled) {
