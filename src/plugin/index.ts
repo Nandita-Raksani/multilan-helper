@@ -59,8 +59,9 @@ import {
   createLinkedTextNode,
 } from "./services/linkingService";
 
-// Build timestamp - update this when translations are updated
-const BUILD_TIMESTAMP = "2026-01-18 12:00";
+// Build timestamp — injected by esbuild at build time via --define
+declare const __BUILD_TIMESTAMP__: string;
+const BUILD_TIMESTAMP = typeof __BUILD_TIMESTAMP__ !== "undefined" ? __BUILD_TIMESTAMP__ : new Date().toISOString();
 
 // Folder names from the bundle
 const FOLDER_NAMES = BUNDLE_FOLDER_NAMES;
