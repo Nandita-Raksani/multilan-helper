@@ -352,13 +352,27 @@ export async function searchTranslationsWithScoreAsync(
   const results: Array<SearchResult & { score: number }> = [];
   const lowerQuery = query.toLowerCase();
   const queryLen = lowerQuery.length;
-  const entries = Object.entries(translationData);
 
-  for (let i = 0; i < entries.length; i++) {
-    // Check cancellation before each chunk
+  // Use trigram index to narrow candidates (50k → typically a few hundred)
+  let entriesToSearch: Array<[string, TranslationEntry]>;
+  if (queryLen <= 2) {
+    // Short queries: trigrams not selective enough, brute force
+    entriesToSearch = Object.entries(translationData);
+  } else {
+    const index = await getTrigramIndex(translationData, cancellationToken);
+    if (cancellationToken?.cancelled) return [];
+    const candidateIds = getCandidateIds(query, index);
+    entriesToSearch = [];
+    for (const id of candidateIds) {
+      const entry = translationData[id];
+      if (entry) entriesToSearch.push([id, entry]);
+    }
+  }
+
+  for (let i = 0; i < entriesToSearch.length; i++) {
     if (cancellationToken?.cancelled) return [];
 
-    const [multilanId, langs] = entries[i];
+    const [multilanId, langs] = entriesToSearch[i];
     let bestScore = 0;
 
     if (multilanId.toLowerCase().includes(lowerQuery)) {
@@ -366,13 +380,10 @@ export async function searchTranslationsWithScoreAsync(
     }
 
     for (const text of Object.values(langs)) {
-      // Pre-filter: skip texts where length difference makes match impossible
-      // A score >= 0.4 requires length ratio >= 0.4 (Levenshtein-based)
       if (!couldMatch(queryLen, text.length, 0.3)) continue;
 
       const score = calculateMatchScore(query, text);
       bestScore = Math.max(bestScore, score);
-      // Early exit: perfect match found for this entry
       if (bestScore >= 1) break;
     }
 
@@ -380,7 +391,6 @@ export async function searchTranslationsWithScoreAsync(
       results.push({ multilanId, translations: langs, score: bestScore });
     }
 
-    // Yield every CHUNK_SIZE entries to keep Figma responsive
     if ((i + 1) % CHUNK_SIZE === 0) {
       await yieldToEventLoop();
     }
@@ -450,13 +460,27 @@ export async function globalSearchTranslationsAsync(
   cancellationToken?: CancellationToken
 ): Promise<SearchResult[]> {
   const results: Array<SearchResult & { score: number }> = [];
-  const entries = Object.entries(translationData);
   const queryLen = query.length;
 
-  for (let i = 0; i < entries.length; i++) {
+  // Use trigram index to narrow candidates
+  let entriesToSearch: Array<[string, TranslationEntry]>;
+  if (queryLen <= 2) {
+    entriesToSearch = Object.entries(translationData);
+  } else {
+    const index = await getTrigramIndex(translationData, cancellationToken);
+    if (cancellationToken?.cancelled) return [];
+    const candidateIds = getCandidateIds(query, index);
+    entriesToSearch = [];
+    for (const id of candidateIds) {
+      const entry = translationData[id];
+      if (entry) entriesToSearch.push([id, entry]);
+    }
+  }
+
+  for (let i = 0; i < entriesToSearch.length; i++) {
     if (cancellationToken?.cancelled) return [];
 
-    const [multilanId, langs] = entries[i];
+    const [multilanId, langs] = entriesToSearch[i];
     let bestScore = 0;
 
     if (multilanId === query) {
@@ -543,6 +567,125 @@ export function exactMatchLookup(
   const trimmed = text.trim().toLowerCase();
   if (!trimmed) return null;
   return getTextToIdMap(translationData).get(trimmed) || null;
+}
+
+// ---- Trigram Index for fast candidate filtering ----
+
+type TrigramIndex = Map<string, Set<string>>;
+
+/** Extract trigrams from text, with space padding for prefix/suffix matching. */
+function extractTrigrams(text: string): Set<string> {
+  const lower = text.toLowerCase();
+  const trigrams = new Set<string>();
+  const padded = '  ' + lower + '  ';
+  for (let i = 0; i < padded.length - 2; i++) {
+    trigrams.add(padded.substring(i, i + 3));
+  }
+  return trigrams;
+}
+
+let cachedTrigramIndex: TrigramIndex | null = null;
+let cachedTrigramIndexSource: TranslationMap | null = null;
+let trigramBuildPromise: Promise<TrigramIndex> | null = null;
+
+async function buildTrigramIndexAsync(
+  translationData: TranslationMap,
+  cancellationToken?: CancellationToken
+): Promise<TrigramIndex> {
+  const index: TrigramIndex = new Map();
+  const entries = Object.entries(translationData);
+
+  for (let i = 0; i < entries.length; i++) {
+    if (cancellationToken?.cancelled) return new Map();
+
+    const [multilanId, langs] = entries[i];
+
+    // Index the multilanId itself (for ID search)
+    for (const trigram of extractTrigrams(multilanId)) {
+      let set = index.get(trigram);
+      if (!set) { set = new Set(); index.set(trigram, set); }
+      set.add(multilanId);
+    }
+
+    // Index all language texts
+    for (const text of Object.values(langs)) {
+      for (const trigram of extractTrigrams(text)) {
+        let set = index.get(trigram);
+        if (!set) { set = new Set(); index.set(trigram, set); }
+        set.add(multilanId);
+      }
+    }
+
+    if ((i + 1) % CHUNK_SIZE === 0) {
+      await yieldToEventLoop();
+    }
+  }
+
+  return index;
+}
+
+/**
+ * Get or build the trigram index. Returns cached instance if available.
+ * Deduplicates concurrent builds — only one build runs at a time.
+ */
+export async function getTrigramIndex(
+  translationData: TranslationMap,
+  cancellationToken?: CancellationToken
+): Promise<TrigramIndex> {
+  if (cachedTrigramIndex && cachedTrigramIndexSource === translationData) {
+    return cachedTrigramIndex;
+  }
+  // Deduplicate: if a build is already in progress for the same data, wait for it
+  if (trigramBuildPromise && cachedTrigramIndexSource === translationData) {
+    return trigramBuildPromise;
+  }
+  trigramBuildPromise = buildTrigramIndexAsync(translationData, cancellationToken);
+  const index = await trigramBuildPromise;
+  trigramBuildPromise = null;
+  if (!cancellationToken?.cancelled) {
+    cachedTrigramIndex = index;
+    cachedTrigramIndexSource = translationData;
+  }
+  return index;
+}
+
+export function invalidateTrigramIndexCache(): void {
+  cachedTrigramIndex = null;
+  cachedTrigramIndexSource = null;
+  trigramBuildPromise = null;
+}
+
+/**
+ * Find candidate multilanIds whose trigram overlap with query exceeds a threshold.
+ * Returns a much smaller set than the full translation map for Levenshtein scoring.
+ */
+function getCandidateIds(
+  query: string,
+  index: TrigramIndex,
+  minOverlapRatio: number = 0.3
+): Set<string> {
+  const queryTrigrams = extractTrigrams(query);
+  if (queryTrigrams.size === 0) return new Set();
+
+  const hitCounts = new Map<string, number>();
+
+  for (const trigram of queryTrigrams) {
+    const ids = index.get(trigram);
+    if (!ids) continue;
+    for (const id of ids) {
+      hitCounts.set(id, (hitCounts.get(id) || 0) + 1);
+    }
+  }
+
+  const threshold = Math.max(1, Math.floor(queryTrigrams.size * minOverlapRatio));
+  const candidates = new Set<string>();
+  for (const [id, count] of hitCounts) {
+    if (count >= threshold) {
+      candidates.add(id);
+    }
+  }
+
+  return candidates;
 }
 
 /**

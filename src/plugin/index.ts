@@ -22,11 +22,14 @@ import {
   globalSearchTranslations,
   globalSearchTranslationsAsync,
   searchTranslations,
+  searchTranslationsWithScoreAsync,
   detectLanguage,
   detectMatch,
   detectMatchAsync,
   applyVariables,
   invalidateTextToIdMapCache,
+  invalidateTrigramIndexCache,
+  getTrigramIndex,
   exactMatchLookup,
   createCancellationToken,
 } from "./services/translationService";
@@ -86,6 +89,9 @@ function initializeTraFileData(folder: string): boolean {
     translationData = adapter.getTranslationMap();
     metadataData = adapter.getMetadataMap();
     invalidateTextToIdMapCache();
+    invalidateTrigramIndexCache();
+    // Eagerly start building trigram index in background (non-blocking)
+    getTrigramIndex(translationData).catch(() => {});
     console.log(`Loaded ${Object.keys(translationData).length} translations from folder "${folder}"`);
     return true;
   } catch (error) {
@@ -441,10 +447,10 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "search":
       if (msg.searchQuery) {
-        const results = searchTranslations(translationData, msg.searchQuery);
+        const searchResults = await searchTranslationsWithScoreAsync(translationData, msg.searchQuery, 20);
         figma.ui.postMessage({
           type: "search-results",
-          results,
+          results: searchResults,
         });
       }
       break;
