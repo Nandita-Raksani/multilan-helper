@@ -5,10 +5,10 @@ import { pluginBridge } from '../services/pluginBridge';
 import { escapeHtml, copyToClipboard } from '../utils/dom';
 
 // Carousel state: tracks current suggestion index per nodeId
-const carouselState = new Map<string, number>();
+const nodeCarouselIndexMap = new Map<string, number>();
 
 // Tracks nodes where close-match search is in progress or completed with no results
-const closeMatchSearchState = new Map<string, 'searching' | 'no-results'>();
+const nodeCloseMatchStatus = new Map<string, 'searching' | 'no-results'>();
 
 // Cached sort order — set once on initial frame render, preserved across re-renders
 let cachedSortOrder: string[] | null = null;
@@ -25,10 +25,10 @@ export function isFrameMode(): boolean {
  */
 export function handleFrameMatchResult(nodeId: string, status: string): void {
   if (status === 'none') {
-    closeMatchSearchState.set(nodeId, 'no-results');
+    nodeCloseMatchStatus.set(nodeId, 'no-results');
   } else {
     // Got results (close/exact) — clear search state, card will render differently
-    closeMatchSearchState.delete(nodeId);
+    nodeCloseMatchStatus.delete(nodeId);
   }
 }
 
@@ -36,7 +36,7 @@ export function handleFrameMatchResult(nodeId: string, status: string): void {
  * Clear close-match search state (e.g. on new selection).
  */
 export function clearCloseMatchSearchState(): void {
-  closeMatchSearchState.clear();
+  nodeCloseMatchStatus.clear();
   cachedSortOrder = null;
 }
 
@@ -114,7 +114,7 @@ function renderCloseCard(item: FrameNodeMatchResult, currentLang: string, canEdi
   const suggestions = mr.suggestions || [];
   if (suggestions.length === 0) return renderNoneCard(item);
 
-  const currentIndex = carouselState.get(item.nodeId) || 0;
+  const currentIndex = nodeCarouselIndexMap.get(item.nodeId) || 0;
   const suggestion = suggestions[currentIndex];
 
   return `
@@ -157,7 +157,7 @@ function renderSuggestionSlide(nodeId: string, suggestion: SearchResult & { scor
 
 function renderNoneCard(item: FrameNodeMatchResult): string {
   const canEdit = store.getState().canEdit;
-  const searchState = closeMatchSearchState.get(item.nodeId);
+  const searchState = nodeCloseMatchStatus.get(item.nodeId);
 
   // Fuzzy search in progress
   if (searchState === 'searching') {
@@ -331,9 +331,9 @@ function attachFramePanelHandlers(container: HTMLElement): void {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const nodeId = btn.dataset.nodeId!;
-      const current = carouselState.get(nodeId) || 0;
+      const current = nodeCarouselIndexMap.get(nodeId) || 0;
       if (current > 0) {
-        carouselState.set(nodeId, current - 1);
+        nodeCarouselIndexMap.set(nodeId, current - 1);
         renderFramePanel();
       }
     });
@@ -344,8 +344,8 @@ function attachFramePanelHandlers(container: HTMLElement): void {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const nodeId = btn.dataset.nodeId!;
-      const current = carouselState.get(nodeId) || 0;
-      carouselState.set(nodeId, current + 1);
+      const current = nodeCarouselIndexMap.get(nodeId) || 0;
+      nodeCarouselIndexMap.set(nodeId, current + 1);
       renderFramePanel();
     });
   });
@@ -356,7 +356,7 @@ function attachFramePanelHandlers(container: HTMLElement): void {
       e.stopPropagation();
       const nodeId = btn.dataset.nodeId!;
       const text = btn.dataset.text!;
-      closeMatchSearchState.set(nodeId, 'searching');
+      nodeCloseMatchStatus.set(nodeId, 'searching');
       renderFramePanel();
       pluginBridge.findCloseMatches(nodeId, text);
     });
@@ -368,7 +368,7 @@ function attachFramePanelHandlers(container: HTMLElement): void {
       e.stopPropagation();
       const nodeId = dot.dataset.nodeId!;
       const index = parseInt(dot.dataset.index || '0', 10);
-      carouselState.set(nodeId, index);
+      nodeCarouselIndexMap.set(nodeId, index);
       renderFramePanel();
     });
   });

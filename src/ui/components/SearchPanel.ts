@@ -68,20 +68,20 @@ let singleNodeCarouselIndex = 0;
 
 // On-demand fuzzy search state for single-node selection
 // 'idle' = not searched yet, 'searching' = in progress, 'done' = completed (no results)
-let singleNodeFuzzyState: 'idle' | 'searching' | 'done' = 'idle';
+let singleNodeSearchStatus: 'idle' | 'searching' | 'done' = 'idle';
 
 /** Reset the on-demand fuzzy search state (call on selection change). */
 export function resetSingleNodeSearchState(): void {
-  singleNodeFuzzyState = 'idle';
+  singleNodeSearchStatus = 'idle';
 }
 
 /** Called when fuzzy results arrive from match-detected message. */
 export function handleSingleNodeFuzzyResult(status: string): void {
-  if (singleNodeFuzzyState !== 'searching') return;
+  if (singleNodeSearchStatus !== 'searching') return;
   if (status === 'close' || status === 'exact') {
-    singleNodeFuzzyState = 'idle'; // results will render normally
+    singleNodeSearchStatus = 'idle'; // results will render normally
   } else {
-    singleNodeFuzzyState = 'done'; // no results found
+    singleNodeSearchStatus = 'done'; // no results found
   }
 }
 
@@ -442,7 +442,7 @@ function renderSelectedNodeNoMatch(
   const canEdit = store.getState().canEdit;
 
   // Show spinner while on-demand fuzzy search is running
-  if (singleNodeFuzzyState === 'searching') {
+  if (singleNodeSearchStatus === 'searching') {
     return `
       ${renderSelectedNodeBubble(node)}
       <div class="connector-arrow"></div>
@@ -457,7 +457,7 @@ function renderSelectedNodeNoMatch(
   }
 
   // Fuzzy search completed with no results — single consolidated message
-  if (singleNodeFuzzyState === 'done') {
+  if (singleNodeSearchStatus === 'done') {
     return `
       ${renderSelectedNodeBubble(node)}
       <div class="connector-arrow"></div>
@@ -504,14 +504,14 @@ export function renderGlobalSearchResults(): void {
   // Merge matchResult into search results so detected matches always appear
   const match = state.matchResult;
 
-  // Note: singleNodeFuzzyState transitions are handled by handleFuzzyResult(),
+  // Note: singleNodeSearchStatus transitions are handled by handleFuzzyResult(),
   // called from main.ts when match-detected arrives — not in the render function.
 
   // Show search bar area for: initial no-match (button), searching (spinner), done (no results)
   const isNoMatchArea = hasSelection && (
-    (match?.status === 'none' && singleNodeFuzzyState === 'idle') ||
-    singleNodeFuzzyState === 'searching' ||
-    singleNodeFuzzyState === 'done'
+    (match?.status === 'none' && singleNodeSearchStatus === 'idle') ||
+    singleNodeSearchStatus === 'searching' ||
+    singleNodeSearchStatus === 'done'
   );
   if (searchContainer) searchContainer.style.display = (hasSelection && !isNoMatchArea) ? 'none' : '';
   if (searchHint) searchHint.style.display = 'none';
@@ -535,7 +535,7 @@ export function renderGlobalSearchResults(): void {
 
   if (results.length === 0) {
     globalSearchResultsCount.textContent = '';
-    if (hasSelection && !isAlreadyLinked && (match?.status === 'none' || singleNodeFuzzyState !== 'idle')) {
+    if (hasSelection && !isAlreadyLinked && (match?.status === 'none' || singleNodeSearchStatus !== 'idle')) {
       globalSearchResults.innerHTML = renderSelectedNodeNoMatch(state.selectedNode!);
       // Event handlers are delegated — no per-render attachment needed
     } else if (searchQuery) {
@@ -653,7 +653,7 @@ function initSearchResultDelegation(): void {
       e.stopPropagation();
       const node = store.getState().selectedNode;
       if (!node) return;
-      singleNodeFuzzyState = 'searching';
+      singleNodeSearchStatus = 'searching';
       renderGlobalSearchResults();
       pluginBridge.detectMatch(node.characters);
       return;

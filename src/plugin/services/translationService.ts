@@ -1,5 +1,5 @@
-// Translation service - handles all translation-related operations
-// Note: buildTranslationMap and buildMetadataMap have been moved to adapters layer
+// Translation service — handles searching, matching, and language detection.
+// Translation data parsing is handled by the adapters layer.
 
 import {
   TranslationMap,
@@ -12,54 +12,78 @@ import {
   MatchDetectionResult,
 } from "../../shared/types";
 
-/**
- * Get metadata for a multilanId
- */
-export function getMetadata(
-  metadataMap: MetadataMap,
-  multilanId: string
-): MultilanMetadata | null {
+// ---- Scoring Constants ----
+
+/** Minimum Levenshtein similarity to count as a match */
+const MIN_SIMILARITY_THRESHOLD = 0.4;
+/** Maximum Levenshtein distance ratio for early termination (1 - MIN_SIMILARITY_THRESHOLD) */
+const MAX_DISTANCE_RATIO = 0.6;
+/** Score when query is a substring of the text */
+const SUBSTRING_CONTAINS_SCORE = 0.7;
+/** Score when text is a substring of the query */
+const SUBSTRING_CONTAINED_SCORE = 0.5;
+/** Score for exact multilan ID match */
+const EXACT_ID_MATCH_SCORE = 1.0;
+/** Score for partial multilan ID match (substring) */
+const PARTIAL_ID_MATCH_SCORE = 0.9;
+/** Score for ID substring match in search results */
+const ID_SUBSTRING_MATCH_SCORE = 0.8;
+/** Minimum score to qualify as a "close match" in detectMatch */
+const CLOSE_MATCH_THRESHOLD = 0.8;
+/** Minimum length ratio between query and text to attempt scoring */
+const MIN_LENGTH_RATIO = 0.3;
+
+// ---- Async Chunking ----
+
+/** Number of entries to process before yielding to the event loop */
+const CHUNK_SIZE = 500;
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+// ---- Cancellation ----
+
+export interface CancellationToken {
+  cancelled: boolean;
+  cancel(): void;
+}
+
+export function createCancellationToken(): CancellationToken {
+  const token: CancellationToken = {
+    cancelled: false,
+    cancel() { token.cancelled = true; },
+  };
+  return token;
+}
+
+// ---- Basic Lookups ----
+
+export function getMetadata(metadataMap: MetadataMap, multilanId: string): MultilanMetadata | null {
   return metadataMap[multilanId] || null;
 }
 
-/**
- * Get translation for a specific multilanId and language
- */
-export function getTranslation(
-  translationData: TranslationMap,
-  multilanId: string,
-  lang: Language
-): string | null {
+export function getTranslation(translationData: TranslationMap, multilanId: string, lang: Language): string | null {
   const entry = translationData[multilanId];
   if (!entry) return null;
   return entry[lang] || null;
 }
 
-/**
- * Get all translations for a multilanId
- */
-export function getAllTranslations(
-  translationData: TranslationMap,
-  multilanId: string
-): TranslationEntry | null {
+export function getAllTranslations(translationData: TranslationMap, multilanId: string): TranslationEntry | null {
   return translationData[multilanId] || null;
 }
 
-/**
- * Check if a language is supported
- */
 export function isLanguage(lang: string | undefined): lang is Language {
   return lang !== undefined && SUPPORTED_LANGUAGES.includes(lang as Language);
 }
+
+// ---- Variable Handling ----
 
 /**
  * Extract ###variable### values from text by matching against a template.
  * E.g., template "Hello, ###name###!" + text "Hello, John!" → { name: "John" }
  */
-export function extractVariableValues(
-  template: string,
-  text: string
-): Record<string, string> | null {
+export function extractVariableValues(template: string, text: string): Record<string, string> | null {
   const varPattern = /###([^#]+)###/g;
   const variables: string[] = [];
   let match;
@@ -68,10 +92,7 @@ export function extractVariableValues(
   }
   if (variables.length === 0) return null;
 
-  // Split template by variable patterns into alternating [literal, varName, literal, ...]
   const parts = template.split(/###[^#]+###/);
-
-  // Build regex: escape literals, insert capture groups between them
   let regexStr = '';
   for (let i = 0; i < parts.length; i++) {
     regexStr += parts[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -90,30 +111,24 @@ export function extractVariableValues(
   return result;
 }
 
-/**
- * Replace ###variable### placeholders in a template with actual values.
- */
-export function applyVariables(
-  template: string,
-  variables: Record<string, string>
-): string {
+/** Replace ###variable### placeholders in a template with actual values. */
+export function applyVariables(template: string, variables: Record<string, string>): string {
   return template.replace(/###([^#]+)###/g, (_match, name) => {
     return variables[name] !== undefined ? variables[name] : `###${name}###`;
   });
 }
 
+// ---- Levenshtein & Scoring ----
+
 /**
  * Levenshtein edit distance between two strings.
- * Uses 2-row approach (O(n) space) with optional early termination.
+ * Uses 2-row approach (O(min(m,n)) space) with optional early termination.
  */
 function levenshteinDistance(a: string, b: string, maxDistance?: number): number {
   const m = a.length;
   const n = b.length;
 
-  // Quick rejection by length difference
   if (maxDistance !== undefined && Math.abs(m - n) > maxDistance) return maxDistance + 1;
-
-  // Ensure a is the shorter string for optimal space usage
   if (m > n) return levenshteinDistance(b, a, maxDistance);
 
   let prev = new Uint16Array(m + 1);
@@ -135,9 +150,7 @@ function levenshteinDistance(a: string, b: string, maxDistance?: number): number
   return prev[m];
 }
 
-/**
- * Calculate match score between query and text
- */
+/** Calculate fuzzy match score (0-1) between query and text. */
 export function calculateMatchScore(query: string, text: string): number {
   const lowerQuery = query.toLowerCase();
   const lowerText = text.toLowerCase();
@@ -147,103 +160,90 @@ export function calculateMatchScore(query: string, text: string): number {
   const maxLen = Math.max(lowerQuery.length, lowerText.length);
   if (maxLen === 0) return 0;
 
-  // Levenshtein with early termination at similarity < 0.4
-  const maxDistance = Math.floor(0.6 * maxLen);
+  const maxDistance = Math.floor(MAX_DISTANCE_RATIO * maxLen);
   const distance = levenshteinDistance(lowerQuery, lowerText, maxDistance);
 
   if (distance > maxDistance) {
-    // Levenshtein too far — still check substring containment as fallback
-    if (lowerText.includes(lowerQuery)) return 0.7;
-    if (lowerQuery.includes(lowerText)) return 0.5;
+    if (lowerText.includes(lowerQuery)) return SUBSTRING_CONTAINS_SCORE;
+    if (lowerQuery.includes(lowerText)) return SUBSTRING_CONTAINED_SCORE;
     return 0;
   }
 
   const similarity = 1 - distance / maxLen;
 
-  // Boost for substring matches (preserves original behavior)
-  if (lowerText.includes(lowerQuery)) return Math.max(similarity, 0.7);
-  if (lowerQuery.includes(lowerText)) return Math.max(similarity, 0.5);
+  if (lowerText.includes(lowerQuery)) return Math.max(similarity, SUBSTRING_CONTAINS_SCORE);
+  if (lowerQuery.includes(lowerText)) return Math.max(similarity, SUBSTRING_CONTAINED_SCORE);
 
-  return similarity >= 0.4 ? similarity : 0;
+  return similarity >= MIN_SIMILARITY_THRESHOLD ? similarity : 0;
 }
 
 /**
- * Cancellation token for async operations.
- * Call cancel() to abort any in-flight search using this token.
+ * Quick pre-filter: rejects entries where the length difference alone
+ * makes a match impossible, avoiding expensive Levenshtein computation.
  */
-export interface CancellationToken {
-  cancelled: boolean;
-  cancel(): void;
-}
-
-export function createCancellationToken(): CancellationToken {
-  const token: CancellationToken = {
-    cancelled: false,
-    cancel() { token.cancelled = true; },
-  };
-  return token;
-}
-
-/**
- * Chunked async search — processes entries in batches to avoid blocking the main thread.
- * Yields to the event loop between chunks via setTimeout(0).
- *
- * Key perf improvements over brute-force:
- * - Small chunk size (500) so Figma stays responsive between yields
- * - Pre-filter by length difference before running Levenshtein
- * - Cancellation token to abort stale searches
- */
-const CHUNK_SIZE = 500;
-
-function yieldToEventLoop(): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, 0));
-}
-
-/**
- * Quick pre-filter: can this text possibly score >= threshold against query?
- * Rejects entries where the length difference alone makes a match impossible.
- */
-function couldMatch(queryLen: number, textLen: number, maxLenRatio: number): boolean {
+function passesLengthPrefilter(queryLen: number, textLen: number): boolean {
   if (textLen === 0) return false;
-  // If lengths differ too much, Levenshtein distance will exceed threshold
   const ratio = queryLen > textLen ? textLen / queryLen : queryLen / textLen;
-  return ratio >= maxLenRatio;
+  return ratio >= MIN_LENGTH_RATIO;
 }
 
-export async function searchTranslationsWithScoreAsync(
+// ---- Core Search Engine ----
+
+interface SearchOptions {
+  /** Include exact/partial multilan ID matching */
+  includeIdMatch: boolean;
+  /** Attach metadata from metadataMap to results */
+  includeMetadata: boolean;
+}
+
+/**
+ * Shared search core — scores all translation entries against a query.
+ * Both searchTranslationsWithScoreAsync and globalSearchTranslationsAsync
+ * delegate to this function with different options.
+ */
+async function scoreEntriesAsync(
   translationData: TranslationMap,
   query: string,
-  limit: number = 10,
+  limit: number,
+  options: SearchOptions,
+  metadataMap?: MetadataMap,
   cancellationToken?: CancellationToken
 ): Promise<Array<SearchResult & { score: number }>> {
   const results: Array<SearchResult & { score: number }> = [];
   const lowerQuery = query.toLowerCase();
   const queryLen = lowerQuery.length;
+  const entries = Object.entries(translationData);
 
-  // Brute-force with pre-filters: couldMatch() rejects most entries cheaply,
-  // Levenshtein uses maxDistance early termination, cancellation aborts stale searches
-  const entriesToSearch = Object.entries(translationData);
-
-  for (let i = 0; i < entriesToSearch.length; i++) {
+  for (let i = 0; i < entries.length; i++) {
     if (cancellationToken?.cancelled) return [];
 
-    const [multilanId, langs] = entriesToSearch[i];
+    const [multilanId, langs] = entries[i];
     let bestScore = 0;
 
-    if (multilanId.toLowerCase().includes(lowerQuery)) {
-      bestScore = Math.max(bestScore, 0.8);
+    // Score against multilan ID
+    if (options.includeIdMatch) {
+      if (multilanId === query) {
+        bestScore = EXACT_ID_MATCH_SCORE;
+      } else if (multilanId.includes(query)) {
+        bestScore = Math.max(bestScore, PARTIAL_ID_MATCH_SCORE);
+      }
+    } else {
+      if (multilanId.toLowerCase().includes(lowerQuery)) {
+        bestScore = Math.max(bestScore, ID_SUBSTRING_MATCH_SCORE);
+      }
     }
 
+    // Score against each language's text
     for (const text of Object.values(langs)) {
-      if (!couldMatch(queryLen, text.length, 0.3)) continue;
-
+      if (!passesLengthPrefilter(queryLen, text.length)) continue;
       const score = calculateMatchScore(query, text);
       bestScore = Math.max(bestScore, score);
       if (bestScore >= 1) break;
     }
 
     if (bestScore > 0) {
-      results.push({ multilanId, translations: langs, score: bestScore });
+      const metadata = options.includeMetadata && metadataMap ? metadataMap[multilanId] : undefined;
+      results.push({ multilanId, translations: langs, score: bestScore, metadata });
     }
 
     if ((i + 1) % CHUNK_SIZE === 0) {
@@ -257,9 +257,44 @@ export async function searchTranslationsWithScoreAsync(
   return results.slice(0, limit);
 }
 
+// ---- Public Search Functions ----
+
+/** Search translations with fuzzy scoring. Returns top results with scores. */
+export async function searchTranslationsWithScoreAsync(
+  translationData: TranslationMap,
+  query: string,
+  limit: number = 10,
+  cancellationToken?: CancellationToken
+): Promise<Array<SearchResult & { score: number }>> {
+  return scoreEntriesAsync(
+    translationData, query, limit,
+    { includeIdMatch: false, includeMetadata: false },
+    undefined, cancellationToken
+  );
+}
+
+/** Global search — searches by multilan ID and text content, includes metadata. */
+export async function globalSearchTranslationsAsync(
+  translationData: TranslationMap,
+  query: string,
+  limit: number = 30,
+  metadataMap?: MetadataMap,
+  cancellationToken?: CancellationToken
+): Promise<SearchResult[]> {
+  const results = await scoreEntriesAsync(
+    translationData, query, limit,
+    { includeIdMatch: true, includeMetadata: true },
+    metadataMap, cancellationToken
+  );
+  // Strip scores from public API
+  return results.map(({ multilanId, translations, metadata }) => ({
+    multilanId, translations, metadata,
+  }));
+}
+
 /**
- * Async version of detectMatch — uses chunked fuzzy search.
- * Supports cancellation to abort stale searches when selection changes.
+ * Detect match for selected text — tries exact match first (O(1)),
+ * then falls back to fuzzy search for close matches.
  */
 export async function detectMatchAsync(
   translationData: TranslationMap,
@@ -268,9 +303,7 @@ export async function detectMatchAsync(
   cancellationToken?: CancellationToken
 ): Promise<MatchDetectionResult> {
   const trimmed = text.trim();
-  if (!trimmed) {
-    return { status: 'none' };
-  }
+  if (!trimmed) return { status: 'none' };
 
   // Pass 1: Exact match (cached, O(1) after first build)
   const textToIdMap = await getTextToIdMap(translationData);
@@ -281,19 +314,15 @@ export async function detectMatchAsync(
     return { status: 'exact', multilanId: exactId, translations, metadata };
   }
 
-  // Check cancellation before starting expensive fuzzy search
   if (cancellationToken?.cancelled) return { status: 'none' };
 
-  // Pass 2: Chunked fuzzy match (yields between chunks)
+  // Pass 2: Fuzzy match (chunked, non-blocking)
   const fuzzyResults = await searchTranslationsWithScoreAsync(translationData, trimmed, 5, cancellationToken);
-
-  // Check cancellation after fuzzy search completes
   if (cancellationToken?.cancelled) return { status: 'none' };
 
-  const filtered = fuzzyResults.filter(r => r.score >= 0.8);
-
-  if (filtered.length > 0) {
-    const suggestions = filtered.map(r => ({
+  const closeMatches = fuzzyResults.filter(r => r.score >= CLOSE_MATCH_THRESHOLD);
+  if (closeMatches.length > 0) {
+    const suggestions = closeMatches.map(r => ({
       ...r,
       metadata: metadataMap ? metadataMap[r.multilanId] : undefined,
     }));
@@ -303,63 +332,8 @@ export async function detectMatchAsync(
   return { status: 'none' };
 }
 
-/**
- * Async version of globalSearchTranslations — uses chunked iteration.
- * Supports cancellation to abort stale searches.
- */
-export async function globalSearchTranslationsAsync(
-  translationData: TranslationMap,
-  query: string,
-  limit: number = 30,
-  metadataMap?: MetadataMap,
-  cancellationToken?: CancellationToken
-): Promise<SearchResult[]> {
-  const results: Array<SearchResult & { score: number }> = [];
-  const queryLen = query.length;
+// ---- Text-to-ID Map (Exact Match Cache) ----
 
-  const entriesToSearch = Object.entries(translationData);
-
-  for (let i = 0; i < entriesToSearch.length; i++) {
-    if (cancellationToken?.cancelled) return [];
-
-    const [multilanId, langs] = entriesToSearch[i];
-    let bestScore = 0;
-
-    if (multilanId === query) {
-      bestScore = 1;
-    } else if (multilanId.includes(query)) {
-      bestScore = Math.max(bestScore, 0.9);
-    }
-
-    for (const text of Object.values(langs)) {
-      if (!couldMatch(queryLen, text.length, 0.3)) continue;
-      const score = calculateMatchScore(query, text);
-      bestScore = Math.max(bestScore, score);
-      if (bestScore >= 1) break;
-    }
-
-    if (bestScore > 0) {
-      const metadata = metadataMap ? metadataMap[multilanId] : undefined;
-      results.push({ multilanId, translations: langs, score: bestScore, metadata });
-    }
-
-    if ((i + 1) % CHUNK_SIZE === 0) {
-      await yieldToEventLoop();
-    }
-  }
-
-  if (cancellationToken?.cancelled) return [];
-
-  results.sort((a, b) => b.score - a.score);
-  return results.slice(0, limit).map(({ multilanId, translations, metadata }) => ({
-    multilanId, translations, metadata,
-  }));
-}
-
-/**
- * Build reverse lookup map: text -> multilanId for exact matching.
- * Async with chunking to avoid blocking the main thread on large datasets.
- */
 async function buildTextToIdMapAsync(translationData: TranslationMap): Promise<Map<string, string>> {
   const textToMultilanId = new Map<string, string>();
   const entries = Object.entries(translationData);
@@ -380,15 +354,11 @@ async function buildTextToIdMapAsync(translationData: TranslationMap): Promise<M
   return textToMultilanId;
 }
 
-// Cached textToIdMap — built once, invalidated on folder switch
 let cachedTextToIdMap: Map<string, string> | null = null;
 let cachedTextToIdMapSource: TranslationMap | null = null;
 let textToIdBuildPromise: Promise<Map<string, string>> | null = null;
 
-/**
- * Get or build the cached text-to-ID map (async, non-blocking).
- * Deduplicates concurrent builds.
- */
+/** Get or build the text-to-ID map (async, cached, deduplicates concurrent builds). */
 export async function getTextToIdMap(translationData: TranslationMap): Promise<Map<string, string>> {
   if (cachedTextToIdMap && cachedTextToIdMapSource === translationData) {
     return cachedTextToIdMap;
@@ -404,60 +374,47 @@ export async function getTextToIdMap(translationData: TranslationMap): Promise<M
   return map;
 }
 
-/**
- * Invalidate the cached text-to-ID map (call on folder switch / data reload).
- */
+/** Invalidate the text-to-ID map cache (call on folder switch / data reload). */
 export function invalidateTextToIdMapCache(): void {
   cachedTextToIdMap = null;
   cachedTextToIdMapSource = null;
   textToIdBuildPromise = null;
 }
 
-/**
- * Fast exact-match lookup using the cached map. Returns multilanId or null.
- */
-export async function exactMatchLookup(
-  translationData: TranslationMap,
-  text: string
-): Promise<string | null> {
+/** Fast exact-match lookup. Returns multilanId or null. */
+export async function exactMatchLookup(translationData: TranslationMap, text: string): Promise<string | null> {
   const trimmed = text.trim().toLowerCase();
   if (!trimmed) return null;
   const map = await getTextToIdMap(translationData);
   return map.get(trimmed) || null;
 }
 
+// ---- Language Detection ----
+
 /**
- * Detect current language by comparing linked nodes' text with translations
- * Returns the language that matches the most nodes
+ * Detect current language by comparing linked nodes' text with translations.
+ * Returns the language that matches the most linked nodes.
  */
 export function detectLanguage(
   translationData: TranslationMap,
   linkedNodes: Array<{ multilanId: string; characters: string }>
 ): Language {
-  const languageCounts: Record<Language, number> = {
-    en: 0,
-    fr: 0,
-    nl: 0,
-    de: 0,
-  };
+  const languageCounts: Record<Language, number> = { en: 0, fr: 0, nl: 0, de: 0 };
 
   for (const node of linkedNodes) {
     const translations = translationData[node.multilanId];
     if (!translations) continue;
 
-    // Check which language matches the current text
     for (const lang of SUPPORTED_LANGUAGES) {
       if (translations[lang] === node.characters) {
         languageCounts[lang]++;
-        break; // Found a match, no need to check other languages
+        break;
       }
     }
   }
 
-  // Find the language with the most matches
   let bestLang: Language = "en";
   let bestCount = 0;
-
   for (const lang of SUPPORTED_LANGUAGES) {
     if (languageCounts[lang] > bestCount) {
       bestCount = languageCounts[lang];
@@ -467,4 +424,3 @@ export function detectLanguage(
 
   return bestLang;
 }
-

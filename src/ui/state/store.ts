@@ -15,7 +15,6 @@ export interface UIState {
   isHighlightMode: boolean;
   suppressFrameMode: boolean;
   globalSearchResults: SearchResult[];
-  allTranslations: unknown[];
   translationCount: number;
   currentFolder: string;
   folderNames: string[];
@@ -40,7 +39,6 @@ class Store {
     isHighlightMode: false,
     suppressFrameMode: false,
     globalSearchResults: [],
-    allTranslations: [],
     translationCount: 0,
     currentFolder: 'EB',
     folderNames: [],

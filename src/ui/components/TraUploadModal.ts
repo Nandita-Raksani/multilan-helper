@@ -3,9 +3,9 @@ import { pluginBridge } from '../services/pluginBridge';
 
 let modalEl: HTMLDivElement | null = null;
 
-type LangCode = 'en' | 'fr' | 'nl' | 'de';
+import type { Language } from '../../shared/types';
 
-const LANGUAGES: { code: LangCode; label: string }[] = [
+const LANGUAGES: { code: Language; label: string }[] = [
   { code: 'en', label: 'EN (English)' },
   { code: 'fr', label: 'FR (French)' },
   { code: 'nl', label: 'NL (Dutch)' },
@@ -13,7 +13,7 @@ const LANGUAGES: { code: LangCode; label: string }[] = [
 ];
 
 // Map filenames to language codes
-function detectLanguageFromFilename(filename: string): LangCode | null {
+function detectLanguageFromFilename(filename: string): Language | null {
   const lower = filename.toLowerCase();
   if (lower.includes('en-') || lower.startsWith('en.') || lower === 'en.tra') return 'en';
   if (lower.includes('fr-') || lower.startsWith('fr.') || lower === 'fr.tra') return 'fr';
@@ -48,11 +48,11 @@ function formatDate(timestamp: number): string {
 }
 
 // Tracked files mapped to languages
-const fileMap: Map<LangCode, File> = new Map();
+const languageFileMap: Map<Language, File> = new Map();
 
 function renderFileList(): string {
   const items = LANGUAGES.map(lang => {
-    const file = fileMap.get(lang.code);
+    const file = languageFileMap.get(lang.code);
     if (file) {
       return `<div class="tra-file-item tra-file-item-ok">
         <span class="tra-file-check">&#10003;</span>
@@ -67,8 +67,8 @@ function renderFileList(): string {
     </div>`;
   }).join('');
 
-  const count = fileMap.size;
-  const missing = LANGUAGES.filter(l => !fileMap.has(l.code)).map(l => l.code.toUpperCase());
+  const count = languageFileMap.size;
+  const missing = LANGUAGES.filter(l => !languageFileMap.has(l.code)).map(l => l.code.toUpperCase());
   const validationText = count === 4
     ? '<span class="tra-validation-ok">All 4 languages selected</span>'
     : count > 0
@@ -83,7 +83,7 @@ function processFiles(files: FileList | File[]): void {
     if (!file.name.toLowerCase().endsWith('.tra')) continue;
     const lang = detectLanguageFromFilename(file.name);
     if (lang) {
-      fileMap.set(lang, file);
+      languageFileMap.set(lang, file);
     }
   }
   updateModalState();
@@ -95,12 +95,12 @@ function updateModalState(): void {
   listEl.innerHTML = renderFileList();
 
   const submitBtn = modalEl.querySelector<HTMLButtonElement>('.tra-upload-submit')!;
-  submitBtn.disabled = fileMap.size < 1;
+  submitBtn.disabled = languageFileMap.size < 1;
 }
 
 export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata): void {
   hideTraUploadModal();
-  fileMap.clear();
+  languageFileMap.clear();
 
   const lastUploadedHtml = metadata
     ? `<div class="tra-upload-last">Last uploaded: ${formatDate(metadata.uploadTimestamp)}</div>`
@@ -169,7 +169,7 @@ export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata)
 
   // Submit
   submitBtn.addEventListener('click', async () => {
-    if (fileMap.size < 1) return;
+    if (languageFileMap.size < 1) return;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Uploading...';
 
@@ -177,7 +177,7 @@ export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata)
       const traFileData: { en: string; fr: string; nl: string; de: string } = { en: '', fr: '', nl: '', de: '' };
       const fileLastModified: { en: number; fr: number; nl: number; de: number } = { en: 0, fr: 0, nl: 0, de: 0 };
 
-      for (const [lang, file] of fileMap.entries()) {
+      for (const [lang, file] of languageFileMap.entries()) {
         traFileData[lang] = await readFileAsText(file);
         fileLastModified[lang] = file.lastModified;
       }
@@ -185,7 +185,7 @@ export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata)
       const uploadMetadata: TraUploadMetadata = {
         uploadTimestamp: Date.now(),
         fileLastModified,
-        availableLanguages: Array.from(fileMap.keys()),
+        availableLanguages: Array.from(languageFileMap.keys()),
       };
 
       pluginBridge.uploadTraFiles(folder, traFileData, uploadMetadata);
@@ -203,5 +203,5 @@ export function hideTraUploadModal(): void {
     modalEl.remove();
     modalEl = null;
   }
-  fileMap.clear();
+  languageFileMap.clear();
 }
