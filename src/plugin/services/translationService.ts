@@ -220,21 +220,9 @@ export async function searchTranslationsWithScoreAsync(
   const lowerQuery = query.toLowerCase();
   const queryLen = lowerQuery.length;
 
-  // Use trigram index to narrow candidates (50k → typically a few hundred)
-  let entriesToSearch: Array<[string, TranslationEntry]>;
-  if (queryLen <= 2) {
-    // Short queries: trigrams not selective enough, brute force
-    entriesToSearch = Object.entries(translationData);
-  } else {
-    const index = await getTrigramIndex(translationData, cancellationToken);
-    if (cancellationToken?.cancelled) return [];
-    const candidateIds = getCandidateIds(query, index);
-    entriesToSearch = [];
-    for (const id of candidateIds) {
-      const entry = translationData[id];
-      if (entry) entriesToSearch.push([id, entry]);
-    }
-  }
+  // Brute-force with pre-filters: couldMatch() rejects most entries cheaply,
+  // Levenshtein uses maxDistance early termination, cancellation aborts stale searches
+  const entriesToSearch = Object.entries(translationData);
 
   for (let i = 0; i < entriesToSearch.length; i++) {
     if (cancellationToken?.cancelled) return [];
@@ -284,8 +272,8 @@ export async function detectMatchAsync(
     return { status: 'none' };
   }
 
-  // Pass 1: Exact match (cached, O(1))
-  const textToIdMap = getTextToIdMap(translationData);
+  // Pass 1: Exact match (cached, O(1) after first build)
+  const textToIdMap = await getTextToIdMap(translationData);
   const exactId = textToIdMap.get(trimmed.toLowerCase());
   if (exactId) {
     const translations = translationData[exactId];
@@ -329,20 +317,7 @@ export async function globalSearchTranslationsAsync(
   const results: Array<SearchResult & { score: number }> = [];
   const queryLen = query.length;
 
-  // Use trigram index to narrow candidates
-  let entriesToSearch: Array<[string, TranslationEntry]>;
-  if (queryLen <= 2) {
-    entriesToSearch = Object.entries(translationData);
-  } else {
-    const index = await getTrigramIndex(translationData, cancellationToken);
-    if (cancellationToken?.cancelled) return [];
-    const candidateIds = getCandidateIds(query, index);
-    entriesToSearch = [];
-    for (const id of candidateIds) {
-      const entry = translationData[id];
-      if (entry) entriesToSearch.push([id, entry]);
-    }
-  }
+  const entriesToSearch = Object.entries(translationData);
 
   for (let i = 0; i < entriesToSearch.length; i++) {
     if (cancellationToken?.cancelled) return [];
@@ -382,17 +357,23 @@ export async function globalSearchTranslationsAsync(
 }
 
 /**
- * Build reverse lookup map: text -> multilanId for exact matching
+ * Build reverse lookup map: text -> multilanId for exact matching.
+ * Async with chunking to avoid blocking the main thread on large datasets.
  */
-export function buildTextToIdMap(translationData: TranslationMap): Map<string, string> {
+async function buildTextToIdMapAsync(translationData: TranslationMap): Promise<Map<string, string>> {
   const textToMultilanId = new Map<string, string>();
+  const entries = Object.entries(translationData);
 
-  for (const [multilanId, langs] of Object.entries(translationData)) {
+  for (let i = 0; i < entries.length; i++) {
+    const [multilanId, langs] = entries[i];
     for (const text of Object.values(langs)) {
       const lower = text.toLowerCase();
       if (!textToMultilanId.has(lower)) {
         textToMultilanId.set(lower, multilanId);
       }
+    }
+    if ((i + 1) % CHUNK_SIZE === 0) {
+      await yieldToEventLoop();
     }
   }
 
@@ -402,18 +383,25 @@ export function buildTextToIdMap(translationData: TranslationMap): Map<string, s
 // Cached textToIdMap — built once, invalidated on folder switch
 let cachedTextToIdMap: Map<string, string> | null = null;
 let cachedTextToIdMapSource: TranslationMap | null = null;
+let textToIdBuildPromise: Promise<Map<string, string>> | null = null;
 
 /**
- * Get or build the cached text-to-ID map.
- * O(1) after first call for the same translationData reference.
+ * Get or build the cached text-to-ID map (async, non-blocking).
+ * Deduplicates concurrent builds.
  */
-export function getTextToIdMap(translationData: TranslationMap): Map<string, string> {
+export async function getTextToIdMap(translationData: TranslationMap): Promise<Map<string, string>> {
   if (cachedTextToIdMap && cachedTextToIdMapSource === translationData) {
     return cachedTextToIdMap;
   }
-  cachedTextToIdMap = buildTextToIdMap(translationData);
+  if (textToIdBuildPromise && cachedTextToIdMapSource === translationData) {
+    return textToIdBuildPromise;
+  }
   cachedTextToIdMapSource = translationData;
-  return cachedTextToIdMap;
+  textToIdBuildPromise = buildTextToIdMapAsync(translationData);
+  const map = await textToIdBuildPromise;
+  textToIdBuildPromise = null;
+  cachedTextToIdMap = map;
+  return map;
 }
 
 /**
@@ -422,137 +410,20 @@ export function getTextToIdMap(translationData: TranslationMap): Map<string, str
 export function invalidateTextToIdMapCache(): void {
   cachedTextToIdMap = null;
   cachedTextToIdMapSource = null;
+  textToIdBuildPromise = null;
 }
 
 /**
  * Fast exact-match lookup using the cached map. Returns multilanId or null.
  */
-export function exactMatchLookup(
+export async function exactMatchLookup(
   translationData: TranslationMap,
   text: string
-): string | null {
+): Promise<string | null> {
   const trimmed = text.trim().toLowerCase();
   if (!trimmed) return null;
-  return getTextToIdMap(translationData).get(trimmed) || null;
-}
-
-// ---- Trigram Index for fast candidate filtering ----
-
-type TrigramIndex = Map<string, Set<string>>;
-
-/** Extract trigrams from text, with space padding for prefix/suffix matching. */
-function extractTrigrams(text: string): Set<string> {
-  const lower = text.toLowerCase();
-  const trigrams = new Set<string>();
-  const padded = '  ' + lower + '  ';
-  for (let i = 0; i < padded.length - 2; i++) {
-    trigrams.add(padded.substring(i, i + 3));
-  }
-  return trigrams;
-}
-
-let cachedTrigramIndex: TrigramIndex | null = null;
-let cachedTrigramIndexSource: TranslationMap | null = null;
-let trigramBuildPromise: Promise<TrigramIndex> | null = null;
-
-async function buildTrigramIndexAsync(
-  translationData: TranslationMap,
-  cancellationToken?: CancellationToken
-): Promise<TrigramIndex> {
-  const index: TrigramIndex = new Map();
-  const entries = Object.entries(translationData);
-
-  for (let i = 0; i < entries.length; i++) {
-    if (cancellationToken?.cancelled) return new Map();
-
-    const [multilanId, langs] = entries[i];
-
-    // Index the multilanId itself (for ID search)
-    for (const trigram of extractTrigrams(multilanId)) {
-      let set = index.get(trigram);
-      if (!set) { set = new Set(); index.set(trigram, set); }
-      set.add(multilanId);
-    }
-
-    // Index all language texts
-    for (const text of Object.values(langs)) {
-      for (const trigram of extractTrigrams(text)) {
-        let set = index.get(trigram);
-        if (!set) { set = new Set(); index.set(trigram, set); }
-        set.add(multilanId);
-      }
-    }
-
-    if ((i + 1) % CHUNK_SIZE === 0) {
-      await yieldToEventLoop();
-    }
-  }
-
-  return index;
-}
-
-/**
- * Get or build the trigram index. Returns cached instance if available.
- * Deduplicates concurrent builds — only one build runs at a time.
- */
-export async function getTrigramIndex(
-  translationData: TranslationMap,
-  cancellationToken?: CancellationToken
-): Promise<TrigramIndex> {
-  if (cachedTrigramIndex && cachedTrigramIndexSource === translationData) {
-    return cachedTrigramIndex;
-  }
-  // Deduplicate: if a build is already in progress for the same data, wait for it
-  if (trigramBuildPromise && cachedTrigramIndexSource === translationData) {
-    return trigramBuildPromise;
-  }
-  trigramBuildPromise = buildTrigramIndexAsync(translationData, cancellationToken);
-  const index = await trigramBuildPromise;
-  trigramBuildPromise = null;
-  if (!cancellationToken?.cancelled) {
-    cachedTrigramIndex = index;
-    cachedTrigramIndexSource = translationData;
-  }
-  return index;
-}
-
-export function invalidateTrigramIndexCache(): void {
-  cachedTrigramIndex = null;
-  cachedTrigramIndexSource = null;
-  trigramBuildPromise = null;
-}
-
-/**
- * Find candidate multilanIds whose trigram overlap with query exceeds a threshold.
- * Returns a much smaller set than the full translation map for Levenshtein scoring.
- */
-function getCandidateIds(
-  query: string,
-  index: TrigramIndex,
-  minOverlapRatio: number = 0.3
-): Set<string> {
-  const queryTrigrams = extractTrigrams(query);
-  if (queryTrigrams.size === 0) return new Set();
-
-  const hitCounts = new Map<string, number>();
-
-  for (const trigram of queryTrigrams) {
-    const ids = index.get(trigram);
-    if (!ids) continue;
-    for (const id of ids) {
-      hitCounts.set(id, (hitCounts.get(id) || 0) + 1);
-    }
-  }
-
-  const threshold = Math.max(1, Math.floor(queryTrigrams.size * minOverlapRatio));
-  const candidates = new Set<string>();
-  for (const [id, count] of hitCounts) {
-    if (count >= threshold) {
-      candidates.add(id);
-    }
-  }
-
-  return candidates;
+  const map = await getTextToIdMap(translationData);
+  return map.get(trimmed) || null;
 }
 
 /**

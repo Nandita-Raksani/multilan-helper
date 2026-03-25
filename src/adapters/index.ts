@@ -12,14 +12,14 @@ import { isTraFileData } from "./types/traFile.types";
 // Supported adapter types
 export type AdapterType = "current-api" | "search-api" | "tra-files";
 
-// Adapter factory function type
-type AdapterFactory = (data: unknown) => TranslationDataPort;
+// Adapter factory function type (sync or async)
+type AdapterFactory = (data: unknown) => TranslationDataPort | Promise<TranslationDataPort>;
 
 // Registry of adapter factories
 const adapterRegistry = new Map<AdapterType, AdapterFactory>([
   ["current-api", (data) => new CurrentApiAdapter(data)],
   ["search-api", (data) => new SearchApiAdapter(data)],
-  ["tra-files", (data) => new TraFileAdapter(data)],
+  ["tra-files", (data) => TraFileAdapter.createAsync(data)],
 ]);
 
 /**
@@ -49,10 +49,10 @@ export function detectAdapterType(data: unknown): AdapterType | null {
  * @returns A TranslationDataPort adapter
  * @throws Error if adapter type cannot be determined or is not supported
  */
-export function createAdapter(
+export async function createAdapter(
   data: unknown,
   type?: AdapterType
-): TranslationDataPort {
+): Promise<TranslationDataPort> {
   const adapterType = type ?? detectAdapterType(data);
 
   if (!adapterType) {
@@ -67,7 +67,7 @@ export function createAdapter(
     throw new Error(`No adapter registered for type: ${adapterType}`);
   }
 
-  return factory(data);
+  return await factory(data);
 }
 
 /**
@@ -117,4 +117,4 @@ export type {
 } from "./types/searchApi.types";
 export { isSearchApiFormat } from "./types/searchApi.types";
 export type { TraFileData } from "./types/traFile.types";
-export { isTraFileData, parseTraFile, parseTraLine } from "./types/traFile.types";
+export { isTraFileData, parseTraFile, parseTraFileAsync, parseTraLine } from "./types/traFile.types";

@@ -122,20 +122,20 @@ describe("TraFileAdapter", () => {
 10003,"Willkommen","All"`,
   };
 
-  describe("constructor", () => {
-    it("should create adapter with valid .tra file data", () => {
-      const adapter = new TraFileAdapter(sampleTraData);
+  describe("createAsync", () => {
+    it("should create adapter with valid .tra file data", async () => {
+      const adapter = await TraFileAdapter.createAsync(sampleTraData);
       expect(adapter).toBeInstanceOf(TraFileAdapter);
     });
 
-    it("should throw error for invalid data", () => {
-      expect(() => new TraFileAdapter({ invalid: "data" })).toThrow();
+    it("should throw error for invalid data", async () => {
+      await expect(TraFileAdapter.createAsync({ invalid: "data" })).rejects.toThrow();
     });
   });
 
   describe("getTranslationMap", () => {
-    it("should return translation map with all languages", () => {
-      const adapter = new TraFileAdapter(sampleTraData);
+    it("should return translation map with all languages", async () => {
+      const adapter = await TraFileAdapter.createAsync(sampleTraData);
       const map = adapter.getTranslationMap();
 
       expect(map["10001"]).toEqual({
@@ -153,7 +153,7 @@ describe("TraFileAdapter", () => {
       });
     });
 
-    it("should handle missing translations in some languages", () => {
+    it("should handle missing translations in some languages", async () => {
       const partialData = {
         en: `10001,"Submit","All"`,
         fr: `10001,"Soumettre","All"`,
@@ -161,7 +161,7 @@ describe("TraFileAdapter", () => {
         de: "",
       };
 
-      const adapter = new TraFileAdapter(partialData);
+      const adapter = await TraFileAdapter.createAsync(partialData);
       const map = adapter.getTranslationMap();
 
       expect(map["10001"]).toEqual({
@@ -172,23 +172,23 @@ describe("TraFileAdapter", () => {
   });
 
   describe("getMetadataMap", () => {
-    it("should return empty metadata map", () => {
-      const adapter = new TraFileAdapter(sampleTraData);
+    it("should return empty metadata map", async () => {
+      const adapter = await TraFileAdapter.createAsync(sampleTraData);
       const metadata = adapter.getMetadataMap();
       expect(metadata).toEqual({});
     });
   });
 
   describe("getTranslationCount", () => {
-    it("should return correct count of translations", () => {
-      const adapter = new TraFileAdapter(sampleTraData);
+    it("should return correct count of translations", async () => {
+      const adapter = await TraFileAdapter.createAsync(sampleTraData);
       expect(adapter.getTranslationCount()).toBe(3);
     });
   });
 
   describe("getSourceIdentifier", () => {
-    it("should return tra-files identifier", () => {
-      const adapter = new TraFileAdapter(sampleTraData);
+    it("should return tra-files identifier", async () => {
+      const adapter = await TraFileAdapter.createAsync(sampleTraData);
       expect(adapter.getSourceIdentifier()).toBe("tra-files");
     });
   });

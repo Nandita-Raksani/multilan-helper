@@ -25,8 +25,7 @@ import {
   detectMatchAsync,
   applyVariables,
   invalidateTextToIdMapCache,
-  invalidateTrigramIndexCache,
-  getTrigramIndex,
+  getTextToIdMap,
   exactMatchLookup,
   createCancellationToken,
 } from "./services/translationService";
@@ -68,16 +67,13 @@ let currentFolder: string = FOLDER_NAMES[0] || "EB";
 let translationData: TranslationMap = {};
 let metadataData: MetadataMap = {};
 
-// Initialize translation data from raw .tra file contents
-function initializeTraFileData(traData: TraFileData): boolean {
+// Initialize translation data from raw .tra file contents (async, non-blocking)
+async function initializeTraFileData(traData: TraFileData): Promise<boolean> {
   try {
-    const adapter = createAdapter(traData, "tra-files");
+    const adapter = await createAdapter(traData, "tra-files");
     translationData = adapter.getTranslationMap();
     metadataData = adapter.getMetadataMap();
     invalidateTextToIdMapCache();
-    invalidateTrigramIndexCache();
-    // Eagerly start building trigram index in background (non-blocking)
-    getTrigramIndex(translationData).catch(() => {});
     console.log(`Loaded ${Object.keys(translationData).length} translations`);
     return true;
   } catch (error) {
@@ -86,20 +82,19 @@ function initializeTraFileData(traData: TraFileData): boolean {
   }
 }
 
-// Build folder data status from clientStorage (all per-user)
+// Build folder data status from clientStorage (all per-user, parallelized)
 async function buildFolderDataStatus(): Promise<FolderDataStatus> {
   const status: FolderDataStatus = {};
-  for (const folder of FOLDER_NAMES) {
-    let hasData = false;
-    let metadata: TraUploadMetadata | undefined;
-    try {
-      const cached = await figma.clientStorage.getAsync('traData_' + folder);
-      hasData = !!cached;
-    } catch { /* ignore */ }
-    try {
-      const meta = await figma.clientStorage.getAsync('traMetadata_' + folder);
-      if (meta) metadata = meta as TraUploadMetadata;
-    } catch { /* ignore */ }
+  const results = await Promise.all(
+    FOLDER_NAMES.map(async (folder) => {
+      const [cached, meta] = await Promise.all([
+        figma.clientStorage.getAsync('traData_' + folder).catch(() => null),
+        figma.clientStorage.getAsync('traMetadata_' + folder).catch(() => null),
+      ]);
+      return { folder, hasData: !!cached, metadata: meta as TraUploadMetadata | undefined };
+    })
+  );
+  for (const { folder, hasData, metadata } of results) {
     status[folder] = { hasData, metadata };
   }
   return status;
@@ -128,7 +123,7 @@ async function initializeWithFolder(): Promise<void> {
 
   const traData = await loadTraDataForFolder(currentFolder);
   if (traData) {
-    initializeTraFileData(traData);
+    await initializeTraFileData(traData);
   } else {
     translationData = {};
     metadataData = {};
@@ -192,7 +187,8 @@ function autoUnlinkModifiedNodes(scope: "page" | "selection"): number {
 }
 
 // Build match result for a single node (exact-match only, O(1)).
-function buildSingleFrameMatchResult(node: TextNodeInfo): FrameNodeMatchResult {
+// textToIdMap is pre-built and passed in to avoid async per-node.
+function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string, string>): FrameNodeMatchResult {
   let matchResult;
   if (node.multilanId) {
     const metadata = metadataData ? metadataData[node.multilanId] : undefined;
@@ -203,7 +199,8 @@ function buildSingleFrameMatchResult(node: TextNodeInfo): FrameNodeMatchResult {
       metadata,
     };
   } else {
-    const exactId = exactMatchLookup(translationData, node.characters);
+    const trimmed = node.characters.trim().toLowerCase();
+    const exactId = trimmed ? (textToIdMap.get(trimmed) || null) : null;
     if (exactId) {
       const translations = translationData[exactId];
       const metadata = metadataData ? metadataData[exactId] : undefined;
@@ -227,19 +224,19 @@ function buildSingleFrameMatchResult(node: TextNodeInfo): FrameNodeMatchResult {
 
 // Build per-node match results for frame/multi-selection mode.
 // Uses exact-match only (cached O(1) lookup) — no fuzzy/Levenshtein.
-function buildFrameMatchResults(nodes: TextNodeInfo[]): FrameNodeMatchResult[] {
-  return nodes.map(buildSingleFrameMatchResult);
+function buildFrameMatchResults(nodes: TextNodeInfo[], textToIdMap: Map<string, string>): FrameNodeMatchResult[] {
+  return nodes.map(n => buildSingleFrameMatchResult(n, textToIdMap));
 }
 
 /**
  * Patch a single changed node in the selection lists and frame match results.
  * Avoids re-scanning the entire selection tree via findAll().
  */
-function patchNodeInSelection(
+async function patchNodeInSelection(
   changedNode: TextNode,
   previousSelectionTextNodes: TextNodeInfo[],
   previousFrameMatchResults: FrameNodeMatchResult[] | undefined
-): { selectionTextNodes: TextNodeInfo[]; frameMatchResults: FrameNodeMatchResult[] | undefined } {
+): Promise<{ selectionTextNodes: TextNodeInfo[]; frameMatchResults: FrameNodeMatchResult[] | undefined }> {
   const updatedInfo = buildTextNodeInfo(changedNode, getTranslations);
 
   // Patch the node in selectionTextNodes
@@ -250,7 +247,8 @@ function patchNodeInSelection(
   // Patch only the changed node's frame match result
   let frameMatchResults = previousFrameMatchResults;
   if (previousFrameMatchResults && previousFrameMatchResults.length > 1) {
-    const updatedMatch = buildSingleFrameMatchResult(updatedInfo);
+    const textToIdMap = await getTextToIdMap(translationData);
+    const updatedMatch = buildSingleFrameMatchResult(updatedInfo, textToIdMap);
     frameMatchResults = previousFrameMatchResults.map(r =>
       r.nodeId === changedNode.id ? updatedMatch : r
     );
@@ -259,11 +257,26 @@ function patchNodeInSelection(
   return { selectionTextNodes, frameMatchResults };
 }
 
+// Page scan cache — avoids redundant findAll() calls (1-3s each)
+let cachedPageNodes: TextNode[] | null = null;
+let cachedPageNodesTimestamp = 0;
+const PAGE_SCAN_TTL_MS = 5000;
+
+function getCachedPageNodes(): TextNode[] {
+  const now = Date.now();
+  if (cachedPageNodes && (now - cachedPageNodesTimestamp) < PAGE_SCAN_TTL_MS) {
+    return cachedPageNodes;
+  }
+  cachedPageNodes = getTextNodesInScope("page");
+  cachedPageNodesTimestamp = now;
+  return cachedPageNodes;
+}
+
 // Initialize: send initial data to UI
 // Scans the page once and reuses the result for all operations.
 async function initialize(): Promise<void> {
-  // Single page scan — reused by all steps below
-  const allPageNodes = getTextNodesInScope("page");
+  // Single page scan — cached with TTL to avoid redundant scans
+  const allPageNodes = getCachedPageNodes();
 
   // Auto-unlink nodes that have been modified by designers
   let unlinkedCount = 0;
@@ -358,7 +371,7 @@ figma.on("selectionchange", () => {
   }, 100);
 });
 
-function handleSelectionChange(): void {
+async function handleSelectionChange(): Promise<void> {
   let selectedNode = getSelectedTextNodeInfo(getTranslations);
   const hasSelection = figma.currentPage.selection.length > 0;
 
@@ -378,6 +391,9 @@ function handleSelectionChange(): void {
     selectionFuzzyToken = null;
   }
 
+  // Pre-build text-to-ID map (async, non-blocking, cached after first build)
+  const textToIdMap = await getTextToIdMap(translationData);
+
   // Auto-detect match for selected text node — exact only, fuzzy deferred
   let matchResult = undefined;
   if (selectedNode) {
@@ -391,8 +407,9 @@ function handleSelectionChange(): void {
         metadata,
       };
     } else {
-      // Unlinked — fast exact match only
-      const exactId = exactMatchLookup(translationData, selectedNode.characters);
+      // Unlinked — fast exact match only using pre-built map
+      const trimmed = selectedNode.characters.trim().toLowerCase();
+      const exactId = trimmed ? (textToIdMap.get(trimmed) || null) : null;
       if (exactId) {
         const translations = translationData[exactId];
         const metadata = metadataData ? metadataData[exactId] : undefined;
@@ -411,7 +428,7 @@ function handleSelectionChange(): void {
 
   // Build frame match results for multi-selection (exact-match only, no Levenshtein)
   const frameMatchResults = selectionTextNodes.length > 1
-    ? buildFrameMatchResults(selectionTextNodes)
+    ? buildFrameMatchResults(selectionTextNodes, textToIdMap)
     : undefined;
 
   // Cache for incremental patching in link/unlink handlers
@@ -525,7 +542,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
             // Incremental update — patch only the changed node, skip full re-scan
             const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
             const selectedNode = getSelectedTextNodeInfo(getTranslations);
-            const patched = patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
+            const patched = await patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
             lastSelectionTextNodes = patched.selectionTextNodes;
             lastFrameMatchResults = patched.frameMatchResults;
             figma.ui.postMessage({
@@ -565,7 +582,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
             figma.notify(`Linked to ${msg.multilanId}`);
             const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
             const selectedNode = getSelectedTextNodeInfo(getTranslations);
-            const patched = patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
+            const patched = await patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
             lastSelectionTextNodes = patched.selectionTextNodes;
             lastFrameMatchResults = patched.frameMatchResults;
             figma.ui.postMessage({
@@ -593,7 +610,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
           if (node) {
             const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
             const selectedNode = getSelectedTextNodeInfo(getTranslations);
-            const patched = patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
+            const patched = await patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
             lastSelectionTextNodes = patched.selectionTextNodes;
             lastFrameMatchResults = patched.frameMatchResults;
             figma.ui.postMessage({
@@ -794,7 +811,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         // Check clientStorage for cached .tra data
         const switchTraData = await loadTraDataForFolder(currentFolder);
         if (switchTraData) {
-          initializeTraFileData(switchTraData);
+          await initializeTraFileData(switchTraData);
           await initialize();
         } else {
           translationData = {};
@@ -833,7 +850,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         }
         currentFolder = msg.folderName;
         await figma.clientStorage.setAsync('selectedFolder', currentFolder);
-        initializeTraFileData(merged);
+        await initializeTraFileData(merged);
         const translationCount = Object.keys(translationData).length;
         await initialize();
         figma.ui.postMessage({
