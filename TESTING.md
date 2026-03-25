@@ -10,165 +10,138 @@
 
 ---
 
-## NEW: Search Tab (Design-First Workflow)
+## Uploading Translation Files
 
-The **Search** tab is now the default tab. Use it to find translations before adding them to your design.
+The plugin requires `.tra` files to be uploaded at runtime. Each folder (EB, EBB, PCB) can have up to 4 language files.
 
-### How to Use
+### How to Upload
 
-1. Open the plugin - you'll land on the **Search** tab
-2. Type in the search box:
-   - Search by **multilanId**: `10001`, `10009`, etc.
-   - Search by **text**: `Submit`, `Cancel`, `Sett` (partial match)
-3. **Hover** over any result to see the multilanId in a tooltip
-4. Click **Create Text Node** to add a linked text directly to your canvas
-5. Click **Copy** to copy the text to clipboard
+1. Open the plugin — folder buttons (EB, EBB, PCB) appear at the top
+2. Click any folder button — the upload modal opens
+3. Either:
+   - **Drag & drop** all `.tra` files onto the drop zone, or
+   - Click **Choose files** and select them
+4. Language is auto-detected from filename (e.g., `en-BE.tra` -> EN)
+5. Click **Upload** when at least 1 language is selected
+6. A toast notification confirms: "Loaded X translations for EB"
 
-### Test Scenarios
+### Partial Uploads
 
-1. **Search by ID**: Type `10001` → Should show "Submit" with all translations
-2. **Search by text**: Type `save` → Should show ID 10009 with "Save"
-3. **Partial search**: Type `log` → Should show "Login successful" and "Log out"
-4. **Create text**: Click "Create Text Node" → A linked text appears on canvas
-5. **Hover tooltip**: Hover any result → Should show "ID: 10001" tooltip
-6. **Layer name**: Check Layers panel → Node should be named `Submit [10001]`
+- You can upload 1-4 languages per folder
+- Missing language buttons will be disabled
+- Upload more languages later — they merge with existing data
 
-### MultilanId in Layer Names
+### Re-uploading
 
-When you link or create a text node, the **multilanId appears in the layer name**:
-
-- Before linking: `Submit`
-- After linking: `Submit [10001]`
-
-This is visible:
-- In the **Layers panel** (left sidebar)
-- When **hovering** over the layer in the layers list
-- When **selecting** the node (shows in properties panel)
-
----
-
-## Sample Text Nodes for Testing
-
-Create text layers in Figma with these exact texts to test **Auto-Link** (exact matching):
-
-| Text to type        | Will match ID |
-|---------------------|---------------|
-| Submit              | 10001         |
-| Cancel              | 10002         |
-| Welcome             | 10003         |
-| Username            | 10004         |
-| Password            | 10005         |
-| Save                | 10009         |
-| Delete              | 10010         |
-| Settings            | 10011         |
-| Profile             | 10012         |
-| Search              | 10014         |
-| Home                | 10015         |
-| Back                | 10016         |
-| Next                | 10017         |
-| Loading...          | 10018         |
-| Success!            | 10020         |
-
-For fuzzy matching, try similar text like:
-- "Submitting" (partial match for "Submit")
-- "Username field" (partial match)
-- "Save changes" (contains "Save")
+- Click the **currently active** folder button to re-upload
+- New files merge with existing data (doesn't replace)
 
 ---
 
 ## Test Scenarios
 
-### 1. Test Create Tab (MultilanId First Workflow)
+### 1. Upload & Folder Switching
 
-1. Open the plugin and click the **Create** tab
-2. **Valid ID lookup:**
-   - Enter `10001` in the multilanId field
-   - Should show all translations (EN: Submit, FR: Soumettre, etc.)
-   - Click "Copy" buttons to test clipboard copy
+1. Upload `.tra` files for EB (at least EN)
+2. Verify toast shows translation count
+3. Verify EB button has green dot indicator
+4. Click PCB button — upload modal appears (no data yet)
+5. Upload `.tra` files for PCB
+6. Switch back to EB — loads instantly from cache (no modal)
 
-3. **Invalid ID / Placeholder:**
-   - Enter `99999` (doesn't exist)
-   - Should show "ID not found" message
-   - Select a text layer in Figma
-   - Enter placeholder text (e.g., "New Button")
-   - Click "Mark as Placeholder"
-   - The text should turn **orange** and show "Placeholder" badge
+### 2. Partial Language Upload
 
-### 2. Test Placeholder Visual Indicator
+1. Upload only `en-BE.tra` for EB
+2. Verify EN button is enabled, FR/NL/DE are disabled
+3. Upload `fr-BE.tra` for EB (incremental)
+4. Verify EN and FR are now both enabled
 
-1. Create a placeholder (see above)
-2. In the **Texts** tab, verify:
-   - Node shows orange background highlight
-   - "Placeholder" badge appears next to the name
-3. Select the placeholder node and go to **Link** tab
-4. Search and link it to a real ID (e.g., search "Submit")
-5. Verify:
-   - Text color returns to normal (original)
-   - Placeholder badge disappears
+### 3. Search
 
-### 3. Test Bulk Auto-Linking
+1. Upload `.tra` files for any folder
+2. Type in the search box:
+   - Search by **multilanId**: `10001`
+   - Search by **text**: `Submit`, `Cancel`
+   - Partial match: `Sub` (fuzzy matching)
+3. Results appear with match badges (Match, Close Match)
 
-1. Create 5-10 text layers with mixed content:
-   - Some matching translations exactly: "Submit", "Cancel", "Save"
-   - Some with partial matches: "Submit button", "Cancel order"
-   - Some completely unrelated: "Random text xyz"
+### 4. Frame/Multi-Selection Mode
 
-2. Open the plugin, go to **Texts** tab
-3. Click **Auto-Link All** button
-4. In the modal, verify:
-   - **Exact matches** section shows nodes with exact text
-   - **Possible matches** section shows fuzzy suggestions
-   - **No matches** section shows unmatched nodes
+1. Select a frame containing multiple text nodes
+2. Plugin switches to frame mode showing all text nodes
+3. Each node shows its match status (Linked, Match, No Match)
+4. Click **Find close match** on unmatched nodes
+5. Use carousel arrows to browse suggestions
 
-5. Click **Apply Exact Matches** to auto-link all exact matches
-6. For fuzzy matches, click **Link** or **Skip** per suggestion
-7. Close modal and verify text list updated correctly
+### 5. Linking & Unlinking
 
-### 4. Test Language Switching
+1. Select a single text node in Figma
+2. Search for a translation in the plugin
+3. Click **Link** on a search result
+4. Verify:
+   - Layer name updates to `Text [multilanId]`
+   - Match badge shows "Linked"
+5. Click **Unlink** to remove the link
+
+### 6. Variable Support
+
+1. Find a translation with `###variable###` patterns
+2. Click **Link** — a variable input modal appears
+3. Enter values for each variable
+4. Click **Apply & Link**
+5. Verify text updates with variable values substituted
+
+### 7. Language Switching
 
 1. Link several text nodes to multilanIds
-2. Click language buttons (EN, FR, NL, DE)
+2. Click language buttons (EN, FR, NL, DE) — only enabled ones work
 3. Verify linked text nodes update to the selected language
-4. Check that unlinked nodes remain unchanged
+4. Unlinked nodes remain unchanged
+
+### 8. Auto-Unlink Detection
+
+1. Link a text node to a multilanId
+2. Manually edit the text in Figma (change it from the linked translation)
+3. Reload or refresh the plugin
+4. Verify the node is auto-unlinked with a notification
+
+### 9. Highlight Unlinked
+
+1. Select a frame with mixed linked/unlinked text nodes
+2. Click the **Highlight unlinked** button
+3. All unlinked text nodes are selected on canvas
+4. Click again to exit highlight mode
 
 ---
 
-## Available Translation IDs
+## Running Automated Tests
 
-| ID    | EN                     | FR                           |
-|-------|------------------------|------------------------------|
-| 10001 | Submit                 | Soumettre                    |
-| 10002 | Cancel                 | Annuler                      |
-| 10003 | Welcome                | Bienvenue                    |
-| 10004 | Username               | Nom d'utilisateur            |
-| 10005 | Password               | Mot de passe                 |
-| 10006 | Login successful       | Connexion réussie            |
-| 10007 | This field is required | Ce champ est obligatoire     |
-| 10008 | Hello {username}       | Bonjour {username}           |
-| 10009 | Save                   | Enregistrer                  |
-| 10010 | Delete                 | Supprimer                    |
-| 10011 | Settings               | Paramètres                   |
-| 10012 | Profile                | Profil                       |
-| 10013 | Log out                | Déconnexion                  |
-| 10014 | Search                 | Rechercher                   |
-| 10015 | Home                   | Accueil                      |
-| 10016 | Back                   | Retour                       |
-| 10017 | Next                   | Suivant                      |
-| 10018 | Loading...             | Chargement...                |
-| 10019 | Error occurred         | Une erreur s'est produite    |
-| 10020 | Success!               | Succès !                     |
+```bash
+npm test                    # Run all tests
+npm run test:watch          # Watch mode
+npm run test:coverage       # With coverage report
+```
+
+Test files are in `tests/`:
+- `tests/adapters/traFileAdapter.test.ts` — .tra file parsing and adapter
+- `tests/plugin/services/` — Translation service, node service, linking service
 
 ---
 
 ## Quick Test Checklist
 
 - [ ] Plugin loads without errors
-- [ ] Create tab: Valid ID shows translations with copy buttons
-- [ ] Create tab: Invalid ID shows placeholder creation form
-- [ ] Placeholder: Text turns orange when marked as placeholder
-- [ ] Placeholder: Badge appears in Texts list
-- [ ] Placeholder: Linking to real ID restores original color
-- [ ] Auto-Link: Modal shows exact/fuzzy/unmatched sections
-- [ ] Auto-Link: Apply Exact Matches links correct nodes
-- [ ] Auto-Link: Fuzzy suggestions can be accepted/skipped
-- [ ] Language switching works for linked nodes
+- [ ] Upload .tra files via drag & drop
+- [ ] Upload .tra files via file picker
+- [ ] Partial upload (1-2 languages) works
+- [ ] Missing language buttons are disabled
+- [ ] Folder switching loads from cache
+- [ ] Re-upload merges with existing data
+- [ ] Search by ID works
+- [ ] Search by text (fuzzy) works
+- [ ] Frame mode shows all text nodes
+- [ ] Link/unlink works
+- [ ] Language switching works
+- [ ] Variable prompts appear for ###var### translations
+- [ ] Auto-unlink detects modified text
+- [ ] Toast notifications appear for uploads

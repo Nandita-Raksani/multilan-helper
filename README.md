@@ -1,31 +1,43 @@
 # Multilan Helper
 
-A Figma plugin for managing multilingual text content by linking text layers to translation IDs (multilanIds).
+A Figma plugin for managing multilingual text content by linking text layers to translation IDs (multilanIds). Translation data is loaded from `.tra` files uploaded at runtime.
 
 ## Features
 
-### Search Tab
-- **Global Search**: Search translations by multilanId or text content
-- **Translation Preview**: View all language variants (EN, FR, NL, DE) for each result
-- **Status Badges**: See translation status (Final, Draft, In Translation, Review, To Translate)
-- **Metadata Tooltips**: Hover to see created/modified dates, author, and source language
-- **Link**: Connect selected text layer to a translation
-- **Create**: Create a new linked text node from any search result
-- **Variable Support**: Translations with `###variable###` patterns show inline inputs for value replacement
-- **Copy ID**: Click multilanId button to copy to clipboard
+### Translation File Upload
+- **Runtime Upload**: Upload `.tra` files per folder (EB, EBB, PCB) — no build-time bundling
+- **Drag & Drop**: Drop all 4 language files at once, or use a file picker
+- **Auto-Detection**: Language detected from filename (e.g., `en-BE.tra` -> EN)
+- **Partial Upload**: Upload 1-4 languages per folder; missing languages are disabled
+- **Incremental Upload**: Add languages to a folder over time without losing previously uploaded ones
+- **Per-User Storage**: Each user's uploads cached locally in Figma's clientStorage
+- **Upload Tracking**: Last upload timestamp shown on folder buttons
 
-### Links Tab
-- **Text Node List**: View all text layers on page or current selection
-- **Link Status**: See which nodes are linked or unlinked
-- **Quick Link/Unlink**: Manage links directly from the list
-- **Auto-Link All**: Automatically link unlinked nodes that match translations exactly
-- **Filter**: Search/filter text nodes by name or content
+### Search & Matching
+- **Global Search**: Search translations by multilanId or text content with fuzzy matching
+- **Exact Match**: O(1) lookup via cached text-to-ID map
+- **Fuzzy Match**: Levenshtein distance scoring with early termination
+- **Translation Preview**: View all language variants (EN, FR, NL, DE) for each result
+- **Status Badges**: See match status (Linked, Match, Close Match, No Match)
+- **Copy ID**: Click multilanId to copy to clipboard
+
+### Frame/Multi-Selection Mode
+- **Batch View**: Select multiple text nodes or a frame to see all matches at once
+- **Per-Node Actions**: Link, unlink, or find close matches for individual nodes
+- **Carousel**: Browse through close match suggestions per node
 
 ### Language Switching
 - **Supported Languages**: English, French, Dutch, German (EN, FR, NL, DE)
-- **Auto-Detection**: Automatically detects current language from linked nodes
-- **Bulk Update**: Switch language for all linked nodes at once
-- **Variable Preservation**: Maintains variable values when switching languages
+- **Per-Folder Availability**: Language buttons disabled for languages not uploaded
+- **Auto-Detection**: Detects current language from linked nodes
+- **Bulk Update**: Switch language for all linked nodes (page or selection scope)
+- **Variable Support**: `###variable###` patterns prompt for values when linking
+
+### Other Features
+- **Auto-Unlink**: Detects when linked text is manually modified and unlinks it
+- **Highlight Unlinked**: Select all unlinked text nodes on canvas
+- **Toast Notifications**: Visual feedback for uploads and actions
+- **View Mode**: Read-only mode for users without edit permissions
 
 ## Installation
 
@@ -47,59 +59,86 @@ npm run lint:fix       # Run ESLint with auto-fix
 ## Development
 
 1. Run `npm run build:watch` to start development build
-2. In Figma desktop app: Plugins → Development → Import plugin from manifest
+2. In Figma desktop app: Plugins > Development > Import plugin from manifest
 3. Select the `manifest.json` file from this project
-4. Run the plugin from Plugins → Development menu
+4. Run the plugin from Plugins > Development menu
 
 ## Project Structure
 
 ```
 src/
 ├── plugin/                 # Figma sandbox code
-│   ├── index.ts           # Main plugin entry point
+│   ├── index.ts           # Main plugin entry point (message router + handlers)
 │   └── services/          # Plugin services
-│       ├── translationService.ts  # Translation lookup & search
-│       ├── nodeService.ts         # Text node operations
-│       └── linkingService.ts      # Link/unlink operations
+│       ├── translationService.ts  # Search, scoring, language detection
+│       ├── nodeService.ts         # Text node operations (read/write pluginData)
+│       └── linkingService.ts      # Link/unlink/switch language operations
 ├── ui/                     # Plugin UI (iframe)
 │   ├── index.html         # HTML template
-│   ├── main.ts            # UI entry point
+│   ├── main.ts            # UI entry point & message handler
 │   ├── components/        # UI components
-│   ├── services/          # UI services
-│   ├── state/             # State management
-│   └── styles/            # CSS styles
-├── shared/                 # Shared types
+│   │   ├── FolderSelector.ts     # EB/EBB/PCB folder buttons
+│   │   ├── LanguageBar.ts        # EN/FR/NL/DE language buttons
+│   │   ├── SearchPanel.ts        # Search input & results rendering
+│   │   ├── FramePanel.ts         # Multi-selection frame mode
+│   │   ├── TraUploadModal.ts     # .tra file upload modal (drag & drop)
+│   │   ├── VariablePromptModal.ts # Variable input modal
+│   │   ├── Toast.ts              # Toast notifications
+│   │   ├── StatusBar.ts          # Status bar
+│   │   └── Tabs.ts               # Tab switching
+│   ├── services/
+│   │   └── pluginBridge.ts       # UI <-> Plugin message bridge
+│   ├── state/
+│   │   └── store.ts              # Centralized UI state management
+│   └── styles/
+│       └── main.css              # All CSS styles
+├── shared/                 # Shared types (used by both plugin and UI)
 │   └── types.ts
-└── translations/           # Translation data
-    └── api-data.json
+├── ports/                  # Hexagonal architecture ports
+│   └── translationPort.ts
+├── adapters/               # Data format adapters
+│   ├── index.ts           # Adapter registry & factory
+│   ├── types/             # External format type definitions
+│   │   └── traFile.types.ts
+│   └── implementations/   # Adapter implementations
+│       └── traFileAdapter.ts
+└── translations/           # .tra files (gitignored, uploaded at runtime)
 ```
 
 ## Data Storage
 
-- **MultilanId links**: Stored in `pluginData` on each TextNode
-- **Expected text**: Stored for modification detection (auto-unlinks if text is manually changed)
-- **Variable values**: Stored for language switching with variables
-- **Translations**: Bundled in plugin code from `api-data.json`
+| Data | Storage | Scope |
+|------|---------|-------|
+| MultilanId links | `pluginData` on each TextNode | Per-document |
+| Expected text | `pluginData` on each TextNode | Per-document |
+| .tra file content | `figma.clientStorage` | Per-user |
+| Upload metadata | `figma.clientStorage` | Per-user |
+| Selected folder | `figma.clientStorage` | Per-user |
 
-## Translation Data Format
+## Translation Data Format (.tra files)
 
-```json
-{
-  "id": 10001,
-  "status": "FINAL",
-  "createdAt": "2024-01-15T10:30:00Z",
-  "modifiedAt": "2024-01-20T14:45:00Z",
-  "modifiedBy": "john.doe",
-  "multilanTextList": [
-    { "languageId": "en", "wording": "Hello ###name###!", "sourceLanguageId": "en" },
-    { "languageId": "fr", "wording": "Bonjour ###name###!", "sourceLanguageId": "en" }
-  ]
-}
 ```
+multilanId,"translation text","ignored"
+10001,"Submit","All"
+10002,"Cancel","All"
+10003,"Hello, ###name###!","All"
+```
+
+Each folder (EB, EBB, PCB) has up to 4 language files: `en-BE.tra`, `fr-BE.tra`, `nl-BE.tra`, `de-BE.tra`.
 
 ## Variable Format
 
 Translations can include variables using the `###variable###` format:
 - Example: `"Welcome back, ###username###! You have ###count### messages."`
-- When linking or creating, input fields appear for each variable
+- When linking, input fields appear for each variable
 - Variable values are preserved when switching languages
+
+## Performance
+
+Optimized for datasets with 80,000+ multilans per folder:
+- Async chunked .tra file parsing (non-blocking)
+- Async chunked text-to-ID map building
+- Chunked fuzzy search with cancellation support
+- Page scan caching with 5-second TTL
+- Parallelized clientStorage calls
+- No memory-heavy pre-built indexes
