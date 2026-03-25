@@ -121,6 +121,10 @@ class PluginBridge {
     this.send({ type: 'switch-folder', folderName });
   }
 
+  uploadTraFiles(folderName: string, traFileData: { en: string; fr: string; nl: string; de: string }): void {
+    this.send({ type: 'upload-tra-files', folderName, traFileData });
+  }
+
   findCloseMatches(nodeId: string, text: string): void {
     this.send({ type: 'find-close-matches', nodeId, text });
   }

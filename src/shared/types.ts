@@ -102,6 +102,7 @@ export type PluginMessageType =
   | "clear-selection"
   | "switch-folder"
   | "find-close-matches"
+  | "upload-tra-files"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -118,7 +119,8 @@ export type UIMessageType =
   | "search-results"
   | "text-created"
   | "prompt-variables"
-  | "frame-match-result";
+  | "frame-match-result"
+  | "tra-upload-needed";
 
 // Combined message type for both directions
 export interface PluginMessage {
@@ -136,6 +138,7 @@ export interface PluginMessage {
   translationTemplate?: string;
   folderName?: string;
   folderNames?: string[];
+  traFileData?: { en: string; fr: string; nl: string; de: string };
   // Plugin -> UI fields
   canEdit?: boolean;
   nodeInfo?: TextNodeInfo;

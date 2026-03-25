@@ -25,6 +25,7 @@ import {
 import { handleFrameMatchResult, clearCloseMatchSearchState } from './components/FramePanel';
 import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic, resetSingleNodeSearchState, handleSingleNodeFuzzyResult } from './components/SearchPanel';
 import { showVariablePrompt } from './components/VariablePromptModal';
+import { showTraUploadModal } from './components/TraUploadModal';
 
 /**
  * Get user's preferred language from browser settings
@@ -273,6 +274,12 @@ function handlePluginMessage(msg: PluginMessage): void {
       }
       break;
     }
+
+    case 'tra-upload-needed':
+      if (msg.folderName) {
+        showTraUploadModal(msg.folderName);
+      }
+      break;
 
     case 'prompt-variables':
       if (msg.nodeId && msg.multilanId && msg.variableNames && msg.translationTemplate) {

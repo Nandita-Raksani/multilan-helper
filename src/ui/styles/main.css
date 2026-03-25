@@ -1347,6 +1347,64 @@ body {
   gap: 8px;
 }
 
+/* TRA Upload Modal */
+.tra-upload-modal {
+  max-width: 380px;
+}
+
+.tra-upload-hint {
+  font-size: 11px;
+  color: var(--figma-color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.tra-upload-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tra-upload-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tra-upload-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--figma-color-text);
+}
+
+.tra-upload-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tra-upload-file-input {
+  display: none;
+}
+
+.tra-upload-file-btn {
+  flex-shrink: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tra-upload-filename {
+  font-size: 11px;
+  color: var(--figma-color-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tra-upload-filename-selected {
+  color: var(--figma-color-text);
+}
+
 /* Searching spinner */
 @keyframes spin {
   to { transform: rotate(360deg); }

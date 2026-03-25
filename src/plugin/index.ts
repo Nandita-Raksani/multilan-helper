@@ -1,8 +1,6 @@
 // Multilan Helper Plugin - Main entry point
 // Runs in Figma's sandbox environment
 
-import { traFileContentsCompressed, FOLDER_NAMES as BUNDLE_FOLDER_NAMES } from "../translations/tra-bundle";
-import { decompressBase64 } from "../translations/decompress";
 import {
   TranslationMap,
   MetadataMap,
@@ -60,29 +58,17 @@ import {
 declare const __BUILD_TIMESTAMP__: string;
 const BUILD_TIMESTAMP = typeof __BUILD_TIMESTAMP__ !== "undefined" ? __BUILD_TIMESTAMP__ : new Date().toISOString();
 
-// Folder names from the bundle
-const FOLDER_NAMES = BUNDLE_FOLDER_NAMES;
+// Hardcoded folder names
+const FOLDER_NAMES = ['EB', 'EBB', 'PCB'];
 
 // Current active folder and translation data
 let currentFolder: string = FOLDER_NAMES[0] || "EB";
 let translationData: TranslationMap = {};
 let metadataData: MetadataMap = {};
 
-// Initialize with .tra files for a specific folder
-function initializeTraFileData(folder: string): boolean {
+// Initialize translation data from raw .tra file contents
+function initializeTraFileData(traData: TraFileData): boolean {
   try {
-    const compressed = traFileContentsCompressed[folder];
-    if (!compressed) {
-      console.error(`Folder "${folder}" not found in bundle`);
-      return false;
-    }
-    // Decompress on demand — only the active folder is inflated
-    const traData: TraFileData = {
-      en: decompressBase64(compressed.en),
-      fr: decompressBase64(compressed.fr),
-      nl: decompressBase64(compressed.nl),
-      de: decompressBase64(compressed.de),
-    };
     const adapter = createAdapter(traData, "tra-files");
     translationData = adapter.getTranslationMap();
     metadataData = adapter.getMetadataMap();
@@ -90,15 +76,15 @@ function initializeTraFileData(folder: string): boolean {
     invalidateTrigramIndexCache();
     // Eagerly start building trigram index in background (non-blocking)
     getTrigramIndex(translationData).catch(() => {});
-    console.log(`Loaded ${Object.keys(translationData).length} translations from folder "${folder}"`);
+    console.log(`Loaded ${Object.keys(translationData).length} translations`);
     return true;
   } catch (error) {
-    console.error(`Failed to parse .tra files for folder "${folder}":`, error);
+    console.error(`Failed to parse .tra files:`, error);
     return false;
   }
 }
 
-// Load saved folder preference and initialize translation data
+// Load saved folder preference and cached translation data
 async function initializeWithFolder(): Promise<void> {
   try {
     const saved = await figma.clientStorage.getAsync('selectedFolder');
@@ -109,8 +95,19 @@ async function initializeWithFolder(): Promise<void> {
     // Use default folder
   }
 
-  if (!initializeTraFileData(currentFolder)) {
-    console.error(`Failed to load translations for folder "${currentFolder}"`);
+  // Try loading cached .tra data for the current folder
+  try {
+    const cached = await figma.clientStorage.getAsync('traData_' + currentFolder);
+    if (cached) {
+      initializeTraFileData(cached as TraFileData);
+    } else {
+      // No cached data — plugin starts with empty translations
+      translationData = {};
+      metadataData = {};
+    }
+  } catch {
+    translationData = {};
+    metadataData = {};
   }
 }
 
@@ -769,7 +766,27 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       if (msg.folderName && FOLDER_NAMES.includes(msg.folderName)) {
         currentFolder = msg.folderName;
         await figma.clientStorage.setAsync('selectedFolder', currentFolder);
-        initializeTraFileData(currentFolder);
+        // Check for cached .tra data
+        const cached = await figma.clientStorage.getAsync('traData_' + currentFolder);
+        if (cached) {
+          initializeTraFileData(cached as TraFileData);
+          await initialize();
+        } else {
+          // No cached data — ask UI to show upload modal
+          translationData = {};
+          metadataData = {};
+          figma.ui.postMessage({ type: 'tra-upload-needed', folderName: currentFolder });
+        }
+      }
+      break;
+
+    case "upload-tra-files":
+      if (msg.folderName && msg.traFileData) {
+        // Cache uploaded data for this folder
+        await figma.clientStorage.setAsync('traData_' + msg.folderName, msg.traFileData);
+        currentFolder = msg.folderName;
+        await figma.clientStorage.setAsync('selectedFolder', currentFolder);
+        initializeTraFileData(msg.traFileData as TraFileData);
         await initialize();
       }
       break;
