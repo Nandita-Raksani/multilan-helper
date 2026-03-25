@@ -9,6 +9,8 @@ import {
   SUPPORTED_LANGUAGES,
   FrameNodeMatchResult,
   TextNodeInfo,
+  FolderDataStatus,
+  TraUploadMetadata,
 } from "../shared/types";
 import { createAdapter } from "../adapters";
 import { TraFileData } from "../adapters/types/traFile.types";
@@ -84,6 +86,35 @@ function initializeTraFileData(traData: TraFileData): boolean {
   }
 }
 
+// Build folder data status from clientStorage (all per-user)
+async function buildFolderDataStatus(): Promise<FolderDataStatus> {
+  const status: FolderDataStatus = {};
+  for (const folder of FOLDER_NAMES) {
+    let hasData = false;
+    let metadata: TraUploadMetadata | undefined;
+    try {
+      const cached = await figma.clientStorage.getAsync('traData_' + folder);
+      hasData = !!cached;
+    } catch { /* ignore */ }
+    try {
+      const meta = await figma.clientStorage.getAsync('traMetadata_' + folder);
+      if (meta) metadata = meta as TraUploadMetadata;
+    } catch { /* ignore */ }
+    status[folder] = { hasData, metadata };
+  }
+  return status;
+}
+
+// Load .tra data from clientStorage (per-user, supports large files)
+async function loadTraDataForFolder(folder: string): Promise<TraFileData | null> {
+  try {
+    const cached = await figma.clientStorage.getAsync('traData_' + folder);
+    return cached ? cached as TraFileData : null;
+  } catch {
+    return null;
+  }
+}
+
 // Load saved folder preference and cached translation data
 async function initializeWithFolder(): Promise<void> {
   try {
@@ -95,17 +126,10 @@ async function initializeWithFolder(): Promise<void> {
     // Use default folder
   }
 
-  // Try loading cached .tra data for the current folder
-  try {
-    const cached = await figma.clientStorage.getAsync('traData_' + currentFolder);
-    if (cached) {
-      initializeTraFileData(cached as TraFileData);
-    } else {
-      // No cached data — plugin starts with empty translations
-      translationData = {};
-      metadataData = {};
-    }
-  } catch {
+  const traData = await loadTraDataForFolder(currentFolder);
+  if (traData) {
+    initializeTraFileData(traData);
+  } else {
     translationData = {};
     metadataData = {};
   }
@@ -309,6 +333,7 @@ async function initialize(): Promise<void> {
     detectedLanguage,
     folderNames: FOLDER_NAMES,
     folderName: currentFolder,
+    folderDataStatus: await buildFolderDataStatus(),
   });
 }
 
@@ -766,13 +791,12 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       if (msg.folderName && FOLDER_NAMES.includes(msg.folderName)) {
         currentFolder = msg.folderName;
         await figma.clientStorage.setAsync('selectedFolder', currentFolder);
-        // Check for cached .tra data
-        const cached = await figma.clientStorage.getAsync('traData_' + currentFolder);
-        if (cached) {
-          initializeTraFileData(cached as TraFileData);
+        // Check clientStorage for cached .tra data
+        const switchTraData = await loadTraDataForFolder(currentFolder);
+        if (switchTraData) {
+          initializeTraFileData(switchTraData);
           await initialize();
         } else {
-          // No cached data — ask UI to show upload modal
           translationData = {};
           metadataData = {};
           figma.ui.postMessage({ type: 'tra-upload-needed', folderName: currentFolder });
@@ -782,12 +806,23 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "upload-tra-files":
       if (msg.folderName && msg.traFileData) {
-        // Cache uploaded data for this folder
+        // Store data and metadata in clientStorage (per-user, supports large files)
         await figma.clientStorage.setAsync('traData_' + msg.folderName, msg.traFileData);
+        if (msg.traUploadMetadata) {
+          await figma.clientStorage.setAsync('traMetadata_' + msg.folderName, msg.traUploadMetadata);
+        }
         currentFolder = msg.folderName;
         await figma.clientStorage.setAsync('selectedFolder', currentFolder);
         initializeTraFileData(msg.traFileData as TraFileData);
+        const translationCount = Object.keys(translationData).length;
         await initialize();
+        figma.ui.postMessage({
+          type: 'upload-success',
+          folderName: msg.folderName,
+          uploadedTranslationCount: translationCount,
+          traUploadMetadata: msg.traUploadMetadata,
+          folderDataStatus: await buildFolderDataStatus(),
+        });
       }
       break;
 

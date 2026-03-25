@@ -1,4 +1,4 @@
-import type { Language, TextNodeInfo, SearchResult, MatchDetectionResult, UnlinkedQueueItem, FrameNodeMatchResult } from '../../shared/types';
+import type { Language, TextNodeInfo, SearchResult, MatchDetectionResult, UnlinkedQueueItem, FrameNodeMatchResult, FolderDataStatus } from '../../shared/types';
 
 export interface UIState {
   canEdit: boolean;
@@ -19,6 +19,7 @@ export interface UIState {
   translationCount: number;
   currentFolder: string;
   folderNames: string[];
+  folderDataStatus: FolderDataStatus;
 }
 
 type StateListener = (state: UIState) => void;
@@ -42,7 +43,8 @@ class Store {
     allTranslations: [],
     translationCount: 0,
     currentFolder: 'EB',
-    folderNames: []
+    folderNames: [],
+    folderDataStatus: {}
   };
 
   private listeners: Set<StateListener> = new Set();

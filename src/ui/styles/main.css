@@ -1358,51 +1358,187 @@ body {
   margin-bottom: 12px;
 }
 
-.tra-upload-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
+.tra-upload-last {
+  font-size: 10px;
+  color: var(--figma-color-text-tertiary);
+  margin-bottom: 10px;
 }
 
-.tra-upload-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* Drop zone */
+.tra-drop-zone {
+  border: 2px dashed var(--figma-color-border);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 12px;
 }
 
-.tra-upload-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--figma-color-text);
+.tra-drop-zone:hover,
+.tra-drop-zone-active {
+  border-color: var(--figma-color-border-brand);
+  background: rgba(0, 153, 255, 0.04);
 }
 
-.tra-upload-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.tra-drop-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
 }
 
-.tra-upload-file-input {
+.tra-drop-text {
+  font-size: 12px;
+  color: var(--figma-color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.tra-drop-or {
+  font-size: 10px;
+  color: var(--figma-color-text-tertiary);
+  margin-bottom: 6px;
+}
+
+.tra-drop-btn {
+  cursor: pointer;
+  display: inline-block;
+}
+
+.tra-drop-file-input {
   display: none;
 }
 
-.tra-upload-file-btn {
-  flex-shrink: 0;
-  cursor: pointer;
-  white-space: nowrap;
+/* File status list */
+.tra-file-status {
+  margin-bottom: 12px;
 }
 
-.tra-upload-filename {
+.tra-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.tra-file-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.tra-file-item-ok {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.tra-file-item-missing {
+  background: rgba(156, 163, 175, 0.08);
+}
+
+.tra-file-check {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.tra-file-item-ok .tra-file-check {
+  color: #22c55e;
+}
+
+.tra-file-item-missing .tra-file-check {
   color: var(--figma-color-text-tertiary);
+}
+
+.tra-file-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--figma-color-text);
 }
 
-.tra-upload-filename-selected {
-  color: var(--figma-color-text);
+.tra-file-item-missing .tra-file-name {
+  color: var(--figma-color-text-tertiary);
+  font-style: italic;
+}
+
+.tra-file-lang {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--figma-color-text-secondary);
+  margin-left: auto;
+}
+
+.tra-validation {
+  font-size: 10px;
+  text-align: center;
+}
+
+.tra-validation-ok {
+  color: #22c55e;
+}
+
+.tra-validation-warn {
+  color: #f59e0b;
+}
+
+/* Folder button data indicators */
+.folder-btn {
+  position: relative;
+}
+
+.folder-btn-empty {
+  opacity: 0.6;
+}
+
+.folder-btn-has-data {
+  opacity: 1;
+}
+
+.folder-btn-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.folder-btn.active .folder-btn-dot {
+  background: white;
+}
+
+/* Toast notifications */
+.toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-success {
+  background: #22c55e;
+  color: white;
+}
+
+.toast-error {
+  background: #ef4444;
+  color: white;
 }
 
 /* Searching spinner */

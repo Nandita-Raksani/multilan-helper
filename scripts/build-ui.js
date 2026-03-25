@@ -28,7 +28,7 @@ async function buildUI() {
   // Remove the external CSS link and script tag, replace with inline versions
   htmlCode = htmlCode
     .replace('<link rel="stylesheet" href="./styles/main.css">', `<style>\n${cssCode}\n</style>`)
-    .replace('<script type="module" src="./main.ts"></script>', `<script>\n${jsCode}\n</script>`);
+    .replace('<script type="module" src="./main.ts"></script>', () => `<script>\n${jsCode}\n</script>`);
 
   // Add build timestamp
   const timestamp = new Date().toLocaleString();

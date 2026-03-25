@@ -25,7 +25,8 @@ import {
 import { handleFrameMatchResult, clearCloseMatchSearchState } from './components/FramePanel';
 import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic, resetSingleNodeSearchState, handleSingleNodeFuzzyResult } from './components/SearchPanel';
 import { showVariablePrompt } from './components/VariablePromptModal';
-import { showTraUploadModal } from './components/TraUploadModal';
+import { showTraUploadModal, hideTraUploadModal } from './components/TraUploadModal';
+import { showToast } from './components/Toast';
 
 /**
  * Get user's preferred language from browser settings
@@ -53,6 +54,8 @@ function handlePluginMessage(msg: PluginMessage): void {
 
       const folderNames = msg.folderNames || [];
       const currentFolder = msg.folderName || folderNames[0] || 'EB';
+      const folderDataStatus = msg.folderDataStatus || {};
+      const hasTranslations = (msg.translationCount || 0) > 0;
 
       store.setState({
         canEdit: msg.canEdit,
@@ -61,7 +64,8 @@ function handlePluginMessage(msg: PluginMessage): void {
         currentLang: initialLang,
         translationCount: msg.translationCount || 0,
         folderNames,
-        currentFolder
+        currentFolder,
+        folderDataStatus
       });
 
       if (!msg.canEdit) {
@@ -69,7 +73,8 @@ function handlePluginMessage(msg: PluginMessage): void {
         hideLanguageBar();
       }
 
-      renderFolderButtons(folderNames, currentFolder);
+      // No folder active if no translations loaded
+      renderFolderButtons(folderNames, hasTranslations ? currentFolder : null, folderDataStatus);
       setActiveLanguage(initialLang);
       updateSearchHint();
 
@@ -277,9 +282,27 @@ function handlePluginMessage(msg: PluginMessage): void {
 
     case 'tra-upload-needed':
       if (msg.folderName) {
-        showTraUploadModal(msg.folderName);
+        showTraUploadModal(msg.folderName, msg.traUploadMetadata);
       }
       break;
+
+    case 'upload-success': {
+      const folder = msg.folderName!;
+      const count = msg.uploadedTranslationCount || 0;
+      const newStatus = msg.folderDataStatus || store.getState().folderDataStatus;
+
+      store.setState({
+        folderDataStatus: newStatus,
+        translationCount: count,
+        currentFolder: folder
+      });
+
+      renderFolderButtons(store.getState().folderNames, folder, newStatus);
+      hideTraUploadModal();
+      showToast(`Loaded ${count} translations for ${folder}`);
+      setStatus(`${count} translations loaded`);
+      break;
+    }
 
     case 'prompt-variables':
       if (msg.nodeId && msg.multilanId && msg.variableNames && msg.translationTemplate) {

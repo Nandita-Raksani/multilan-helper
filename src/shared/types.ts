@@ -82,6 +82,17 @@ export interface FrameNodeMatchResult {
   matchResult: MatchDetectionResult;
 }
 
+// Upload tracking metadata
+export interface TraUploadMetadata {
+  uploadTimestamp: number;
+  fileLastModified: { en: number; fr: number; nl: number; de: number };
+}
+
+// Folder data status for UI
+export interface FolderDataStatus {
+  [folder: string]: { hasData: boolean; metadata?: TraUploadMetadata };
+}
+
 // Plugin message types (UI -> Plugin)
 export type PluginMessageType =
   | "init"
@@ -120,7 +131,9 @@ export type UIMessageType =
   | "text-created"
   | "prompt-variables"
   | "frame-match-result"
-  | "tra-upload-needed";
+  | "tra-upload-needed"
+  | "upload-success"
+  | "folder-data-status";
 
 // Combined message type for both directions
 export interface PluginMessage {
@@ -139,7 +152,10 @@ export interface PluginMessage {
   folderName?: string;
   folderNames?: string[];
   traFileData?: { en: string; fr: string; nl: string; de: string };
+  traUploadMetadata?: TraUploadMetadata;
   // Plugin -> UI fields
+  folderDataStatus?: FolderDataStatus;
+  uploadedTranslationCount?: number;
   canEdit?: boolean;
   nodeInfo?: TextNodeInfo;
   textNodes?: TextNodeInfo[];

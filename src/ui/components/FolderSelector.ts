@@ -1,6 +1,14 @@
+import type { FolderDataStatus, TraUploadMetadata } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
 import { getElementById } from '../utils/dom';
+import { showTraUploadModal } from './TraUploadModal';
+
+function formatDateShort(timestamp: number): string {
+  const d = new Date(timestamp);
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
 
 export function initFolderSelector(): void {
   const folderBar = getElementById('folderBar');
@@ -8,15 +16,29 @@ export function initFolderSelector(): void {
     const btn = (e.target as HTMLElement).closest('.folder-btn') as HTMLButtonElement | null;
     if (!btn) return;
     const folder = btn.dataset.folder;
-    if (!folder || folder === store.getState().currentFolder) return;
+    if (!folder) return;
 
-    setActiveFolder(folder);
-    store.setState({ currentFolder: folder });
-    pluginBridge.switchFolder(folder);
+    const state = store.getState();
+    const folderStatus = state.folderDataStatus[folder];
+
+    if (folderStatus?.hasData) {
+      // Folder has data — if it's the same folder, show re-upload modal
+      if (folder === state.currentFolder) {
+        showTraUploadModal(folder, folderStatus.metadata);
+        return;
+      }
+      // Different folder with data — switch to it
+      setActiveFolder(folder);
+      store.setState({ currentFolder: folder });
+      pluginBridge.switchFolder(folder);
+    } else {
+      // No data — show upload modal
+      showTraUploadModal(folder);
+    }
   });
 }
 
-export function renderFolderButtons(folders: string[], active: string): void {
+export function renderFolderButtons(folders: string[], active: string | null, folderDataStatus?: FolderDataStatus): void {
   const section = getElementById('folderSelectorSection');
   const folderBar = getElementById('folderBar');
 
@@ -25,9 +47,23 @@ export function renderFolderButtons(folders: string[], active: string): void {
     return;
   }
 
-  folderBar.innerHTML = folders.map(f =>
-    `<button class="folder-btn${f === active ? ' active' : ''}" data-folder="${f}">${f}</button>`
-  ).join('');
+  const status = folderDataStatus || store.getState().folderDataStatus;
+
+  folderBar.innerHTML = folders.map(f => {
+    const isActive = f === active;
+    const hasData = status[f]?.hasData || false;
+    const metadata: TraUploadMetadata | undefined = status[f]?.metadata;
+    const tooltip = hasData && metadata
+      ? `Last uploaded: ${formatDateShort(metadata.uploadTimestamp)}`
+      : 'Click to upload .tra files';
+    const classes = [
+      'folder-btn',
+      isActive ? 'active' : '',
+      hasData ? 'folder-btn-has-data' : 'folder-btn-empty',
+    ].filter(Boolean).join(' ');
+
+    return `<button class="${classes}" data-folder="${f}" title="${tooltip}">${f}${hasData ? '<span class="folder-btn-dot"></span>' : ''}</button>`;
+  }).join('');
 
   section.style.display = '';
 }

@@ -1,4 +1,4 @@
-import type { Language, PluginMessage } from '../../shared/types';
+import type { Language, PluginMessage, TraUploadMetadata } from '../../shared/types';
 
 type MessageHandler = (message: PluginMessage) => void;
 
@@ -121,8 +121,8 @@ class PluginBridge {
     this.send({ type: 'switch-folder', folderName });
   }
 
-  uploadTraFiles(folderName: string, traFileData: { en: string; fr: string; nl: string; de: string }): void {
-    this.send({ type: 'upload-tra-files', folderName, traFileData });
+  uploadTraFiles(folderName: string, traFileData: { en: string; fr: string; nl: string; de: string }, traUploadMetadata: TraUploadMetadata): void {
+    this.send({ type: 'upload-tra-files', folderName, traFileData, traUploadMetadata });
   }
 
   findCloseMatches(nodeId: string, text: string): void {
