@@ -482,7 +482,7 @@ function renderSelectedNodeNoMatch(
           <span class="frame-node-hint" style="margin:0">No exact match found</span>
           ${!canEdit ? '<span class="match-badge match-badge-none">No match</span>' : ''}
         </div>
-        ${canEdit ? '<div class="frame-node-actions" style="justify-content:flex-end"><button class="btn-sm btn-sm-brand btn-find-close-single">Find close match</button></div>' : ''}
+        ${canEdit ? '<div class="frame-node-actions" style="justify-content:flex-start"><button class="btn-sm btn-sm-brand btn-find-close-single">Find close match</button></div>' : ''}
       </div>
     </div>
   `;
@@ -688,12 +688,6 @@ function initSearchResultDelegation(): void {
   });
 }
 
-export function setSearchQuery(query: string): void {
-  const globalSearchInput = getElementById<HTMLTextAreaElement>('globalSearchInput');
-  globalSearchInput.value = query;
-  autoResizeTextarea(globalSearchInput);
-}
-
 export function clearSearch(): void {
   const globalSearchInput = getElementById<HTMLTextAreaElement>('globalSearchInput');
   globalSearchInput.value = '';
@@ -702,9 +696,3 @@ export function clearSearch(): void {
   renderGlobalSearchResults();
 }
 
-export function triggerSearch(query: string): void {
-  setSearchQuery(query);
-  if (query.length >= 1) {
-    pluginBridge.globalSearch(query);
-  }
-}

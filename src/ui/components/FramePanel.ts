@@ -200,7 +200,7 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
             <span class="frame-node-hint" style="margin:0">No exact match</span>
             ${!canEdit ? '<span class="match-badge match-badge-none">No match</span>' : ''}
           </div>
-          ${canEdit ? `<div class="frame-node-actions" style="justify-content:flex-end"><button class="btn-sm btn-sm-brand btn-find-close" data-node-id="${escapeHtml(item.nodeId)}" data-text="${escapeHtml(item.characters)}">Find close match</button></div>` : ''}
+          ${canEdit ? `<div class="frame-node-actions" style="justify-content:flex-start"><button class="btn-sm btn-sm-brand btn-find-close" data-node-id="${escapeHtml(item.nodeId)}" data-text="${escapeHtml(item.characters)}">Find close match</button></div>` : ''}
         </div>
       </div>
     </div>`;
