@@ -14,7 +14,6 @@ import {
   setBuildTimestamp,
   setViewMode,
   getCurrentTab,
-  triggerSearch,
   clearSearch,
   setActiveLanguage,
   updateSearchHint,
