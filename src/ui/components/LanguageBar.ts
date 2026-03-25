@@ -45,6 +45,18 @@ export function setActiveLanguage(lang: Language): void {
   });
 }
 
+export function updateLanguageAvailability(availableLanguages?: string[]): void {
+  const langBtns = querySelectorAll<HTMLButtonElement>('.lang-btn');
+  langBtns.forEach(btn => {
+    const lang = btn.dataset.lang;
+    if (!availableLanguages || availableLanguages.length === 0) {
+      btn.disabled = true;
+    } else {
+      btn.disabled = !availableLanguages.includes(lang!);
+    }
+  });
+}
+
 export function renderLanguageBar(): string {
   return LANGUAGES.map(lang =>
     `<button class="lang-btn" data-lang="${lang}">${lang.toUpperCase()}</button>`

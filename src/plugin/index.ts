@@ -806,21 +806,41 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
 
     case "upload-tra-files":
       if (msg.folderName && msg.traFileData) {
-        // Store data and metadata in clientStorage (per-user, supports large files)
-        await figma.clientStorage.setAsync('traData_' + msg.folderName, msg.traFileData);
+        const newData = msg.traFileData as TraFileData;
+        // Merge with existing data — only overwrite languages that were uploaded (non-empty)
+        const existing = await loadTraDataForFolder(msg.folderName);
+        const merged: TraFileData = {
+          en: newData.en || (existing?.en ?? ''),
+          fr: newData.fr || (existing?.fr ?? ''),
+          nl: newData.nl || (existing?.nl ?? ''),
+          de: newData.de || (existing?.de ?? ''),
+        };
+        // Merge available languages from previous + new upload
+        let mergedLangs: string[] = [];
         if (msg.traUploadMetadata) {
-          await figma.clientStorage.setAsync('traMetadata_' + msg.folderName, msg.traUploadMetadata);
+          const existingMeta = await figma.clientStorage.getAsync('traMetadata_' + msg.folderName) as TraUploadMetadata | undefined;
+          const prevLangs = existingMeta?.availableLanguages || [];
+          const newLangs = msg.traUploadMetadata.availableLanguages || [];
+          mergedLangs = [...new Set([...prevLangs, ...newLangs])];
+        }
+        // Store merged data and metadata
+        await figma.clientStorage.setAsync('traData_' + msg.folderName, merged);
+        const mergedMetadata = msg.traUploadMetadata
+          ? { ...msg.traUploadMetadata, availableLanguages: mergedLangs }
+          : undefined;
+        if (mergedMetadata) {
+          await figma.clientStorage.setAsync('traMetadata_' + msg.folderName, mergedMetadata);
         }
         currentFolder = msg.folderName;
         await figma.clientStorage.setAsync('selectedFolder', currentFolder);
-        initializeTraFileData(msg.traFileData as TraFileData);
+        initializeTraFileData(merged);
         const translationCount = Object.keys(translationData).length;
         await initialize();
         figma.ui.postMessage({
           type: 'upload-success',
           folderName: msg.folderName,
           uploadedTranslationCount: translationCount,
-          traUploadMetadata: msg.traUploadMetadata,
+          traUploadMetadata: mergedMetadata,
           folderDataStatus: await buildFolderDataStatus(),
         });
       }

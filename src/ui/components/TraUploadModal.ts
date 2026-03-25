@@ -70,8 +70,10 @@ function renderFileList(): string {
   const count = fileMap.size;
   const missing = LANGUAGES.filter(l => !fileMap.has(l.code)).map(l => l.code.toUpperCase());
   const validationText = count === 4
-    ? '<span class="tra-validation-ok">All 4 languages detected</span>'
-    : `<span class="tra-validation-warn">${count} of 4 detected. Missing: ${missing.join(', ')}</span>`;
+    ? '<span class="tra-validation-ok">All 4 languages selected</span>'
+    : count > 0
+      ? `<span class="tra-validation-info">${count} of 4 languages selected</span>`
+      : '';
 
   return `<div class="tra-file-list">${items}</div><div class="tra-validation">${validationText}</div>`;
 }
@@ -93,7 +95,7 @@ function updateModalState(): void {
   listEl.innerHTML = renderFileList();
 
   const submitBtn = modalEl.querySelector<HTMLButtonElement>('.tra-upload-submit')!;
-  submitBtn.disabled = fileMap.size < 4;
+  submitBtn.disabled = fileMap.size < 1;
 }
 
 export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata): void {
@@ -167,7 +169,7 @@ export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata)
 
   // Submit
   submitBtn.addEventListener('click', async () => {
-    if (fileMap.size < 4) return;
+    if (fileMap.size < 1) return;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Uploading...';
 
@@ -183,6 +185,7 @@ export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata)
       const uploadMetadata: TraUploadMetadata = {
         uploadTimestamp: Date.now(),
         fileLastModified,
+        availableLanguages: Array.from(fileMap.keys()),
       };
 
       pluginBridge.uploadTraFiles(folder, traFileData, uploadMetadata);

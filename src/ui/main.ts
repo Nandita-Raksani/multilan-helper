@@ -20,7 +20,8 @@ import {
   hideLanguageBar,
   renderFramePanel,
   isFrameMode,
-  showSearchBar
+  showSearchBar,
+  updateLanguageAvailability
 } from './components';
 import { handleFrameMatchResult, clearCloseMatchSearchState } from './components/FramePanel';
 import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic, resetSingleNodeSearchState, handleSingleNodeFuzzyResult } from './components/SearchPanel';
@@ -75,7 +76,16 @@ function handlePluginMessage(msg: PluginMessage): void {
 
       // No folder active if no translations loaded
       renderFolderButtons(folderNames, hasTranslations ? currentFolder : null, folderDataStatus);
-      setActiveLanguage(initialLang);
+      const availableLangs = folderDataStatus[currentFolder]?.metadata?.availableLanguages;
+      updateLanguageAvailability(hasTranslations ? availableLangs : undefined);
+      // If current language not available, switch to first available
+      if (availableLangs && availableLangs.length > 0 && !availableLangs.includes(initialLang)) {
+        const fallbackLang = availableLangs[0] as Language;
+        setActiveLanguage(fallbackLang);
+        store.setState({ currentLang: fallbackLang });
+      } else {
+        setActiveLanguage(initialLang);
+      }
       updateSearchHint();
 
       setStatus(`${msg.translationCount} translations loaded`);
@@ -298,6 +308,16 @@ function handlePluginMessage(msg: PluginMessage): void {
       });
 
       renderFolderButtons(store.getState().folderNames, folder, newStatus);
+      // Update language availability for the uploaded folder
+      const uploadedLangs = msg.traUploadMetadata?.availableLanguages;
+      updateLanguageAvailability(uploadedLangs);
+      // Auto-switch language if current one is not available
+      const currentLang = store.getState().currentLang;
+      if (uploadedLangs && uploadedLangs.length > 0 && !uploadedLangs.includes(currentLang)) {
+        const fallback = uploadedLangs[0] as Language;
+        setActiveLanguage(fallback);
+        store.setState({ currentLang: fallback });
+      }
       hideTraUploadModal();
       showToast(`Loaded ${count} translations for ${folder}`);
       setStatus(`${count} translations loaded`);

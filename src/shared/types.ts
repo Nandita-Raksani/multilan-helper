@@ -86,6 +86,7 @@ export interface FrameNodeMatchResult {
 export interface TraUploadMetadata {
   uploadTimestamp: number;
   fileLastModified: { en: number; fr: number; nl: number; de: number };
+  availableLanguages: string[];
 }
 
 // Folder data status for UI
