@@ -19,6 +19,7 @@ import {
 } from "../shared/types";
 import { createAdapter } from "../adapters";
 import { TraFileData } from "../adapters/types/traFile.types";
+import { deflateSync, inflateSync } from "fflate";
 
 import {
   getAllTranslations,
@@ -64,6 +65,47 @@ import {
 declare const __BUILD_TIMESTAMP__: string;
 const BUILD_TIMESTAMP = typeof __BUILD_TIMESTAMP__ !== "undefined" ? __BUILD_TIMESTAMP__ : new Date().toISOString();
 const FOLDER_NAMES = ['EB', 'EBB', 'PCB'];
+
+// ---- Compression helpers for clientStorage ----
+
+function compressText(text: string): string {
+  if (!text) return "";
+  const encoder = new TextEncoder();
+  const compressed = deflateSync(encoder.encode(text), { level: 9 });
+  const chars: string[] = [];
+  for (let i = 0; i < compressed.length; i++) {
+    chars.push(String.fromCharCode(compressed[i]));
+  }
+  return btoa(chars.join(""));
+}
+
+function decompressText(b64: string): string {
+  if (!b64) return "";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) {
+    bytes[i] = bin.charCodeAt(i);
+  }
+  return new TextDecoder().decode(inflateSync(bytes));
+}
+
+function compressTraData(data: TraFileData): TraFileData {
+  return {
+    en: compressText(data.en),
+    fr: compressText(data.fr),
+    nl: compressText(data.nl),
+    de: compressText(data.de),
+  };
+}
+
+function decompressTraData(data: TraFileData): TraFileData {
+  return {
+    en: decompressText(data.en),
+    fr: decompressText(data.fr),
+    nl: decompressText(data.nl),
+    de: decompressText(data.de),
+  };
+}
 
 // ---- Plugin State ----
 
@@ -143,7 +185,14 @@ async function buildFolderDataStatus(): Promise<FolderDataStatus> {
 async function loadTraDataForFolder(folder: string): Promise<TraFileData | null> {
   try {
     const cached = await figma.clientStorage.getAsync('traData_' + folder);
-    return cached ? cached as TraFileData : null;
+    if (!cached) return null;
+    const data = cached as TraFileData;
+    // Detect if data is compressed (base64 doesn't start with a digit like raw .tra lines)
+    const sample = data.en || data.fr || data.nl || data.de;
+    if (sample && !sample.match(/^\d/)) {
+      return decompressTraData(data);
+    }
+    return data;
   } catch {
     return null;
   }
@@ -639,8 +688,8 @@ async function handleUploadTraFiles(msg: PluginMessage): Promise<void> {
     mergedLanguages = [...new Set([...previousLanguages, ...newLanguages])];
   }
 
-  // Store merged data and metadata
-  await figma.clientStorage.setAsync('traData_' + msg.folderName, merged);
+  // Compress and store merged data
+  await figma.clientStorage.setAsync('traData_' + msg.folderName, compressTraData(merged));
   const mergedMetadata = msg.traUploadMetadata
     ? { ...msg.traUploadMetadata, availableLanguages: mergedLanguages }
     : undefined;
