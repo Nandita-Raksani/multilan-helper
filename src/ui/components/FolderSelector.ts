@@ -54,7 +54,9 @@ export function renderFolderButtons(folders: string[], active: string | null, fo
     const hasData = status[f]?.hasData || false;
     const metadata: TraUploadMetadata | undefined = status[f]?.metadata;
     const tooltip = hasData && metadata
-      ? `Last uploaded: ${formatDateShort(metadata.uploadTimestamp)}`
+      ? `Last uploaded: ${formatDateShort(metadata.uploadTimestamp)}${
+          metadata.sourceZipName ? ` (from ${metadata.sourceZipName})` : ''
+        }`
       : 'Click to upload .tra files';
     const classes = [
       'folder-btn',

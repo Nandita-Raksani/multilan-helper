@@ -296,6 +296,16 @@ function handlePluginMessage(msg: PluginMessage): void {
       }
       break;
 
+    case 'upload-failed': {
+      const submitBtn = document.querySelector<HTMLButtonElement>('.tra-upload-submit');
+      if (submitBtn) {
+        submitBtn.textContent = 'Upload';
+        submitBtn.disabled = false;
+      }
+      showToast('Upload failed — see plugin console for details');
+      break;
+    }
+
     case 'upload-success': {
       const folder = msg.folderName!;
       const count = msg.uploadedTranslationCount || 0;

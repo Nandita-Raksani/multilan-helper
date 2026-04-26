@@ -668,49 +668,55 @@ async function handleSwitchFolder(msg: PluginMessage): Promise<void> {
 async function handleUploadTraFiles(msg: PluginMessage): Promise<void> {
   if (!msg.folderName || !msg.traFileData) return;
 
-  const newData = msg.traFileData as TraFileData;
+  try {
+    const newData = msg.traFileData as TraFileData;
 
-  // Merge with existing data — only overwrite languages that were uploaded (non-empty)
-  const existing = await loadTraDataForFolder(msg.folderName);
-  const merged: TraFileData = {
-    en: newData.en || (existing?.en ?? ''),
-    fr: newData.fr || (existing?.fr ?? ''),
-    nl: newData.nl || (existing?.nl ?? ''),
-    de: newData.de || (existing?.de ?? ''),
-  };
+    // Merge with existing data — only overwrite languages that were uploaded (non-empty)
+    const existing = await loadTraDataForFolder(msg.folderName);
+    const merged: TraFileData = {
+      en: newData.en || (existing?.en ?? ''),
+      fr: newData.fr || (existing?.fr ?? ''),
+      nl: newData.nl || (existing?.nl ?? ''),
+      de: newData.de || (existing?.de ?? ''),
+    };
 
-  // Merge available languages from previous + new upload
-  let mergedLanguages: string[] = [];
-  if (msg.traUploadMetadata) {
-    const existingMeta = await figma.clientStorage.getAsync('traMetadata_' + msg.folderName) as TraUploadMetadata | undefined;
-    const previousLanguages = existingMeta?.availableLanguages || [];
-    const newLanguages = msg.traUploadMetadata.availableLanguages || [];
-    mergedLanguages = [...new Set([...previousLanguages, ...newLanguages])];
+    // Merge available languages from previous + new upload
+    let mergedLanguages: string[] = [];
+    if (msg.traUploadMetadata) {
+      const existingMeta = await figma.clientStorage.getAsync('traMetadata_' + msg.folderName) as TraUploadMetadata | undefined;
+      const previousLanguages = existingMeta?.availableLanguages || [];
+      const newLanguages = msg.traUploadMetadata.availableLanguages || [];
+      mergedLanguages = [...new Set([...previousLanguages, ...newLanguages])];
+    }
+
+    // Compress and store merged data
+    await figma.clientStorage.setAsync('traData_' + msg.folderName, compressTraData(merged));
+    const mergedMetadata = msg.traUploadMetadata
+      ? { ...msg.traUploadMetadata, availableLanguages: mergedLanguages }
+      : undefined;
+    if (mergedMetadata) {
+      await figma.clientStorage.setAsync('traMetadata_' + msg.folderName, mergedMetadata);
+    }
+
+    currentFolder = msg.folderName;
+    await figma.clientStorage.setAsync('selectedFolder', currentFolder);
+    await initializeTraFileData(merged);
+
+    const translationCount = Object.keys(translationData).length;
+    await initialize();
+
+    figma.ui.postMessage({
+      type: 'upload-success',
+      folderName: msg.folderName,
+      uploadedTranslationCount: translationCount,
+      traUploadMetadata: mergedMetadata,
+      folderDataStatus: await buildFolderDataStatus(),
+    });
+  } catch (err) {
+    console.error('handleUploadTraFiles failed:', err);
+    figma.notify('Upload failed: ' + (err instanceof Error ? err.message : String(err)), { error: true });
+    figma.ui.postMessage({ type: 'upload-failed', folderName: msg.folderName });
   }
-
-  // Compress and store merged data
-  await figma.clientStorage.setAsync('traData_' + msg.folderName, compressTraData(merged));
-  const mergedMetadata = msg.traUploadMetadata
-    ? { ...msg.traUploadMetadata, availableLanguages: mergedLanguages }
-    : undefined;
-  if (mergedMetadata) {
-    await figma.clientStorage.setAsync('traMetadata_' + msg.folderName, mergedMetadata);
-  }
-
-  currentFolder = msg.folderName;
-  await figma.clientStorage.setAsync('selectedFolder', currentFolder);
-  await initializeTraFileData(merged);
-
-  const translationCount = Object.keys(translationData).length;
-  await initialize();
-
-  figma.ui.postMessage({
-    type: 'upload-success',
-    folderName: msg.folderName,
-    uploadedTranslationCount: translationCount,
-    traUploadMetadata: mergedMetadata,
-    folderDataStatus: await buildFolderDataStatus(),
-  });
 }
 
 // ---- UI Setup & Event Wiring ----

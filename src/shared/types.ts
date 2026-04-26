@@ -87,6 +87,8 @@ export interface TraUploadMetadata {
   uploadTimestamp: number;
   fileLastModified: { en: number; fr: number; nl: number; de: number };
   availableLanguages: string[];
+  sourceZipName?: string;
+  releaseDate?: number;
 }
 
 // Folder data status for UI
@@ -134,6 +136,7 @@ export type UIMessageType =
   | "frame-match-result"
   | "tra-upload-needed"
   | "upload-success"
+  | "upload-failed"
   | "folder-data-status";
 
 // Combined message type for both directions

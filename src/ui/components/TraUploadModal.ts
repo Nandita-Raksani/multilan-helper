@@ -1,5 +1,7 @@
 import type { TraUploadMetadata } from '../../shared/types';
 import { pluginBridge } from '../services/pluginBridge';
+import { showToast } from './Toast';
+import { unzipSync } from 'fflate';
 
 let modalEl: HTMLDivElement | null = null;
 
@@ -47,8 +49,34 @@ function formatDate(timestamp: number): string {
     + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+function formatReleaseDate(timestamp: number): string {
+  const d = new Date(timestamp);
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
 // Tracked files mapped to languages
 const languageFileMap: Map<Language, File> = new Map();
+let sourceZipName: string | null = null;
+
+function parseReleaseDateFromZipName(name: string): number | undefined {
+  try {
+    const m = name.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return undefined;
+    const year = Number(m[1]);
+    const month = Number(m[2]);
+    const day = Number(m[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
+    const t = Date.UTC(year, month - 1, day);
+    if (Number.isNaN(t)) return undefined;
+    const d = new Date(t);
+    if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) {
+      return undefined;
+    }
+    return t;
+  } catch {
+    return undefined;
+  }
+}
 
 function renderFileList(): string {
   const items = LANGUAGES.map(lang => {
@@ -78,21 +106,73 @@ function renderFileList(): string {
   return `<div class="tra-file-list">${items}</div><div class="tra-validation">${validationText}</div>`;
 }
 
-function processFiles(files: FileList | File[]): void {
-  for (const file of Array.from(files)) {
-    if (!file.name.toLowerCase().endsWith('.tra')) continue;
-    const lang = detectLanguageFromFilename(file.name);
-    if (lang) {
-      languageFileMap.set(lang, file);
+function extractTraFilesFromZip(file: File): Promise<File[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const zipData = new Uint8Array(reader.result as ArrayBuffer);
+        const entries = unzipSync(zipData);
+        const traFiles: File[] = [];
+        for (const [path, data] of Object.entries(entries)) {
+          const name = path.split('/').pop() || path;
+          if (name.toLowerCase().endsWith('.tra')) {
+            traFiles.push(new File([data], name, { lastModified: file.lastModified }));
+          }
+        }
+        resolve(traFiles);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function processFiles(files: FileList | File[]): Promise<void> {
+  const incoming = Array.from(files);
+  const rejected = incoming.filter(f => !f.name.toLowerCase().endsWith('.zip'));
+  for (const file of incoming) {
+    if (!file.name.toLowerCase().endsWith('.zip')) continue;
+    const traFiles = await extractTraFilesFromZip(file);
+    for (const traFile of traFiles) {
+      const lang = detectLanguageFromFilename(traFile.name);
+      if (lang) languageFileMap.set(lang, traFile);
     }
+    sourceZipName = file.name;
+  }
+  if (rejected.length > 0) {
+    const hasTra = rejected.some(f => f.name.toLowerCase().endsWith('.tra'));
+    const message = hasTra
+      ? 'Please upload the original .zip file, not the individual .tra files.'
+      : 'Only .zip files are supported.';
+    showRejectionWarning(message);
+    showToast(message, 'error');
+  } else {
+    showRejectionWarning(null);
   }
   updateModalState();
+}
+
+function showRejectionWarning(message: string | null): void {
+  if (!modalEl) return;
+  const warnEl = modalEl.querySelector<HTMLDivElement>('.tra-drop-warning');
+  if (!warnEl) return;
+  warnEl.textContent = message ?? '';
+  warnEl.style.display = message ? '' : 'none';
 }
 
 function updateModalState(): void {
   if (!modalEl) return;
   const listEl = modalEl.querySelector('.tra-file-status')!;
   listEl.innerHTML = renderFileList();
+
+  const selectedEl = modalEl.querySelector<HTMLDivElement>('.tra-selected-zip');
+  if (selectedEl) {
+    selectedEl.textContent = sourceZipName ? `Selected: ${sourceZipName}` : '';
+    selectedEl.style.display = sourceZipName ? '' : 'none';
+  }
 
   const submitBtn = modalEl.querySelector<HTMLButtonElement>('.tra-upload-submit')!;
   submitBtn.disabled = languageFileMap.size < 1;
@@ -101,27 +181,34 @@ function updateModalState(): void {
 export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata): void {
   hideTraUploadModal();
   languageFileMap.clear();
+  sourceZipName = null;
 
   const lastUploadedHtml = metadata
-    ? `<div class="tra-upload-last">Last uploaded: ${formatDate(metadata.uploadTimestamp)}</div>`
+    ? `<div class="tra-upload-last">Last uploaded: ${formatDate(metadata.uploadTimestamp)}${
+        metadata.sourceZipName ? ` &middot; from ${metadata.sourceZipName}` : ''
+      }${
+        metadata.releaseDate ? ` &middot; release ${formatReleaseDate(metadata.releaseDate)}` : ''
+      }</div>`
     : '';
 
   modalEl = document.createElement('div');
   modalEl.className = 'variable-prompt-overlay';
   modalEl.innerHTML = `
     <div class="variable-prompt-modal tra-upload-modal">
-      <div class="variable-prompt-title">Upload .tra files for ${folder}</div>
+      <div class="variable-prompt-title">Upload .zip of .tra files for ${folder}</div>
       ${lastUploadedHtml}
-      <div class="tra-upload-hint">Drop all 4 .tra files at once or use the file picker</div>
+      <div class="tra-upload-hint">Drop a .zip file containing the .tra files</div>
       <div class="tra-drop-zone" id="traDropZone">
         <div class="tra-drop-icon">&#128194;</div>
-        <div class="tra-drop-text">Drop .tra files here</div>
+        <div class="tra-drop-text">Drop .zip file here</div>
         <div class="tra-drop-or">or</div>
         <label class="btn-sm btn-sm-outline tra-drop-btn">
-          Choose files
-          <input type="file" accept=".tra" multiple class="tra-drop-file-input" />
+          Choose .zip file
+          <input type="file" accept=".zip" class="tra-drop-file-input" />
         </label>
       </div>
+      <div class="tra-drop-warning" style="display:none; color:#d73a49; font-size:12px; margin-top:8px;"></div>
+      <div class="tra-selected-zip" style="display:none"></div>
       <div class="tra-file-status">${renderFileList()}</div>
       <div class="variable-prompt-actions">
         <button class="btn-sm btn-sm-outline tra-upload-cancel">Cancel</button>
@@ -187,6 +274,11 @@ export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata)
         fileLastModified,
         availableLanguages: Array.from(languageFileMap.keys()),
       };
+      if (sourceZipName) {
+        uploadMetadata.sourceZipName = sourceZipName;
+        const parsed = parseReleaseDateFromZipName(sourceZipName);
+        if (parsed !== undefined) uploadMetadata.releaseDate = parsed;
+      }
 
       pluginBridge.uploadTraFiles(folder, traFileData, uploadMetadata);
       // Don't close modal here — wait for 'upload-success' message
@@ -204,4 +296,5 @@ export function hideTraUploadModal(): void {
     modalEl = null;
   }
   languageFileMap.clear();
+  sourceZipName = null;
 }
