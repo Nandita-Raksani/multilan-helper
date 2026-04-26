@@ -11,7 +11,6 @@ import {
   renderFolderButtons,
   renderGlobalSearchResults,
   setStatus,
-  setBuildTimestamp,
   setViewMode,
   getCurrentTab,
   clearSearch,
@@ -89,9 +88,6 @@ function handlePluginMessage(msg: PluginMessage): void {
       updateSearchHint();
 
       setStatus(`${msg.translationCount} translations loaded`);
-      if (msg.buildTimestamp) {
-        setBuildTimestamp(msg.buildTimestamp);
-      }
       renderGlobalSearchResults();
       break;
     }

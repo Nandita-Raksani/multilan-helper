@@ -19,7 +19,7 @@ import {
 } from "../shared/types";
 import { createAdapter } from "../adapters";
 import { TraFileData } from "../adapters/types/traFile.types";
-import { deflateSync, inflateSync } from "fflate";
+import { deflateSync, inflateSync, strToU8, strFromU8 } from "fflate";
 
 import {
   getAllTranslations,
@@ -70,23 +70,14 @@ const FOLDER_NAMES = ['EB', 'EBB', 'PCB'];
 
 function compressText(text: string): string {
   if (!text) return "";
-  const encoder = new TextEncoder();
-  const compressed = deflateSync(encoder.encode(text), { level: 9 });
-  const chars: string[] = [];
-  for (let i = 0; i < compressed.length; i++) {
-    chars.push(String.fromCharCode(compressed[i]));
-  }
-  return btoa(chars.join(""));
+  const compressed = deflateSync(strToU8(text), { level: 9 });
+  return figma.base64Encode(compressed);
 }
 
 function decompressText(b64: string): string {
   if (!b64) return "";
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) {
-    bytes[i] = bin.charCodeAt(i);
-  }
-  return new TextDecoder().decode(inflateSync(bytes));
+  const bytes = figma.base64Decode(b64);
+  return strFromU8(inflateSync(bytes));
 }
 
 function compressTraData(data: TraFileData): TraFileData {

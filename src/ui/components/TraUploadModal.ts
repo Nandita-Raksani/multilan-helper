@@ -49,11 +49,6 @@ function formatDate(timestamp: number): string {
     + ' at ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
-function formatReleaseDate(timestamp: number): string {
-  const d = new Date(timestamp);
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
-}
-
 // Tracked files mapped to languages
 const languageFileMap: Map<Language, File> = new Map();
 let sourceZipName: string | null = null;
@@ -186,8 +181,6 @@ export function showTraUploadModal(folder: string, metadata?: TraUploadMetadata)
   const lastUploadedHtml = metadata
     ? `<div class="tra-upload-last">Last uploaded: ${formatDate(metadata.uploadTimestamp)}${
         metadata.sourceZipName ? ` &middot; from ${metadata.sourceZipName}` : ''
-      }${
-        metadata.releaseDate ? ` &middot; release ${formatReleaseDate(metadata.releaseDate)}` : ''
       }</div>`
     : '';
 

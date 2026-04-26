@@ -1,15 +1,11 @@
 import { getElementById } from '../utils/dom';
 
 export function initStatusBar(): void {
-  // Status bar is now passive - just displays status text and build timestamp
+  // Status bar is passive — just displays status text
 }
 
 export function setStatus(text: string): void {
   getElementById('statusText').textContent = text;
-}
-
-export function setBuildTimestamp(timestamp: string): void {
-  getElementById('buildTimestamp').textContent = `Updated: ${timestamp}`;
 }
 
 export function setViewMode(isViewMode: boolean): void {
