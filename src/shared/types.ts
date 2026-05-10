@@ -102,7 +102,6 @@ export type PluginMessageType =
   | "switch-language"
   | "search"
   | "link-node"
-  | "link-node-with-variables"
   | "unlink-node"
   | "select-node"
   | "refresh"
@@ -132,7 +131,6 @@ export type UIMessageType =
   | "global-search-results"
   | "search-results"
   | "text-created"
-  | "prompt-variables"
   | "frame-match-result"
   | "tra-upload-needed"
   | "upload-success"
@@ -150,9 +148,6 @@ export interface PluginMessage {
   searchQuery?: string;
   text?: string;
   highlight?: boolean;
-  variables?: Record<string, string>;
-  variableNames?: string[];
-  translationTemplate?: string;
   folderName?: string;
   folderNames?: string[];
   traFileData?: { en: string; fr: string; nl: string; de: string };

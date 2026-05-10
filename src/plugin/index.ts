@@ -29,7 +29,6 @@ import {
   searchTranslationsWithScoreAsync,
   detectLanguage,
   detectMatchAsync,
-  applyVariables,
   invalidateTextToIdMapCache,
   getTextToIdMap,
   createCancellationToken,
@@ -59,6 +58,7 @@ import {
   markAsPlaceholder,
   switchLanguage,
   createLinkedTextNode,
+  rewriteInterpolatedNodesToTemplate,
 } from "./services/linkingService";
 import {
   setFolderTraData,
@@ -476,56 +476,12 @@ async function handleLinkNode(msg: PluginMessage): Promise<void> {
   const lang = msg.language || 'en';
   const translation = getTranslation(translationData, msg.multilanId, lang);
 
-  // Check for ###variable### placeholders — prompt UI before linking
-  if (translation && translation.includes('###')) {
-    const varPattern = /###([^#]+)###/g;
-    const variableNames: string[] = [];
-    let varMatch;
-    while ((varMatch = varPattern.exec(translation)) !== null) {
-      if (!variableNames.includes(varMatch[1])) {
-        variableNames.push(varMatch[1]);
-      }
-    }
-    if (variableNames.length > 0) {
-      figma.ui.postMessage({
-        type: 'prompt-variables',
-        nodeId: msg.nodeId,
-        multilanId: msg.multilanId,
-        language: msg.language,
-        variableNames,
-        translationTemplate: translation,
-      });
-      return;
-    }
-  }
-
   const success = await linkTextNode(msg.nodeId, msg.multilanId, translationData, msg.language);
   if (!success) return;
 
   const node = await getTextNodeById(msg.nodeId);
   if (node) {
     if (translation) {
-      await updateNodeText(node, translation);
-      setExpectedText(node, translation);
-    }
-    figma.notify(`Linked to ${msg.multilanId}`);
-    await sendNodeUpdate(node);
-  }
-}
-
-async function handleLinkNodeWithVariables(msg: PluginMessage): Promise<void> {
-  if (!requireEditPermission()) return;
-  if (!msg.nodeId || !msg.multilanId || !msg.variables) return;
-
-  const success = await linkTextNode(msg.nodeId, msg.multilanId, translationData, msg.language);
-  if (!success) return;
-
-  const lang = msg.language || 'en';
-  let translation = getTranslation(translationData, msg.multilanId, lang);
-  const node = await getTextNodeById(msg.nodeId);
-  if (node) {
-    if (translation) {
-      translation = applyVariables(translation, msg.variables);
       await updateNodeText(node, translation);
       setExpectedText(node, translation);
     }
@@ -551,6 +507,10 @@ async function handleUnlinkNode(msg: PluginMessage): Promise<void> {
 async function handleRefresh(msg: PluginMessage): Promise<void> {
   const scope = msg.scope || "page";
   const nodes = getTextNodesInScope(scope);
+  const rewrittenCount = await rewriteInterpolatedNodesToTemplate(nodes, getTranslations);
+  if (rewrittenCount > 0) {
+    figma.notify(`Restored ${rewrittenCount} templated node${rewrittenCount > 1 ? 's' : ''} to canonical form`);
+  }
   const unlinkedCount = autoUnlinkModifiedNodes(nodes);
   if (unlinkedCount > 0) {
     figma.notify(`Auto-unlinked ${unlinkedCount} modified node${unlinkedCount > 1 ? 's' : ''}`);
@@ -752,7 +712,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     case "switch-language":   await handleSwitchLanguage(msg); break;
     case "search":            await handleSearch(msg); break;
     case "link-node":         await handleLinkNode(msg); break;
-    case "link-node-with-variables": await handleLinkNodeWithVariables(msg); break;
     case "unlink-node":       await handleUnlinkNode(msg); break;
     case "select-node":       if (msg.nodeId) await selectNode(msg.nodeId); break;
     case "refresh":           await handleRefresh(msg); break;

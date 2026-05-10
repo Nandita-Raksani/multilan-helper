@@ -24,7 +24,6 @@ import {
 } from './components';
 import { handleFrameMatchResult, clearCloseMatchSearchState } from './components/FramePanel';
 import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic, resetSingleNodeSearchState, handleSingleNodeFuzzyResult } from './components/SearchPanel';
-import { showVariablePrompt } from './components/VariablePromptModal';
 import { showTraUploadModal, hideTraUploadModal } from './components/TraUploadModal';
 import { showToast } from './components/Toast';
 
@@ -329,18 +328,6 @@ function handlePluginMessage(msg: PluginMessage): void {
       setStatus(`${count} translations loaded`);
       break;
     }
-
-    case 'prompt-variables':
-      if (msg.nodeId && msg.multilanId && msg.variableNames && msg.translationTemplate) {
-        showVariablePrompt({
-          nodeId: msg.nodeId,
-          multilanId: msg.multilanId,
-          language: msg.language || 'en',
-          variableNames: msg.variableNames,
-          translationTemplate: msg.translationTemplate,
-        });
-      }
-      break;
 
   }
 }

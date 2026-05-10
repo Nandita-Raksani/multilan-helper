@@ -111,13 +111,6 @@ export function extractVariableValues(template: string, text: string): Record<st
   return result;
 }
 
-/** Replace ###variable### placeholders in a template with actual values. */
-export function applyVariables(template: string, variables: Record<string, string>): string {
-  return template.replace(/###([^#]+)###/g, (_match, name) => {
-    return variables[name] !== undefined ? variables[name] : `###${name}###`;
-  });
-}
-
 // ---- Levenshtein & Scoring ----
 
 /**

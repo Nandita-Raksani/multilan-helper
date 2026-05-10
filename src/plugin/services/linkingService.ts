@@ -2,6 +2,7 @@
 
 import {
   TranslationMap,
+  TranslationEntry,
   Language,
 } from "../../shared/types";
 import {
@@ -19,12 +20,11 @@ import {
   clearExpectedText,
   addMultilanIdToName,
   removeMultilanIdFromName,
+  loadNodeFont,
 } from "./nodeService";
 import {
   getTranslation,
-  getAllTranslations,
   extractVariableValues,
-  applyVariables,
 } from "./translationService";
 
 /**
@@ -116,21 +116,6 @@ export function switchLanguage(
       translation = "*Multilan not available*";
     }
 
-    // Preserve ###variable### values from the current text
-    if (translation.includes('###')) {
-      const allTranslations = getAllTranslations(translationData, multilanId);
-      if (allTranslations) {
-        // Try to extract variable values by matching current text against each language template
-        for (const langTemplate of Object.values(allTranslations)) {
-          const vars = extractVariableValues(langTemplate, node.characters);
-          if (vars && Object.keys(vars).length > 0) {
-            translation = applyVariables(translation, vars);
-            break;
-          }
-        }
-      }
-    }
-
     try {
       node.characters = translation;
       setExpectedText(node, translation);
@@ -141,6 +126,56 @@ export function switchLanguage(
   }
 
   return { success, missing, overflow };
+}
+
+/**
+ * Rewrite linked nodes whose text was previously interpolated (e.g. "Hello, John")
+ * back to the canonical raw template with `###variable###` markers visible.
+ * Idempotent: nodes already in template form are left alone aside from refreshing
+ * expectedText. Returns the count of nodes that were actually rewritten.
+ */
+export async function rewriteInterpolatedNodesToTemplate(
+  nodes: TextNode[],
+  getTranslations: (multilanId: string) => TranslationEntry | null,
+): Promise<number> {
+  let rewritten = 0;
+
+  for (const node of nodes) {
+    const multilanId = getMultilanId(node);
+    if (!multilanId) continue;
+
+    const translations = getTranslations(multilanId);
+    if (!translations) continue;
+
+    let matchedTemplate: string | null = null;
+    for (const template of Object.values(translations)) {
+      if (!template || !template.includes("###")) continue;
+      if (template === node.characters) {
+        matchedTemplate = template;
+        break;
+      }
+      const vars = extractVariableValues(template, node.characters);
+      if (vars && Object.keys(vars).length > 0) {
+        matchedTemplate = template;
+        break;
+      }
+    }
+    if (!matchedTemplate) continue;
+
+    if (node.characters !== matchedTemplate) {
+      try {
+        await loadNodeFont(node);
+        node.characters = matchedTemplate;
+        rewritten++;
+      } catch (err) {
+        console.error(`Failed to rewrite node ${node.id} to template:`, err);
+        continue;
+      }
+    }
+    setExpectedText(node, matchedTemplate);
+  }
+
+  return rewritten;
 }
 
 /**
