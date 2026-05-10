@@ -26,6 +26,30 @@ export function createMockTextNode(overrides: Partial<TextNode> = {}): TextNode 
   } as unknown as TextNode;
 }
 
+// In-memory clientStorage mock mirroring figma.clientStorage's contract.
+export interface ClientStorageMock {
+  store: Map<string, unknown>;
+  getAsync: ReturnType<typeof vi.fn>;
+  setAsync: ReturnType<typeof vi.fn>;
+  deleteAsync: ReturnType<typeof vi.fn>;
+  keysAsync: ReturnType<typeof vi.fn>;
+}
+
+export function createClientStorageMock(): ClientStorageMock {
+  const store = new Map<string, unknown>();
+  return {
+    store,
+    getAsync: vi.fn(async (key: string) => store.get(key)),
+    setAsync: vi.fn(async (key: string, value: unknown) => {
+      store.set(key, value);
+    }),
+    deleteAsync: vi.fn(async (key: string) => {
+      store.delete(key);
+    }),
+    keysAsync: vi.fn(async () => Array.from(store.keys())),
+  };
+}
+
 // Mock Figma global
 export function setupFigmaMock() {
   const mockFigma = {
@@ -48,6 +72,7 @@ export function setupFigmaMock() {
     notify: vi.fn(),
     mixed: Symbol("mixed"),
     on: vi.fn(),
+    clientStorage: createClientStorageMock(),
   };
 
   // @ts-expect-error - Mocking global figma

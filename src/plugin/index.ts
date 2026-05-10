@@ -60,6 +60,10 @@ import {
   switchLanguage,
   createLinkedTextNode,
 } from "./services/linkingService";
+import {
+  setFolderTraData,
+  touchFolder,
+} from "./services/storageService";
 
 // ---- Constants ----
 
@@ -650,6 +654,7 @@ async function handleSwitchFolder(msg: PluginMessage): Promise<void> {
 
   const traData = await loadTraDataForFolder(currentFolder);
   if (traData) {
+    await touchFolder(currentFolder);
     await initializeTraFileData(traData);
     await initialize();
   } else {
@@ -683,13 +688,20 @@ async function handleUploadTraFiles(msg: PluginMessage): Promise<void> {
       mergedLanguages = [...new Set([...previousLanguages, ...newLanguages])];
     }
 
-    // Compress and store merged data
-    await figma.clientStorage.setAsync('traData_' + msg.folderName, compressTraData(merged));
+    // Compress and store merged data, evicting LRU folders if quota is hit
     const mergedMetadata = msg.traUploadMetadata
       ? { ...msg.traUploadMetadata, availableLanguages: mergedLanguages }
       : undefined;
-    if (mergedMetadata) {
-      await figma.clientStorage.setAsync('traMetadata_' + msg.folderName, mergedMetadata);
+    const { evictedFolders } = await setFolderTraData(
+      msg.folderName,
+      compressTraData(merged),
+      mergedMetadata,
+      FOLDER_NAMES,
+    );
+    if (evictedFolders.length > 0) {
+      figma.notify(
+        `Cleared ${evictedFolders.join(', ')} cache to fit ${msg.folderName} — re-upload when needed`,
+      );
     }
 
     currentFolder = msg.folderName;
@@ -705,6 +717,7 @@ async function handleUploadTraFiles(msg: PluginMessage): Promise<void> {
       uploadedTranslationCount: translationCount,
       traUploadMetadata: mergedMetadata,
       folderDataStatus: await buildFolderDataStatus(),
+      evictedFolders,
     });
   } catch (err) {
     console.error('handleUploadTraFiles failed:', err);
