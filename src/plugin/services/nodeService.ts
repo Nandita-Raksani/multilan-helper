@@ -124,6 +124,19 @@ function removeMultilanIdFromNameString(name: string): string {
 }
 
 /**
+ * True if the node is visible AND every ancestor up to the page is visible.
+ * A node hidden via any ancestor is considered hidden on canvas.
+ */
+export function isEffectivelyVisible(node: SceneNode): boolean {
+  let current: BaseNode | null = node;
+  while (current && current.type !== "PAGE" && current.type !== "DOCUMENT") {
+    if ("visible" in current && current.visible === false) return false;
+    current = current.parent;
+  }
+  return true;
+}
+
+/**
  * Get all text nodes in scope (page or selection)
  */
 export function getTextNodesInScope(scope: "page" | "selection"): TextNode[] {

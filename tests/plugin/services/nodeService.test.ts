@@ -18,6 +18,7 @@ import {
   loadNodeFont,
   updateNodeText,
   createTextNode,
+  isEffectivelyVisible,
 } from "../../../src/plugin/services/nodeService";
 import { PLUGIN_DATA_KEY, PLACEHOLDER_KEY } from "../../../src/shared/types";
 
@@ -431,6 +432,71 @@ describe("nodeService", () => {
 
       expect(result.x).toBe(170); // 50 + 100 + 20
       expect(result.y).toBe(50);
+    });
+  });
+
+  describe("isEffectivelyVisible", () => {
+    function makePage() {
+      return { type: "PAGE", parent: null } as unknown as BaseNode;
+    }
+
+    function makeFrame(visible: boolean, parent: BaseNode) {
+      return {
+        type: "FRAME",
+        visible,
+        parent,
+      } as unknown as SceneNode;
+    }
+
+    function makeText(visible: boolean, parent: BaseNode) {
+      return {
+        type: "TEXT",
+        visible,
+        parent,
+      } as unknown as SceneNode;
+    }
+
+    it("returns true for a visible node directly under the page", () => {
+      const page = makePage();
+      const node = makeText(true, page);
+      expect(isEffectivelyVisible(node)).toBe(true);
+    });
+
+    it("returns false when the node itself is hidden", () => {
+      const page = makePage();
+      const node = makeText(false, page);
+      expect(isEffectivelyVisible(node)).toBe(false);
+    });
+
+    it("returns false when an ancestor frame is hidden", () => {
+      const page = makePage();
+      const hiddenFrame = makeFrame(false, page);
+      const node = makeText(true, hiddenFrame);
+      expect(isEffectivelyVisible(node)).toBe(false);
+    });
+
+    it("returns true through nested visible frames", () => {
+      const page = makePage();
+      const outer = makeFrame(true, page);
+      const inner = makeFrame(true, outer);
+      const node = makeText(true, inner);
+      expect(isEffectivelyVisible(node)).toBe(true);
+    });
+
+    it("returns false when any ancestor in a deep chain is hidden", () => {
+      const page = makePage();
+      const outer = makeFrame(true, page);
+      const middle = makeFrame(false, outer); // hidden somewhere in the middle
+      const inner = makeFrame(true, middle);
+      const node = makeText(true, inner);
+      expect(isEffectivelyVisible(node)).toBe(false);
+    });
+
+    it("stops walking at the page node", () => {
+      const page = makePage();
+      const node = makeText(true, page);
+      // would loop forever if it didn't terminate at PAGE
+      expect(isEffectivelyVisible(node)).toBe(true);
     });
   });
 });

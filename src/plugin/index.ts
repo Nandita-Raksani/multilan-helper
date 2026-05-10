@@ -51,6 +51,7 @@ import {
   updateNodeText,
   setExpectedText,
   buildTextNodeInfo,
+  isEffectivelyVisible,
 } from "./services/nodeService";
 import {
   linkTextNode,
@@ -624,7 +625,9 @@ async function handleHighlightUnlinked(msg: PluginMessage): Promise<void> {
 
   const scope = msg.scope || "page";
   const nodes = getTextNodesInScope(scope);
-  const unlinkedNodes = nodes.filter(node => !getMultilanId(node));
+  const unlinkedNodes = nodes.filter(
+    node => !getMultilanId(node) && isEffectivelyVisible(node)
+  );
 
   if (msg.highlight) {
     if (unlinkedNodes.length > 0) {
