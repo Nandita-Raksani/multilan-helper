@@ -253,7 +253,7 @@ function autoUnlinkModifiedNodes(nodes: TextNode[]): number {
 
 // ---- Frame Match Results ----
 
-function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string, string>): FrameNodeMatchResult {
+function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string, string[]>): FrameNodeMatchResult {
   let matchResult;
   if (node.multilanId) {
     const metadata = metadataData ? metadataData[node.multilanId] : undefined;
@@ -265,15 +265,20 @@ function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string
     };
   } else {
     const trimmed = node.characters.trim().toLowerCase();
-    const exactId = trimmed ? (textToIdMap.get(trimmed) || null) : null;
-    if (exactId) {
-      const translations = translationData[exactId];
-      const metadata = metadataData ? metadataData[exactId] : undefined;
+    const exactIds = trimmed ? (textToIdMap.get(trimmed) || []) : [];
+    if (exactIds.length > 0) {
+      const exactMatches = exactIds.map(id => ({
+        multilanId: id,
+        translations: translationData[id],
+        metadata: metadataData ? metadataData[id] : undefined,
+      }));
+      const primary = exactMatches[0];
       matchResult = {
         status: 'exact' as const,
-        multilanId: exactId,
-        translations,
-        metadata,
+        multilanId: primary.multilanId,
+        translations: primary.translations,
+        metadata: primary.metadata,
+        exactMatches,
       };
     } else {
       matchResult = { status: 'none' as const };
@@ -287,7 +292,7 @@ function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string
   };
 }
 
-function buildFrameMatchResults(nodes: TextNodeInfo[], textToIdMap: Map<string, string>): FrameNodeMatchResult[] {
+function buildFrameMatchResults(nodes: TextNodeInfo[], textToIdMap: Map<string, string[]>): FrameNodeMatchResult[] {
   return nodes.map(n => buildSingleFrameMatchResult(n, textToIdMap));
 }
 
@@ -411,15 +416,20 @@ async function handleSelectionChange(): Promise<void> {
       };
     } else {
       const trimmed = selectedNode.characters.trim().toLowerCase();
-      const exactId = trimmed ? (textToIdMap.get(trimmed) || null) : null;
-      if (exactId) {
-        const translations = translationData[exactId];
-        const metadata = metadataData ? metadataData[exactId] : undefined;
+      const exactIds = trimmed ? (textToIdMap.get(trimmed) || []) : [];
+      if (exactIds.length > 0) {
+        const exactMatches = exactIds.map(id => ({
+          multilanId: id,
+          translations: translationData[id],
+          metadata: metadataData ? metadataData[id] : undefined,
+        }));
+        const primary = exactMatches[0];
         matchResult = {
           status: 'exact' as const,
-          multilanId: exactId,
-          translations,
-          metadata,
+          multilanId: primary.multilanId,
+          translations: primary.translations,
+          metadata: primary.metadata,
+          exactMatches,
         };
       } else {
         matchResult = { status: 'none' as const };

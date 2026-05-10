@@ -300,11 +300,21 @@ export async function detectMatchAsync(
 
   // Pass 1: Exact match (cached, O(1) after first build)
   const textToIdMap = await getTextToIdMap(translationData);
-  const exactId = textToIdMap.get(trimmed.toLowerCase());
-  if (exactId) {
-    const translations = translationData[exactId];
-    const metadata = metadataMap ? metadataMap[exactId] : undefined;
-    return { status: 'exact', multilanId: exactId, translations, metadata };
+  const exactIds = textToIdMap.get(trimmed.toLowerCase());
+  if (exactIds && exactIds.length > 0) {
+    const exactMatches = exactIds.map(id => ({
+      multilanId: id,
+      translations: translationData[id],
+      metadata: metadataMap ? metadataMap[id] : undefined,
+    }));
+    const primary = exactMatches[0];
+    return {
+      status: 'exact',
+      multilanId: primary.multilanId,
+      translations: primary.translations,
+      metadata: primary.metadata,
+      exactMatches,
+    };
   }
 
   if (cancellationToken?.cancelled) return { status: 'none' };
@@ -327,16 +337,24 @@ export async function detectMatchAsync(
 
 // ---- Text-to-ID Map (Exact Match Cache) ----
 
-async function buildTextToIdMapAsync(translationData: TranslationMap): Promise<Map<string, string>> {
-  const textToMultilanId = new Map<string, string>();
+async function buildTextToIdMapAsync(translationData: TranslationMap): Promise<Map<string, string[]>> {
+  const textToMultilanIds = new Map<string, string[]>();
   const entries = Object.entries(translationData);
 
   for (let i = 0; i < entries.length; i++) {
     const [multilanId, langs] = entries[i];
+    // Dedupe IDs *within a single multilan entry* (same text in en + fr would
+    // otherwise add the ID twice), but keep duplicates *across multilan entries*.
+    const seenForThisEntry = new Set<string>();
     for (const text of Object.values(langs)) {
       const lower = text.toLowerCase();
-      if (!textToMultilanId.has(lower)) {
-        textToMultilanId.set(lower, multilanId);
+      if (seenForThisEntry.has(lower)) continue;
+      seenForThisEntry.add(lower);
+      const existing = textToMultilanIds.get(lower);
+      if (existing) {
+        existing.push(multilanId);
+      } else {
+        textToMultilanIds.set(lower, [multilanId]);
       }
     }
     if ((i + 1) % CHUNK_SIZE === 0) {
@@ -344,15 +362,15 @@ async function buildTextToIdMapAsync(translationData: TranslationMap): Promise<M
     }
   }
 
-  return textToMultilanId;
+  return textToMultilanIds;
 }
 
-let cachedTextToIdMap: Map<string, string> | null = null;
+let cachedTextToIdMap: Map<string, string[]> | null = null;
 let cachedTextToIdMapSource: TranslationMap | null = null;
-let textToIdBuildPromise: Promise<Map<string, string>> | null = null;
+let textToIdBuildPromise: Promise<Map<string, string[]>> | null = null;
 
-/** Get or build the text-to-ID map (async, cached, deduplicates concurrent builds). */
-export async function getTextToIdMap(translationData: TranslationMap): Promise<Map<string, string>> {
+/** Get or build the text-to-IDs map (async, cached, deduplicates concurrent builds). */
+export async function getTextToIdMap(translationData: TranslationMap): Promise<Map<string, string[]>> {
   if (cachedTextToIdMap && cachedTextToIdMapSource === translationData) {
     return cachedTextToIdMap;
   }
@@ -374,12 +392,12 @@ export function invalidateTextToIdMapCache(): void {
   textToIdBuildPromise = null;
 }
 
-/** Fast exact-match lookup. Returns multilanId or null. */
-export async function exactMatchLookup(translationData: TranslationMap, text: string): Promise<string | null> {
+/** Fast exact-match lookup. Returns all multilanIds whose text equals `text`. */
+export async function exactMatchLookup(translationData: TranslationMap, text: string): Promise<string[]> {
   const trimmed = text.trim().toLowerCase();
-  if (!trimmed) return null;
+  if (!trimmed) return [];
   const map = await getTextToIdMap(translationData);
-  return map.get(trimmed) || null;
+  return map.get(trimmed) ?? [];
 }
 
 // ---- Language Detection ----

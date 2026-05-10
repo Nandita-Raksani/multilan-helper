@@ -1,4 +1,4 @@
-import type { FrameNodeMatchResult, SearchResult } from '../../shared/types';
+import type { FrameNodeMatchResult, SearchResult, TranslationEntry } from '../../shared/types';
 import { SUPPORTED_LANGUAGES } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
@@ -92,20 +92,53 @@ function renderLinkedCard(item: FrameNodeMatchResult, currentLang: string, canEd
 
 function renderExactCard(item: FrameNodeMatchResult, currentLang: string, canEdit: boolean): string {
   const mr = item.matchResult;
+
+  // Build the list of matches. Fall back to the singular fields for older payloads.
+  const matches = mr.exactMatches && mr.exactMatches.length > 0
+    ? mr.exactMatches
+    : (mr.multilanId
+        ? [{ multilanId: mr.multilanId, translations: mr.translations as TranslationEntry, metadata: mr.metadata }]
+        : []);
+
+  if (matches.length === 0) return renderNoneCard(item);
+
+  const total = matches.length;
+  const rawIndex = nodeCarouselIndexMap.get(item.nodeId) || 0;
+  const index = Math.min(rawIndex, total - 1);
+  const match = matches[index];
+
   return `
     <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
       ${renderNodeBubble(item.characters)}
       <div class="results-grouped">
         <div class="frame-node-card frame-node-card-exact">
-          <div class="frame-node-id-row">
-            <span class="frame-node-id">${escapeHtml(mr.multilanId || '')}</span>
-            <button class="copy-btn icon-btn" data-text="${escapeHtml(mr.multilanId || '')}" title="Copy ID">${copyIconSvg}</button>
-            <span class="match-badge match-badge-exact">Match</span>
-          </div>
-          ${mr.translations ? `<div class="translations-preview">${renderTranslations(mr.translations, currentLang)}</div>` : ''}
-          ${canEdit ? `<div class="frame-node-actions"><button class="btn-sm btn-sm-success btn-frame-link" data-node-id="${escapeHtml(item.nodeId)}" data-multilan-id="${escapeHtml(mr.multilanId || '')}">Link</button></div>` : ''}
+          ${renderExactSlide(item.nodeId, match, index, total, currentLang, canEdit)}
         </div>
       </div>
+    </div>`;
+}
+
+function renderExactSlide(nodeId: string, match: SearchResult, index: number, total: number, currentLang: string, canEdit: boolean): string {
+  return `
+    <div class="frame-carousel-slide">
+      <div class="frame-node-id-row">
+        <span class="frame-node-id">${escapeHtml(match.multilanId)}</span>
+        <button class="copy-btn icon-btn" data-text="${escapeHtml(match.multilanId)}" title="Copy ID">${copyIconSvg}</button>
+        <span class="match-badge match-badge-exact" style="margin-left:auto">Match${total > 1 ? ` ${index + 1}/${total}` : ''}</span>
+      </div>
+      ${match.translations ? `<div class="translations-preview">${renderTranslations(match.translations, currentLang)}</div>` : ''}
+      ${canEdit ? `<div class="frame-node-actions"><button class="btn-sm btn-sm-success btn-frame-link" data-node-id="${escapeHtml(nodeId)}" data-multilan-id="${escapeHtml(match.multilanId)}">Link</button></div>` : ''}
+      ${total > 1 ? `
+      <div class="frame-carousel-nav">
+        <button class="frame-carousel-prev btn-sm btn-sm-outline" data-node-id="${escapeHtml(nodeId)}" ${index === 0 ? 'disabled' : ''}>&#8249;</button>
+        <span class="frame-carousel-dots">
+          ${Array.from({ length: total }, (_, i) =>
+            `<span class="frame-carousel-dot ${i === index ? 'active' : ''}" data-node-id="${escapeHtml(nodeId)}" data-index="${i}"></span>`
+          ).join('')}
+        </span>
+        <button class="frame-carousel-next btn-sm btn-sm-outline" data-node-id="${escapeHtml(nodeId)}" ${index === total - 1 ? 'disabled' : ''}>&#8250;</button>
+      </div>
+      ` : ''}
     </div>`;
 }
 

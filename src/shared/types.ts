@@ -67,6 +67,10 @@ export interface MatchDetectionResult {
   suggestions?: Array<SearchResult & { score: number }>;
   translations?: TranslationEntry;
   metadata?: MultilanMetadata;
+  // Populated when status === 'exact' and the same text maps to ≥1 multilanId.
+  // Always contains the primary match plus any duplicates; UI renders a carousel
+  // when length > 1.
+  exactMatches?: SearchResult[];
 }
 
 export interface UnlinkedQueueItem {
