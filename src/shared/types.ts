@@ -4,6 +4,8 @@
 export const SUPPORTED_LANGUAGES = ["en", "fr", "nl", "de"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
+export const FOLDER_NAMES: readonly string[] = ["EB", "EBB", "PCB"];
+
 // Translation status values
 export type MultilanStatus =
   | "TO_TRANSLATE_INTERNALLY"

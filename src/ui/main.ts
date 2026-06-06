@@ -1,5 +1,5 @@
 import type { Language, PluginMessage } from '../shared/types';
-import { SUPPORTED_LANGUAGES } from '../shared/types';
+import { SUPPORTED_LANGUAGES, FOLDER_NAMES } from '../shared/types';
 import { store } from './state/store';
 import { pluginBridge } from './services/pluginBridge';
 import {
@@ -359,6 +359,11 @@ function init(): void {
   initTabs();
   initSearchPanel();
   initStatusBar();
+
+  // Render folder buttons immediately from the shared constant so the bar is
+  // visible from frame one — the init message arrives later (after plugin font
+  // preload + clientStorage reads) and just fills in the active/has-data state.
+  renderFolderButtons([...FOLDER_NAMES], null);
 
   // Subscribe to plugin messages
   pluginBridge.subscribe(handlePluginMessage);

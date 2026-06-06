@@ -12,6 +12,7 @@ import {
   PluginMessage,
   Language,
   SUPPORTED_LANGUAGES,
+  FOLDER_NAMES,
   FrameNodeMatchResult,
   TextNodeInfo,
   FolderDataStatus,
@@ -69,7 +70,6 @@ import {
 
 declare const __BUILD_TIMESTAMP__: string;
 const BUILD_TIMESTAMP = typeof __BUILD_TIMESTAMP__ !== "undefined" ? __BUILD_TIMESTAMP__ : new Date().toISOString();
-const FOLDER_NAMES = ['EB', 'EBB', 'PCB'];
 
 // ---- Compression helpers for clientStorage ----
 
