@@ -326,8 +326,9 @@ function attachFramePanelHandlers(container: HTMLElement): void {
   // Card click → select/zoom node on canvas
   container.querySelectorAll<HTMLElement>('.frame-node-group').forEach(group => {
     group.addEventListener('click', (e) => {
-      // Don't navigate if clicking a button
-      if ((e.target as HTMLElement).closest('button')) return;
+      // Don't navigate if clicking an interactive control — focusing collapses
+      // the multi-node selection on canvas, which the designer needs to keep.
+      if ((e.target as HTMLElement).closest('button, input, textarea, select')) return;
       const nodeId = group.dataset.nodeId;
       if (nodeId) pluginBridge.selectNode(nodeId);
     });
