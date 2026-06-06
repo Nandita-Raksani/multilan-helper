@@ -26,6 +26,7 @@ import { handleFrameMatchResult, clearCloseMatchSearchState } from './components
 import { handleUnlinkedQueue, advanceQueue, exitHighlightModePublic, resetSingleNodeSearchState, handleSingleNodeFuzzyResult } from './components/SearchPanel';
 import { showTraUploadModal, hideTraUploadModal } from './components/TraUploadModal';
 import { showToast } from './components/Toast';
+import { handleVerifyResult } from './components/ManualLinkWidget';
 
 /**
  * Get user's preferred language from browser settings
@@ -326,6 +327,25 @@ function handlePluginMessage(msg: PluginMessage): void {
       hideTraUploadModal();
       showToast(`Loaded ${count} translations for ${folder}`);
       setStatus(`${count} translations loaded`);
+      break;
+    }
+
+    case 'verify-multilan-id-result': {
+      if (msg.nodeId && msg.multilanId !== undefined && typeof msg.found === 'boolean') {
+        const consumed = handleVerifyResult(
+          msg.nodeId,
+          msg.multilanId,
+          msg.found,
+          msg.translations,
+        );
+        if (consumed) {
+          if (isFrameMode()) {
+            renderFramePanel();
+          } else {
+            renderGlobalSearchResults();
+          }
+        }
+      }
       break;
     }
 

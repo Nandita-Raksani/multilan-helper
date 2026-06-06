@@ -55,6 +55,14 @@ class PluginBridge {
     });
   }
 
+  verifyMultilanId(nodeId: string, multilanId: string): void {
+    this.send({
+      type: 'verify-multilan-id',
+      nodeId,
+      multilanId
+    });
+  }
+
   unlinkNode(nodeId: string): void {
     this.send({
       type: 'unlink-node',

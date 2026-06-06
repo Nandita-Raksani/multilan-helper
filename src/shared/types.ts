@@ -120,6 +120,7 @@ export type PluginMessageType =
   | "switch-folder"
   | "find-close-matches"
   | "upload-tra-files"
+  | "verify-multilan-id"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -139,6 +140,7 @@ export type UIMessageType =
   | "tra-upload-needed"
   | "upload-success"
   | "upload-failed"
+  | "verify-multilan-id-result"
   | "folder-data-status";
 
 // Combined message type for both directions
@@ -174,6 +176,10 @@ export interface PluginMessage {
   frameMatchResults?: FrameNodeMatchResult[];
   unlinkedQueue?: UnlinkedQueueItem[];
   hasSelection?: boolean;
+  // verify-multilan-id flow
+  found?: boolean;
+  translations?: TranslationEntry;
+  metadata?: MultilanMetadata;
 }
 
 // Constants

@@ -5,6 +5,7 @@ import { pluginBridge } from '../services/pluginBridge';
 import { showSearchBar } from './FramePanel';
 import { getElementById } from '../utils/dom';
 import { escapeHtml, copyToClipboard, debounce } from '../utils/dom';
+import { renderManualLinkWidget, wireManualLinkWidget, clearAllManualLinkState } from './ManualLinkWidget';
 
 // Status badge configuration - light bg with colored text (like GitHub labels)
 const STATUS_CONFIG: Record<MultilanStatus, { bg: string; text: string; label: string }> = {
@@ -390,7 +391,7 @@ function renderCloseMatchCard(
 }
 
 function renderSelectedNodeLayout(
-  node: { characters: string; name: string; multilanId: string | null },
+  node: { id: string; characters: string; name: string; multilanId: string | null },
   results: SearchResult[],
   state: ReturnType<typeof store.getState>
 ): string {
@@ -426,18 +427,21 @@ function renderSelectedNodeLayout(
       <button class="single-carousel-next btn-sm btn-sm-outline" ${singleNodeCarouselIndex === results.length - 1 ? 'disabled' : ''}>&#8250;</button>
     </div>` : '';
 
+  const canEdit = state.canEdit;
+  const showManualLink = canEdit && !isAlreadyLinked;
   return `
     ${renderSelectedNodeBubble(node)}
     <div class="connector-arrow"></div>
     <div class="results-grouped">
       ${cardHtml}
       ${carouselNav}
+      ${showManualLink ? renderManualLinkWidget(node.id) : ''}
     </div>
   `;
 }
 
 function renderSelectedNodeNoMatch(
-  node: { characters: string; name: string },
+  node: { id: string; characters: string; name: string },
 ): string {
   const canEdit = store.getState().canEdit;
 
@@ -468,6 +472,7 @@ function renderSelectedNodeNoMatch(
             <span class="match-badge match-badge-none">No match</span>
           </div>
         </div>
+        ${canEdit ? renderManualLinkWidget(node.id) : ''}
       </div>
     `;
   }
@@ -484,11 +489,20 @@ function renderSelectedNodeNoMatch(
         </div>
         ${canEdit ? '<div class="frame-node-actions" style="justify-content:flex-start"><button class="btn-sm btn-sm-brand btn-find-close-single">Find close match</button></div>' : ''}
       </div>
+      ${canEdit ? renderManualLinkWidget(node.id) : ''}
     </div>
   `;
 }
 
 export function renderGlobalSearchResults(): void {
+  renderGlobalSearchResultsImpl();
+  // innerHTML rewrites blow away listeners — re-attach manual-link wiring
+  // after every render path. The wire function is idempotent on stable DOM.
+  const container = getElementById<HTMLDivElement>('globalSearchResults');
+  wireManualLinkWidget(container, renderGlobalSearchResults, () => store.getState().currentLang);
+}
+
+function renderGlobalSearchResultsImpl(): void {
   const state = store.getState();
   let results = [...state.globalSearchResults];
   const hasSelection = state.selectedNode;

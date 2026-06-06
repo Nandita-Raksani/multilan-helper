@@ -3,6 +3,7 @@ import { SUPPORTED_LANGUAGES } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
 import { escapeHtml, copyToClipboard } from '../utils/dom';
+import { renderManualLinkWidget, wireManualLinkWidget } from './ManualLinkWidget';
 
 // Carousel state: tracks current suggestion index per nodeId
 const nodeCarouselIndexMap = new Map<string, number>();
@@ -114,6 +115,7 @@ function renderExactCard(item: FrameNodeMatchResult, currentLang: string, canEdi
         <div class="frame-node-card frame-node-card-exact">
           ${renderExactSlide(item.nodeId, match, index, total, currentLang, canEdit)}
         </div>
+        ${canEdit ? renderManualLinkWidget(item.nodeId) : ''}
       </div>
     </div>`;
 }
@@ -157,6 +159,7 @@ function renderCloseCard(item: FrameNodeMatchResult, currentLang: string, canEdi
         <div class="frame-node-card frame-node-card-close">
           ${renderSuggestionSlide(item.nodeId, suggestion, currentIndex, suggestions.length, currentLang, canEdit)}
         </div>
+        ${canEdit ? renderManualLinkWidget(item.nodeId) : ''}
       </div>
     </div>`;
 }
@@ -219,6 +222,7 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
               <span class="match-badge match-badge-none">No match</span>
             </div>
           </div>
+          ${canEdit ? renderManualLinkWidget(item.nodeId) : ''}
         </div>
       </div>`;
   }
@@ -235,6 +239,7 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
           </div>
           ${canEdit ? `<div class="frame-node-actions" style="justify-content:flex-start"><button class="btn-sm btn-sm-brand btn-find-close" data-node-id="${escapeHtml(item.nodeId)}" data-text="${escapeHtml(item.characters)}">Find close match</button></div>` : ''}
         </div>
+        ${canEdit ? renderManualLinkWidget(item.nodeId) : ''}
       </div>
     </div>`;
 }
@@ -405,4 +410,6 @@ function attachFramePanelHandlers(container: HTMLElement): void {
       renderFramePanel();
     });
   });
+
+  wireManualLinkWidget(container, renderFramePanel, () => store.getState().currentLang);
 }

@@ -731,6 +731,21 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
         figma.ui.postMessage({ type: "lookup-result", multilanId: msg.multilanId, translations, found: translations !== null });
       }
       break;
+    case "verify-multilan-id":
+      if (msg.multilanId !== undefined && msg.nodeId) {
+        const trimmed = msg.multilanId.trim();
+        const translations = trimmed ? getAllTranslations(translationData, trimmed) : null;
+        const metadata = trimmed && metadataData ? metadataData[trimmed] : undefined;
+        figma.ui.postMessage({
+          type: "verify-multilan-id-result",
+          nodeId: msg.nodeId,
+          multilanId: trimmed,
+          found: translations !== null,
+          translations: translations || undefined,
+          metadata,
+        });
+      }
+      break;
     case "mark-as-placeholder": await handleMarkAsPlaceholder(msg); break;
     case "detect-match":      handleDetectMatch(msg); break;
     case "get-unlinked-queue": {
