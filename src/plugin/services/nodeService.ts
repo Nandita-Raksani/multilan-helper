@@ -181,14 +181,19 @@ export function buildTextNodeInfo(
 }
 
 /**
- * Get all text nodes info for UI
+ * Get all text nodes info for UI. Skips nodes hidden via their own `visible`
+ * flag or any ancestor's — those don't render on canvas, so showing them in
+ * the frame list / search results / highlight is just noise (and often
+ * misleading, since they belong to a different screen/state).
  */
 export function getAllTextNodesInfo(
   scope: "page" | "selection",
   getTranslations: (multilanId: string) => TranslationEntry | null
 ): TextNodeInfo[] {
   const nodes = getTextNodesInScope(scope);
-  return nodes.map((node) => buildTextNodeInfo(node, getTranslations));
+  return nodes
+    .filter((node) => isEffectivelyVisible(node))
+    .map((node) => buildTextNodeInfo(node, getTranslations));
 }
 
 /**
