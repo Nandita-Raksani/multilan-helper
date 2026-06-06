@@ -365,11 +365,69 @@ function init(): void {
   // preload + clientStorage reads) and just fills in the active/has-data state.
   renderFolderButtons([...FOLDER_NAMES], null);
 
+  // Wire the bottom-right drag handle so the user can resize the plugin window
+  // (handy when working across two monitors).
+  initResizeHandle();
+
   // Subscribe to plugin messages
   pluginBridge.subscribe(handlePluginMessage);
 
   // Request initial data from plugin
   pluginBridge.init();
+}
+
+const MIN_UI_WIDTH = 320;
+const MIN_UI_HEIGHT = 420;
+
+function initResizeHandle(): void {
+  const handle = document.getElementById('resizeHandle');
+  if (!handle) return;
+
+  let resizing = false;
+  let pointerId = -1;
+  let frame = 0;
+  let pendingW = 0;
+  let pendingH = 0;
+
+  const flush = (): void => {
+    frame = 0;
+    pluginBridge.resizeUi(pendingW, pendingH);
+  };
+
+  handle.addEventListener('pointerdown', (e) => {
+    resizing = true;
+    pointerId = e.pointerId;
+    handle.setPointerCapture(pointerId);
+    handle.classList.add('is-resizing');
+    document.body.classList.add('is-resizing');
+    e.preventDefault();
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (!resizing) return;
+    pendingW = Math.max(MIN_UI_WIDTH, Math.round(e.clientX + 4));
+    pendingH = Math.max(MIN_UI_HEIGHT, Math.round(e.clientY + 4));
+    if (frame === 0) frame = requestAnimationFrame(flush);
+  });
+
+  const stop = (): void => {
+    if (!resizing) return;
+    resizing = false;
+    if (pointerId !== -1 && handle.hasPointerCapture(pointerId)) {
+      handle.releasePointerCapture(pointerId);
+    }
+    pointerId = -1;
+    handle.classList.remove('is-resizing');
+    document.body.classList.remove('is-resizing');
+    if (frame !== 0) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      pluginBridge.resizeUi(pendingW, pendingH);
+    }
+  };
+
+  handle.addEventListener('pointerup', stop);
+  handle.addEventListener('pointercancel', stop);
 }
 
 // Initialize when DOM is ready

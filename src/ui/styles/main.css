@@ -1658,3 +1658,41 @@ body {
   font-size: 10px;
   margin-bottom: 2px;
 }
+
+/* Resize handle (bottom-right of the iframe viewport) */
+.resize-handle {
+  position: fixed;
+  right: 2px;
+  bottom: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--figma-color-text-secondary);
+  cursor: nwse-resize;
+  opacity: 0.9;
+  border-radius: 3px;
+  transition: background-color 0.15s, color 0.15s;
+  z-index: 100;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.resize-handle:hover {
+  color: var(--figma-color-text);
+  background: var(--figma-color-bg-hover, var(--figma-color-bg-secondary));
+}
+
+.resize-handle.is-resizing {
+  color: var(--figma-color-text-brand, var(--figma-color-text));
+  background: var(--figma-color-bg-hover, var(--figma-color-bg-secondary));
+}
+
+body.is-resizing,
+body.is-resizing * {
+  cursor: nwse-resize !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}

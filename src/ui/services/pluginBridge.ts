@@ -131,6 +131,10 @@ class PluginBridge {
     this.send({ type: 'clear-selection' });
   }
 
+  resizeUi(width: number, height: number): void {
+    this.send({ type: 'resize-ui', width, height });
+  }
+
 }
 
 export const pluginBridge = new PluginBridge();

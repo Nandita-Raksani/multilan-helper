@@ -698,11 +698,41 @@ async function handleUploadTraFiles(msg: PluginMessage): Promise<void> {
 
 // ---- UI Setup & Event Wiring ----
 
+const UI_SIZE_STORAGE_KEY = "ui-size";
+const DEFAULT_UI_WIDTH = 360;
+const DEFAULT_UI_HEIGHT = 500;
+const MIN_UI_WIDTH = 320;
+const MIN_UI_HEIGHT = 420;
+
 figma.showUI(__html__, {
-  width: 360,
-  height: 500,
+  width: DEFAULT_UI_WIDTH,
+  height: DEFAULT_UI_HEIGHT,
   themeColors: true,
 });
+
+// Restore last-used size from clientStorage so the plugin opens at the size
+// the user left it at (e.g. spanning a second monitor).
+figma.clientStorage.getAsync(UI_SIZE_STORAGE_KEY).then((saved: unknown) => {
+  if (saved && typeof saved === "object") {
+    const s = saved as { width?: number; height?: number };
+    if (typeof s.width === "number" && typeof s.height === "number") {
+      figma.ui.resize(
+        Math.max(MIN_UI_WIDTH, s.width),
+        Math.max(MIN_UI_HEIGHT, s.height),
+      );
+    }
+  }
+}).catch(() => { /* first launch, no saved size */ });
+
+let saveSizeTimer: ReturnType<typeof setTimeout> | null = null;
+function persistUiSize(width: number, height: number): void {
+  if (saveSizeTimer !== null) clearTimeout(saveSizeTimer);
+  saveSizeTimer = setTimeout(() => {
+    saveSizeTimer = null;
+    figma.clientStorage.setAsync(UI_SIZE_STORAGE_KEY, { width, height })
+      .catch(() => { /* best-effort */ });
+  }, 300);
+}
 
 figma.on("selectionchange", () => {
   if (selectionChangeTimer !== null) {
@@ -772,6 +802,14 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     case "clear-selection":   figma.currentPage.selection = []; break;
     case "switch-folder":     await handleSwitchFolder(msg); break;
     case "upload-tra-files":  await handleUploadTraFiles(msg); break;
+    case "resize-ui":
+      if (typeof msg.width === "number" && typeof msg.height === "number") {
+        const w = Math.max(MIN_UI_WIDTH, Math.floor(msg.width));
+        const h = Math.max(MIN_UI_HEIGHT, Math.floor(msg.height));
+        figma.ui.resize(w, h);
+        persistUiSize(w, h);
+      }
+      break;
     case "close":             figma.closePlugin(); break;
   }
 };

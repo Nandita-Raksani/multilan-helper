@@ -123,6 +123,7 @@ export type PluginMessageType =
   | "find-close-matches"
   | "upload-tra-files"
   | "verify-multilan-id"
+  | "resize-ui"
   | "close";
 
 // UI message types (Plugin -> UI)
@@ -182,6 +183,9 @@ export interface PluginMessage {
   found?: boolean;
   translations?: TranslationEntry;
   metadata?: MultilanMetadata;
+  // resize-ui flow
+  width?: number;
+  height?: number;
 }
 
 // Constants
