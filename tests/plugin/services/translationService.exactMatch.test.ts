@@ -179,5 +179,13 @@ describe("exact-match handling with duplicate text", () => {
       expect(result.status).toBe("exact");
       expect(result.exactMatches?.map(m => m.multilanId)).toEqual(["M-1", "M-2", "M-3"]);
     });
+
+    it("finds an accented entry when the query omits the accent (close match)", async () => {
+      // The user types plain ASCII; the translation carries the accent.
+      const data: TranslationMap = { "M-1": { fr: "opération" } }; // opération
+      const result = await detectMatchAsync(data, "operation");
+      expect(result.status).toBe("close");
+      expect(result.suggestions?.[0].multilanId).toBe("M-1");
+    });
   });
 });

@@ -115,6 +115,27 @@ describe("translationService", () => {
     it("should return 0 for no match", () => {
       expect(calculateMatchScore("xyz", "Submit")).toBe(0);
     });
+
+    it("is accent-insensitive so users need not type diacritics", () => {
+      expect(calculateMatchScore("operation", "opération")).toBe(1); // opération
+      expect(calculateMatchScore("resume", "résumé")).toBe(1);   // résumé
+      // Query with accents also matches unaccented text.
+      expect(calculateMatchScore("crème", "creme")).toBe(1);
+    });
+
+    it("treats apostrophe and space variants as equivalent (lenient French punctuation)", () => {
+      // curly apostrophe vs straight
+      expect(calculateMatchScore("l’objet", "l'objet")).toBe(1);
+      // narrow no-break space (U+202F, common before French '?') vs normal space
+      expect(calculateMatchScore("Continuer\u202f?", "Continuer ?")).toBe(1); // narrow no-break vs normal space
+    });
+
+    it("scores a loosely-typed French phrase as a strong match", () => {
+      // Typed without the accent and with a plain space before '?'.
+      const typed = "Supprimer l'operation ?";
+      const stored = "Supprimer l'op\u00e9ration\u202f?"; // accented + narrow no-break space
+      expect(calculateMatchScore(typed, stored)).toBe(1);
+    });
   });
 
   describe("searchTranslationsWithScoreAsync", () => {

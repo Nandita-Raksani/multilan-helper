@@ -91,6 +91,27 @@ export function normalizeExactKey(text: string): string {
   return text.normalize('NFC');
 }
 
+/**
+ * Fold text for lenient *search* matching so users don't have to type strictly.
+ * Unlike normalizeExactKey (which preserves the text), this deliberately erases
+ * differences a searcher shouldn't have to reproduce:
+ *  - accents/diacritics: "operation" matches "opération", "resume" ~ "résumé"
+ *  - apostrophe variants: straight ' , curly ’ , modifier ʼ are equivalent
+ *  - space variants: no-break (U+00A0), narrow no-break (U+202F, common before
+ *    French "?"/"!"), and thin (U+2009) spaces are treated as a normal space
+ *  - case
+ * This is used only for scoring/ranking; the stored translation text (and its
+ * real punctuation) is never altered.
+ */
+export function foldForSearch(text: string): string {
+  return text
+    .normalize('NFD')                       // separate base letters from accents
+    .replace(/[\u0300-\u036f]/g, '')         // drop the combining accents
+    .replace(/[\u2018\u2019\u02bc]/g, "\'")  // curly / modifier apostrophes -> straight
+    .replace(/[\u00a0\u202f\u2009]/g, ' ')   // no-break / narrow / thin spaces -> normal
+    .toLowerCase();
+}
+
 // ---- Variable Handling ----
 
 /**
@@ -190,27 +211,29 @@ function levenshteinDistance(a: string, b: string, maxDistance?: number): number
  * sooner on long text — the dominant cost when detecting close matches.
  */
 export function calculateMatchScore(query: string, text: string, minScore: number = 0): number {
-  const lowerQuery = query.toLowerCase();
-  const lowerText = text.toLowerCase();
+  // Fold both sides so accents, apostrophe/space variants and case don't force
+  // the user to type the text exactly (e.g. "operation" finds "opération").
+  const foldedQuery = foldForSearch(query);
+  const foldedText = foldForSearch(text);
 
-  if (lowerText === lowerQuery) return 1;
+  if (foldedText === foldedQuery) return 1;
 
-  const maxLen = Math.max(lowerQuery.length, lowerText.length);
+  const maxLen = Math.max(foldedQuery.length, foldedText.length);
   if (maxLen === 0) return 0;
 
   // Tighten the edit-distance ceiling to the strictest bound the caller cares
   // about. similarity >= s  ⇔  distance <= (1 - s) * maxLen.
   const minSimilarity = Math.max(MIN_SIMILARITY_THRESHOLD, minScore);
   const maxDistance = Math.floor((1 - minSimilarity) * maxLen);
-  const distance = levenshteinDistance(lowerQuery, lowerText, maxDistance);
+  const distance = levenshteinDistance(foldedQuery, foldedText, maxDistance);
 
   let score = distance <= maxDistance ? 1 - distance / maxLen : 0;
 
   // Substring relationships are weaker signals — only surface them when the
   // caller's threshold can actually admit them (avoids wasted work + noise).
-  if (SUBSTRING_CONTAINS_SCORE >= minScore && lowerText.includes(lowerQuery)) {
+  if (SUBSTRING_CONTAINS_SCORE >= minScore && foldedText.includes(foldedQuery)) {
     score = Math.max(score, SUBSTRING_CONTAINS_SCORE);
-  } else if (SUBSTRING_CONTAINED_SCORE >= minScore && lowerQuery.includes(lowerText)) {
+  } else if (SUBSTRING_CONTAINED_SCORE >= minScore && foldedQuery.includes(foldedText)) {
     score = Math.max(score, SUBSTRING_CONTAINED_SCORE);
   }
 
