@@ -131,8 +131,8 @@ class PluginBridge {
     this.send({ type: 'clear-selection' });
   }
 
-  resizeUi(width: number, height: number): void {
-    this.send({ type: 'resize-ui', width, height });
+  resizeUi(width: number, height: number, collapsed = false): void {
+    this.send({ type: 'resize-ui', width, height, collapsed });
   }
 
 }

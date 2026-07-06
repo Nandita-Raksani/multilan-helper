@@ -369,6 +369,10 @@ function init(): void {
   // (handy when working across two monitors).
   initResizeHandle();
 
+  // Wire the header collapse toggle so the panel can shrink to just its header
+  // without closing the plugin.
+  initCollapseToggle();
+
   // Subscribe to plugin messages
   pluginBridge.subscribe(handlePluginMessage);
 
@@ -378,6 +382,43 @@ function init(): void {
 
 const MIN_UI_WIDTH = 320;
 const MIN_UI_HEIGHT = 420;
+/** Window height when collapsed — just the header bar (see .app-header in CSS). */
+const COLLAPSED_UI_HEIGHT = 33;
+
+/**
+ * Collapse toggle: shrinks the plugin window down to just its header bar and
+ * restores it, without closing the plugin. The pre-collapse height is remembered
+ * so expanding returns to the same size.
+ */
+function initCollapseToggle(): void {
+  const toggle = document.getElementById('collapseToggle');
+  const app = document.getElementById('app');
+  if (!toggle || !app) return;
+
+  let collapsed = false;
+  let expandedHeight = 0;
+
+  toggle.addEventListener('click', () => {
+    collapsed = !collapsed;
+    const width = Math.round(window.innerWidth);
+
+    if (collapsed) {
+      expandedHeight = Math.round(window.innerHeight);
+      app.classList.add('is-collapsed');
+      toggle.classList.add('is-collapsed');
+      toggle.title = 'Expand';
+      toggle.setAttribute('aria-label', 'Expand panel');
+      // `collapsed` flag lets the plugin resize below the normal minimum height.
+      pluginBridge.resizeUi(width, COLLAPSED_UI_HEIGHT, true);
+    } else {
+      app.classList.remove('is-collapsed');
+      toggle.classList.remove('is-collapsed');
+      toggle.title = 'Collapse';
+      toggle.setAttribute('aria-label', 'Collapse panel');
+      pluginBridge.resizeUi(width, Math.max(MIN_UI_HEIGHT, expandedHeight));
+    }
+  });
+}
 
 function initResizeHandle(): void {
   const handle = document.getElementById('resizeHandle');

@@ -5,6 +5,16 @@
 </head>
 <body>
   <div id="app">
+    <!-- App header: title + collapse toggle (stays visible when collapsed) -->
+    <div id="appHeader" class="app-header">
+      <span class="app-header-title">Multilan Helper</span>
+      <button id="collapseToggle" class="collapse-toggle" type="button" title="Collapse" aria-label="Collapse panel">
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M2.5 4.5 L6 8 L9.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
     <!-- View Mode Banner (shown for non-editors) -->
     <div id="viewModeBanner" class="view-mode-banner" style="display: none;">
       Preview Mode - Browse translations and copy text (editing requires full seat)

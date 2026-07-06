@@ -1,89 +1,30 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { setupUIFixture } from "../setup";
-import { initTabs, setActiveTab, getCurrentTab, onTabChange } from "../../../src/ui/components/Tabs";
+import { initTabs, getCurrentTab } from "../../../src/ui/components/Tabs";
 
+// Tabs was collapsed to a single-tab stub. The multi-tab API
+// (setActiveTab / onTabChange / clickable data-tab switching) was removed,
+// so the surviving behaviour is: initTabs is a no-op that must not throw,
+// and getCurrentTab always reports the sole 'search' tab.
 describe("Tabs", () => {
   beforeEach(() => {
     setupUIFixture();
   });
 
   describe("initTabs", () => {
-    it("should set up tab click handlers", () => {
-      initTabs();
-
-      const textsTab = document.querySelector('[data-tab="texts"]') as HTMLElement;
-      textsTab.click();
-
-      expect(textsTab.classList.contains("active")).toBe(true);
-      expect(document.getElementById("textsPanel")?.classList.contains("active")).toBe(true);
-    });
-
-    it("should deactivate other tabs when clicking", () => {
-      initTabs();
-
-      const searchTab = document.querySelector('[data-tab="search"]') as HTMLElement;
-      const textsTab = document.querySelector('[data-tab="texts"]') as HTMLElement;
-
-      textsTab.click();
-
-      expect(searchTab.classList.contains("active")).toBe(false);
-      expect(document.getElementById("searchPanel")?.classList.contains("active")).toBe(false);
-    });
-
-    it("should switch between all tabs", () => {
-      initTabs();
-
-      const textsTab = document.querySelector('[data-tab="texts"]') as HTMLElement;
-      textsTab.click();
-
-      expect(textsTab.classList.contains("active")).toBe(true);
-      expect(document.getElementById("textsPanel")?.classList.contains("active")).toBe(true);
-    });
-  });
-
-  describe("setActiveTab", () => {
-    it("should programmatically set active tab", () => {
-      setActiveTab("texts");
-
-      const textsTab = document.querySelector('[data-tab="texts"]');
-      const textsPanel = document.getElementById("textsPanel");
-
-      expect(textsTab?.classList.contains("active")).toBe(true);
-      expect(textsPanel?.classList.contains("active")).toBe(true);
-    });
-
-    it("should deactivate other tabs", () => {
-      setActiveTab("texts");
-
-      const searchTab = document.querySelector('[data-tab="search"]');
-      const searchPanel = document.getElementById("searchPanel");
-
-      expect(searchTab?.classList.contains("active")).toBe(false);
-      expect(searchPanel?.classList.contains("active")).toBe(false);
+    it("should run without throwing", () => {
+      expect(() => initTabs()).not.toThrow();
     });
   });
 
   describe("getCurrentTab", () => {
-    it("should return current active tab", () => {
-      expect(getCurrentTab()).toBe("search"); // default active
+    it("should always report the single 'search' tab", () => {
+      expect(getCurrentTab()).toBe("search");
     });
 
-    it("should return updated tab after change", () => {
-      setActiveTab("texts");
-      expect(getCurrentTab()).toBe("texts");
-    });
-  });
-
-  describe("onTabChange", () => {
-    it("should call callback when tab changes", () => {
-      const callback = vi.fn();
-      onTabChange(callback);
+    it("should still report 'search' after initTabs", () => {
       initTabs();
-
-      const textsTab = document.querySelector('[data-tab="texts"]') as HTMLElement;
-      textsTab.click();
-
-      expect(callback).toHaveBeenCalledWith("texts");
+      expect(getCurrentTab()).toBe("search");
     });
   });
 });

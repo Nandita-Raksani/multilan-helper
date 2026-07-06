@@ -3,11 +3,8 @@ import { setupUIFixture, mockParentPostMessage, sampleSearchResults, sampleTextN
 import { store } from "../../../src/ui/state/store";
 import {
   initSearchPanel,
-  updateSearchSelectedNode,
   renderGlobalSearchResults,
-  setSearchQuery,
   clearSearch,
-  triggerSearch,
 } from "../../../src/ui/components/SearchPanel";
 
 describe("SearchPanel", () => {
@@ -22,6 +19,8 @@ describe("SearchPanel", () => {
       scope: "page",
       textNodes: [],
       selectedNode: null,
+      matchResult: null,
+      hasSelection: false,
       placeholders: { username: "John", count: "5" },
       bulkLinkResults: null,
       globalSearchResults: [],
@@ -33,85 +32,14 @@ describe("SearchPanel", () => {
     vi.unstubAllGlobals();
   });
 
-  describe("updateSearchSelectedNode", () => {
-    it("should show selected node banner when node is selected", () => {
-      store.setState({ selectedNode: sampleTextNodes[0] });
-      updateSearchSelectedNode();
-
-      const banner = document.getElementById("searchSelectedNode");
-      expect(banner?.style.display).toBe("block");
-    });
-
-    it("should hide selected node banner when no selection", () => {
-      store.setState({ selectedNode: null });
-      updateSearchSelectedNode();
-
-      const banner = document.getElementById("searchSelectedNode");
-      expect(banner?.style.display).toBe("none");
-    });
-
-    it("should show selected text content", () => {
-      store.setState({ selectedNode: sampleTextNodes[0] });
-      updateSearchSelectedNode();
-
-      const text = document.getElementById("searchSelectedText");
-      expect(text?.textContent).toContain("Submit");
-    });
-
-    it("should show linked badge for linked node", () => {
-      store.setState({ selectedNode: sampleTextNodes[0] });
-      updateSearchSelectedNode();
-
-      const badge = document.getElementById("searchSelectedBadge");
-      expect(badge?.textContent).toBe("10001");
-      expect(badge?.className).toContain("btn-sm-success");
-      expect(badge?.style.cursor).toBe("pointer");
-    });
-
-    it("should show 'Not linked' badge for unlinked node", () => {
-      store.setState({ selectedNode: sampleTextNodes[1] });
-      updateSearchSelectedNode();
-
-      const badge = document.getElementById("searchSelectedBadge");
-      expect(badge?.textContent).toBe("Not linked");
-      expect(badge?.className).toContain("status-badge-inline");
-    });
-
-    it("should show unlink button for linked node", () => {
-      store.setState({ selectedNode: sampleTextNodes[0] });
-      updateSearchSelectedNode();
-
-      const actions = document.getElementById("searchSelectedActions");
-      expect(actions?.querySelector("#searchUnlinkBtn")).not.toBeNull();
-    });
-
-    it("should handle unlink button click", () => {
-      store.setState({ selectedNode: sampleTextNodes[0] });
-      initSearchPanel();
-      updateSearchSelectedNode();
-
-      const unlinkBtn = document.getElementById("searchUnlinkBtn") as HTMLButtonElement;
-      unlinkBtn.click();
-
-      expect(postMessageMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pluginMessage: expect.objectContaining({
-            type: "unlink-node",
-            nodeId: "node-1",
-          }),
-        }),
-        "*"
-      );
-    });
-  });
-
   describe("renderGlobalSearchResults", () => {
-    it("should show empty state when no results and no query", () => {
+    it("should render nothing when no results and no query", () => {
       store.setState({ globalSearchResults: [] });
       renderGlobalSearchResults();
 
       const results = document.getElementById("globalSearchResults");
-      expect(results?.textContent).toContain("Start typing to search");
+      expect(results?.querySelectorAll(".search-result-card").length).toBe(0);
+      expect(results?.textContent?.trim()).toBe("");
     });
 
     it("should show 'no translations found' when query but no results", () => {
@@ -146,7 +74,7 @@ describe("SearchPanel", () => {
       store.setState({ globalSearchResults: sampleSearchResults });
       renderGlobalSearchResults();
 
-      const header = document.querySelector(".clickable-id");
+      const header = document.querySelector(".search-result-id");
       expect(header?.textContent).toBe("10001");
     });
 
@@ -180,36 +108,28 @@ describe("SearchPanel", () => {
       expect(linkBtn).toBeNull();
     });
 
-    it("should show 'Currently linked' for matching linked node", () => {
+    it("should show Unlink action on the currently linked result card", () => {
       store.setState({
         globalSearchResults: sampleSearchResults,
         selectedNode: sampleTextNodes[0], // linked to 10001
       });
       renderGlobalSearchResults();
 
-      const firstCard = document.querySelector('[data-multilan-id="10001"]');
-      expect(firstCard?.textContent).toContain("Currently linked");
+      const linkedCard = document.querySelector('[data-multilan-id="10001"]');
+      expect(linkedCard?.querySelector(".btn-unlink-result")).not.toBeNull();
     });
 
-    it("should show Create button on all results", () => {
-      store.setState({ globalSearchResults: sampleSearchResults });
-      renderGlobalSearchResults();
-
-      const createBtns = document.querySelectorAll(".btn-create-result");
-      expect(createBtns.length).toBe(2);
-    });
-
-    it("should handle clickable ID click to copy", () => {
+    it("should handle copy button click", () => {
       store.setState({ globalSearchResults: sampleSearchResults });
       initSearchPanel();
       renderGlobalSearchResults();
 
       document.execCommand = vi.fn().mockReturnValue(true);
 
-      const clickableId = document.querySelector(".clickable-id") as HTMLSpanElement;
-      clickableId.click();
+      const copyBtn = document.querySelector(".copy-btn") as HTMLButtonElement;
+      copyBtn.click();
 
-      expect(clickableId.textContent).toBe("Copied!");
+      expect(copyBtn.classList.contains("copied")).toBe(true);
     });
 
     it("should handle Link button click", () => {
@@ -234,64 +154,17 @@ describe("SearchPanel", () => {
         "*"
       );
     });
-
-    it("should handle Create button click", () => {
-      store.setState({ globalSearchResults: sampleSearchResults });
-      initSearchPanel();
-      renderGlobalSearchResults();
-
-      const createBtn = document.querySelector(".btn-create-result") as HTMLButtonElement;
-      createBtn.click();
-
-      expect(postMessageMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pluginMessage: expect.objectContaining({
-            type: "create-linked-text",
-            multilanId: "10001",
-          }),
-        }),
-        "*"
-      );
-    });
-
-  });
-
-  describe("setSearchQuery", () => {
-    it("should set search input value", () => {
-      setSearchQuery("test query");
-
-      const input = document.getElementById("globalSearchInput") as HTMLInputElement;
-      expect(input.value).toBe("test query");
-    });
   });
 
   describe("clearSearch", () => {
     it("should clear search input and results", () => {
       store.setState({ globalSearchResults: sampleSearchResults });
-      setSearchQuery("test");
+      const input = document.getElementById("globalSearchInput") as HTMLInputElement;
+      input.value = "test";
       clearSearch();
 
-      const input = document.getElementById("globalSearchInput") as HTMLInputElement;
       expect(input.value).toBe("");
       expect(store.getState().globalSearchResults).toEqual([]);
-    });
-  });
-
-  describe("triggerSearch", () => {
-    it("should set query and trigger search", () => {
-      triggerSearch("Submit");
-
-      const input = document.getElementById("globalSearchInput") as HTMLInputElement;
-      expect(input.value).toBe("Submit");
-      expect(postMessageMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pluginMessage: expect.objectContaining({
-            type: "global-search",
-            searchQuery: "Submit",
-          }),
-        }),
-        "*"
-      );
     });
   });
 
@@ -319,6 +192,5 @@ describe("SearchPanel", () => {
       );
       vi.useRealTimers();
     });
-
   });
 });

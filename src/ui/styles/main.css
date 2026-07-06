@@ -12,6 +12,57 @@ body {
   background: var(--figma-color-bg);
 }
 
+/* App Header (title + collapse toggle) */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--figma-color-bg-secondary);
+  border-bottom: 1px solid var(--figma-color-border);
+  position: sticky;
+  top: 0;
+  z-index: 12;
+}
+
+.app-header-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--figma-color-text);
+}
+
+.collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--figma-color-text-secondary);
+  cursor: pointer;
+}
+
+.collapse-toggle:hover {
+  background: var(--figma-color-bg-hover);
+  color: var(--figma-color-text);
+}
+
+/* Rotate the chevron to point up when collapsed (indicates "expand") */
+.collapse-toggle svg {
+  transition: transform 0.15s ease;
+}
+.collapse-toggle.is-collapsed svg {
+  transform: rotate(180deg);
+}
+
+/* Collapsed: keep only the header visible, hiding the rest of the panel. */
+#app.is-collapsed > *:not(.app-header) {
+  display: none;
+}
+
 /* Folder Selector */
 .folder-selector-section {
   background: var(--figma-color-bg-secondary);

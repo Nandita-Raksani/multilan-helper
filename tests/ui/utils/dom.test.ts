@@ -1,15 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   escapeHtml,
   copyToClipboard,
   getElementById,
-  querySelector,
   querySelectorAll,
-  createElement,
-  setInnerHTML,
-  addEvent,
   debounce,
-  showButtonFeedback,
 } from "../../../src/ui/utils/dom";
 
 describe("dom utilities", () => {
@@ -28,6 +23,12 @@ describe("dom utilities", () => {
       expect(escapeHtml("Tom & Jerry")).toBe("Tom &amp; Jerry");
     });
 
+    it("should escape the ampersand first to avoid double-encoding", () => {
+      // If '<' were escaped before '&', the resulting '&lt;' would be
+      // re-escaped into '&amp;lt;'. The correct order yields a single entity.
+      expect(escapeHtml("a & <b>")).toBe("a &amp; &lt;b&gt;");
+    });
+
     it("should escape quotes for safe attribute use", () => {
       expect(escapeHtml('"quoted"')).toBe("&quot;quoted&quot;");
       expect(escapeHtml("it's")).toBe("it&#39;s");
@@ -43,7 +44,7 @@ describe("dom utilities", () => {
   });
 
   describe("copyToClipboard", () => {
-    it("should copy text to clipboard", () => {
+    it("should copy text to clipboard via execCommand", () => {
       const execCommandMock = vi.fn().mockReturnValue(true);
       document.execCommand = execCommandMock;
 
@@ -53,7 +54,7 @@ describe("dom utilities", () => {
       expect(execCommandMock).toHaveBeenCalledWith("copy");
     });
 
-    it("should return false if copy fails", () => {
+    it("should return false if copy throws", () => {
       document.execCommand = vi.fn().mockImplementation(() => {
         throw new Error("Copy failed");
       });
@@ -63,12 +64,21 @@ describe("dom utilities", () => {
       expect(result).toBe(false);
     });
 
-    it("should clean up textarea after copying", () => {
+    it("should not leave a textarea in the document afterwards", () => {
       document.execCommand = vi.fn().mockReturnValue(true);
 
       copyToClipboard("test text");
 
-      // No textarea should remain in the document
+      expect(document.querySelector("textarea")).toBeNull();
+    });
+
+    it("should clean up the textarea even when copy fails", () => {
+      document.execCommand = vi.fn().mockImplementation(() => {
+        throw new Error("Copy failed");
+      });
+
+      copyToClipboard("test text");
+
       expect(document.querySelector("textarea")).toBeNull();
     });
   });
@@ -83,41 +93,10 @@ describe("dom utilities", () => {
       expect(element.textContent).toBe("Test");
     });
 
-    it("should throw error for non-existent element", () => {
+    it("should throw a descriptive error for a non-existent element", () => {
       expect(() => getElementById("non-existent")).toThrow(
         'Element with id "non-existent" not found'
       );
-    });
-  });
-
-  describe("querySelector", () => {
-    it("should find element by selector", () => {
-      document.body.innerHTML = '<div class="test-class">Test</div>';
-
-      const element = querySelector(".test-class");
-
-      expect(element).not.toBeNull();
-      expect(element!.textContent).toBe("Test");
-    });
-
-    it("should return null for non-existent element", () => {
-      const element = querySelector(".non-existent");
-
-      expect(element).toBeNull();
-    });
-
-    it("should search within parent element", () => {
-      document.body.innerHTML = `
-        <div id="parent">
-          <span class="child">Child</span>
-        </div>
-        <span class="child">Outside</span>
-      `;
-
-      const parent = document.getElementById("parent")!;
-      const element = querySelector(".child", parent);
-
-      expect(element!.textContent).toBe("Child");
     });
   });
 
@@ -134,83 +113,30 @@ describe("dom utilities", () => {
       expect(elements.length).toBe(3);
     });
 
-    it("should return empty list for no matches", () => {
+    it("should return an empty list for no matches", () => {
       const elements = querySelectorAll(".non-existent");
 
       expect(elements.length).toBe(0);
     });
-  });
 
-  describe("createElement", () => {
-    it("should create element with tag", () => {
-      const element = createElement("div");
+    it("should scope the search to the provided root", () => {
+      document.body.innerHTML = `
+        <div id="parent">
+          <span class="child">Inside</span>
+        </div>
+        <span class="child">Outside</span>
+      `;
 
-      expect(element.tagName).toBe("DIV");
-    });
+      const parent = document.getElementById("parent")!;
+      const elements = querySelectorAll<HTMLElement>(".child", parent);
 
-    it("should create element with attributes", () => {
-      const element = createElement("button", {
-        id: "test-btn",
-        class: "btn primary",
-        "data-action": "submit",
-      });
-
-      expect(element.id).toBe("test-btn");
-      expect(element.className).toBe("btn primary");
-      expect(element.getAttribute("data-action")).toBe("submit");
-    });
-
-    it("should create element with text children", () => {
-      const element = createElement("p", {}, ["Hello ", "World"]);
-
-      expect(element.textContent).toBe("Hello World");
-    });
-
-    it("should create element with node children", () => {
-      const child = document.createElement("span");
-      child.textContent = "Child";
-
-      const element = createElement("div", {}, [child]);
-
-      expect(element.querySelector("span")!.textContent).toBe("Child");
-    });
-  });
-
-  describe("setInnerHTML", () => {
-    it("should set innerHTML of element", () => {
-      const element = document.createElement("div");
-
-      setInnerHTML(element, "<strong>Bold</strong>");
-
-      expect(element.innerHTML).toBe("<strong>Bold</strong>");
-    });
-  });
-
-  describe("addEvent", () => {
-    it("should add event listener", () => {
-      const button = document.createElement("button");
-      const handler = vi.fn();
-
-      addEvent(button, "click", handler);
-      button.click();
-
-      expect(handler).toHaveBeenCalled();
-    });
-
-    it("should return cleanup function", () => {
-      const button = document.createElement("button");
-      const handler = vi.fn();
-
-      const cleanup = addEvent(button, "click", handler);
-      cleanup();
-      button.click();
-
-      expect(handler).not.toHaveBeenCalled();
+      expect(elements.length).toBe(1);
+      expect(elements[0].textContent).toBe("Inside");
     });
   });
 
   describe("debounce", () => {
-    it("should debounce function calls", async () => {
+    it("should coalesce rapid calls into a single invocation", () => {
       vi.useFakeTimers();
       const fn = vi.fn();
       const debounced = debounce(fn, 100);
@@ -227,33 +153,32 @@ describe("dom utilities", () => {
       vi.useRealTimers();
     });
 
-    it("should pass arguments to debounced function", async () => {
+    it("should not fire before the delay elapses", () => {
       vi.useFakeTimers();
       const fn = vi.fn();
       const debounced = debounce(fn, 100);
 
-      debounced("arg1", "arg2");
+      debounced();
+      vi.advanceTimersByTime(99);
+      expect(fn).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1);
+      expect(fn).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+
+    it("should invoke with the arguments of the most recent call", () => {
+      vi.useFakeTimers();
+      const fn = vi.fn();
+      const debounced = debounce(fn, 100);
+
+      debounced("first");
+      debounced("second");
 
       vi.advanceTimersByTime(100);
 
-      expect(fn).toHaveBeenCalledWith("arg1", "arg2");
-      vi.useRealTimers();
-    });
-  });
-
-  describe("showButtonFeedback", () => {
-    it("should show feedback text temporarily", () => {
-      vi.useFakeTimers();
-      const button = document.createElement("button");
-      button.textContent = "Copy";
-
-      showButtonFeedback(button, "Copy", "Copied!", 1000);
-
-      expect(button.textContent).toBe("Copied!");
-
-      vi.advanceTimersByTime(1000);
-
-      expect(button.textContent).toBe("Copy");
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(fn).toHaveBeenCalledWith("second");
       vi.useRealTimers();
     });
   });

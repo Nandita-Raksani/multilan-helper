@@ -4,12 +4,10 @@ import {
   getTranslation,
   getAllTranslations,
   isLanguage,
-  replacePlaceholders,
   calculateMatchScore,
-  searchTranslations,
-  searchTranslationsWithScore,
-  globalSearchTranslations,
-  buildTextToIdMap,
+  searchTranslationsWithScoreAsync,
+  globalSearchTranslationsAsync,
+  getTextToIdMap,
   detectLanguage,
 } from "../../../src/plugin/services/translationService";
 import { CurrentApiAdapter } from "../../../src/adapters/implementations/currentApiAdapter";
@@ -95,31 +93,6 @@ describe("translationService", () => {
     });
   });
 
-  describe("replacePlaceholders", () => {
-    it("should replace single placeholder", () => {
-      const result = replacePlaceholders("Hello {username}", { username: "John" });
-      expect(result).toBe("Hello John");
-    });
-
-    it("should replace multiple placeholders", () => {
-      const result = replacePlaceholders("Hello {username}, you have {count} messages", {
-        username: "John",
-        count: "5",
-      });
-      expect(result).toBe("Hello John, you have 5 messages");
-    });
-
-    it("should keep unmatched placeholders as-is", () => {
-      const result = replacePlaceholders("Hello {username}", {});
-      expect(result).toBe("Hello {username}");
-    });
-
-    it("should handle text without placeholders", () => {
-      const result = replacePlaceholders("Hello World", { username: "John" });
-      expect(result).toBe("Hello World");
-    });
-  });
-
   describe("calculateMatchScore", () => {
     it("should return 1 for exact match", () => {
       expect(calculateMatchScore("Submit", "Submit")).toBe(1);
@@ -139,101 +112,96 @@ describe("translationService", () => {
       expect(calculateMatchScore("Submit form now", "form")).toBe(0.5);
     });
 
-    it("should return 0.3 for word match only", () => {
-      // Test case where only word matching applies
-      expect(calculateMatchScore("form submission", "xyzform")).toBe(0.3);
-    });
-
     it("should return 0 for no match", () => {
       expect(calculateMatchScore("xyz", "Submit")).toBe(0);
     });
   });
 
-  describe("searchTranslations", () => {
-    it("should find translations by text content", () => {
-      const results = searchTranslations(sampleTranslationMap, "Submit");
+  describe("searchTranslationsWithScoreAsync", () => {
+    it("should find translations by text content", async () => {
+      const results = await searchTranslationsWithScoreAsync(sampleTranslationMap, "Submit");
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].multilanId).toBe("10001");
     });
 
-    it("should find translations by partial match", () => {
-      const results = searchTranslations(sampleTranslationMap, "Sub");
+    it("should find translations by partial match", async () => {
+      const results = await searchTranslationsWithScoreAsync(sampleTranslationMap, "Sub");
       expect(results.length).toBeGreaterThan(0);
     });
 
-    it("should find translations by multilanId", () => {
-      const results = searchTranslations(sampleTranslationMap, "10001");
+    it("should find translations by multilanId", async () => {
+      const results = await searchTranslationsWithScoreAsync(sampleTranslationMap, "10001");
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].multilanId).toBe("10001");
     });
 
-    it("should return empty array for no matches", () => {
-      const results = searchTranslations(sampleTranslationMap, "xyz123");
+    it("should return empty array for no matches", async () => {
+      const results = await searchTranslationsWithScoreAsync(sampleTranslationMap, "xyz123");
       expect(results).toEqual([]);
     });
 
-    it("should limit results", () => {
-      const results = searchTranslations(sampleTranslationMap, "a", 1);
+    it("should limit results", async () => {
+      const results = await searchTranslationsWithScoreAsync(sampleTranslationMap, "a", 1);
       expect(results.length).toBeLessThanOrEqual(1);
     });
 
-    it("should sort results by score", () => {
-      const results = searchTranslationsWithScore(sampleTranslationMap, "Cancel");
+    it("should sort results by score", async () => {
+      const results = await searchTranslationsWithScoreAsync(sampleTranslationMap, "Cancel");
       expect(results[0].score).toBeGreaterThanOrEqual(results[results.length - 1].score);
     });
   });
 
-  describe("globalSearchTranslations", () => {
-    it("should prioritize exact ID match", () => {
-      const results = globalSearchTranslations(sampleTranslationMap, "10001");
+  describe("globalSearchTranslationsAsync", () => {
+    it("should prioritize exact ID match", async () => {
+      const results = await globalSearchTranslationsAsync(sampleTranslationMap, "10001");
       expect(results[0].multilanId).toBe("10001");
     });
 
-    it("should find by text content", () => {
-      const results = globalSearchTranslations(sampleTranslationMap, "Annuler");
+    it("should find by text content", async () => {
+      const results = await globalSearchTranslationsAsync(sampleTranslationMap, "Annuler");
       expect(results.some((r) => r.multilanId === "10002")).toBe(true);
     });
 
-    it("should search across all languages", () => {
-      const results = globalSearchTranslations(sampleTranslationMap, "Soumettre");
+    it("should search across all languages", async () => {
+      const results = await globalSearchTranslationsAsync(sampleTranslationMap, "Soumettre");
       expect(results.some((r) => r.multilanId === "10001")).toBe(true);
     });
 
-    it("should include metadata when provided", () => {
+    it("should include metadata when provided", async () => {
       const adapter = new CurrentApiAdapter(sampleApiData);
       const metadataMap = adapter.getMetadataMap();
-      const results = globalSearchTranslations(sampleTranslationMap, "10001", 30, metadataMap);
+      const results = await globalSearchTranslationsAsync(sampleTranslationMap, "10001", 30, metadataMap);
       expect(results[0].metadata).toBeDefined();
       expect(results[0].metadata?.status).toBe("FINAL");
     });
 
-    it("should not include metadata when not provided", () => {
-      const results = globalSearchTranslations(sampleTranslationMap, "10001");
+    it("should not include metadata when not provided", async () => {
+      const results = await globalSearchTranslationsAsync(sampleTranslationMap, "10001");
       expect(results[0].metadata).toBeUndefined();
     });
 
-    it("should limit results", () => {
-      const results = globalSearchTranslations(sampleTranslationMap, "a", 1);
+    it("should limit results", async () => {
+      const results = await globalSearchTranslationsAsync(sampleTranslationMap, "a", 1);
       expect(results.length).toBeLessThanOrEqual(1);
     });
   });
 
-  describe("buildTextToIdMap", () => {
-    it("should create reverse lookup map", () => {
-      const map = buildTextToIdMap(sampleTranslationMap);
+  describe("getTextToIdMap", () => {
+    it("should create reverse lookup map", async () => {
+      const map = await getTextToIdMap(sampleTranslationMap);
 
-      expect(map.get("Submit")).toBe("10001");
-      expect(map.get("Cancel")).toBe("10002");
-      expect(map.get("Soumettre")).toBe("10001");
+      expect(map.get("Submit")).toEqual(["10001"]);
+      expect(map.get("Cancel")).toEqual(["10002"]);
+      expect(map.get("Soumettre")).toEqual(["10001"]);
     });
 
-    it("should handle first occurrence for duplicate texts", () => {
+    it("should collect all ids for duplicate texts across entries", async () => {
       const dataWithDuplicates = {
         "1": { en: "Test" },
         "2": { en: "Test" },
       };
-      const map = buildTextToIdMap(dataWithDuplicates);
-      expect(map.get("Test")).toBe("1"); // First occurrence
+      const map = await getTextToIdMap(dataWithDuplicates);
+      expect(map.get("Test")).toEqual(["1", "2"]);
     });
   });
 

@@ -158,31 +158,54 @@ describe("pluginBridge", () => {
     });
   });
 
-  describe("bulkAutoLink", () => {
-    it("should send bulk-auto-link message", () => {
-      pluginBridge.bulkAutoLink("page");
+  describe("verifyMultilanId", () => {
+    it("should send verify-multilan-id message", () => {
+      pluginBridge.verifyMultilanId("node-123", "10001");
 
       expect(postMessageMock).toHaveBeenCalledWith(
-        { pluginMessage: { type: "bulk-auto-link", scope: "page" } },
+        {
+          pluginMessage: {
+            type: "verify-multilan-id",
+            nodeId: "node-123",
+            multilanId: "10001",
+          },
+        },
         "*"
       );
     });
   });
 
-  describe("applyExactMatches", () => {
-    it("should send apply-exact-matches message", () => {
-      const confirmations = [
-        { nodeId: "node-1", multilanId: "10001" },
-        { nodeId: "node-2", multilanId: "10002" },
-      ];
+  describe("detectMatch", () => {
+    it("should send detect-match message", () => {
+      pluginBridge.detectMatch("Submit");
 
-      pluginBridge.applyExactMatches(confirmations, "page");
+      expect(postMessageMock).toHaveBeenCalledWith(
+        { pluginMessage: { type: "detect-match", text: "Submit" } },
+        "*"
+      );
+    });
+  });
+
+  describe("getUnlinkedQueue", () => {
+    it("should send get-unlinked-queue message with scope", () => {
+      pluginBridge.getUnlinkedQueue("selection");
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        { pluginMessage: { type: "get-unlinked-queue", scope: "selection" } },
+        "*"
+      );
+    });
+  });
+
+  describe("highlightUnlinked", () => {
+    it("should send highlight-unlinked message", () => {
+      pluginBridge.highlightUnlinked(true, "page");
 
       expect(postMessageMock).toHaveBeenCalledWith(
         {
           pluginMessage: {
-            type: "apply-exact-matches",
-            confirmations,
+            type: "highlight-unlinked",
+            highlight: true,
             scope: "page",
           },
         },
@@ -191,18 +214,60 @@ describe("pluginBridge", () => {
     });
   });
 
-  describe("confirmFuzzyLink", () => {
-    it("should send confirm-fuzzy-link message", () => {
-      pluginBridge.confirmFuzzyLink("node-123", "10001");
+  describe("switchFolder", () => {
+    it("should send switch-folder message", () => {
+      pluginBridge.switchFolder("Marketing");
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        { pluginMessage: { type: "switch-folder", folderName: "Marketing" } },
+        "*"
+      );
+    });
+  });
+
+  describe("findCloseMatches", () => {
+    it("should send find-close-matches message", () => {
+      pluginBridge.findCloseMatches("node-123", "Submit");
 
       expect(postMessageMock).toHaveBeenCalledWith(
         {
           pluginMessage: {
-            type: "confirm-fuzzy-link",
+            type: "find-close-matches",
             nodeId: "node-123",
-            multilanId: "10001",
+            text: "Submit",
           },
         },
+        "*"
+      );
+    });
+  });
+
+  describe("clearSelection", () => {
+    it("should send clear-selection message", () => {
+      pluginBridge.clearSelection();
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        { pluginMessage: { type: "clear-selection" } },
+        "*"
+      );
+    });
+  });
+
+  describe("resizeUi", () => {
+    it("should send resize-ui message with dimensions (not collapsed by default)", () => {
+      pluginBridge.resizeUi(400, 600);
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        { pluginMessage: { type: "resize-ui", width: 400, height: 600, collapsed: false } },
+        "*"
+      );
+    });
+
+    it("should mark the message collapsed when requested", () => {
+      pluginBridge.resizeUi(400, 33, true);
+
+      expect(postMessageMock).toHaveBeenCalledWith(
+        { pluginMessage: { type: "resize-ui", width: 400, height: 33, collapsed: true } },
         "*"
       );
     });

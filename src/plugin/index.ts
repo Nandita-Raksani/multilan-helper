@@ -704,6 +704,8 @@ const DEFAULT_UI_WIDTH = 360;
 const DEFAULT_UI_HEIGHT = 500;
 const MIN_UI_WIDTH = 320;
 const MIN_UI_HEIGHT = 420;
+/** Height when the UI is collapsed to just its header bar (see .app-header in the UI). */
+const COLLAPSED_UI_HEIGHT = 33;
 
 figma.showUI(__html__, {
   width: DEFAULT_UI_WIDTH,
@@ -806,9 +808,15 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     case "resize-ui":
       if (typeof msg.width === "number" && typeof msg.height === "number") {
         const w = Math.max(MIN_UI_WIDTH, Math.floor(msg.width));
-        const h = Math.max(MIN_UI_HEIGHT, Math.floor(msg.height));
-        figma.ui.resize(w, h);
-        persistUiSize(w, h);
+        if (msg.collapsed) {
+          // Collapsed to just the header: allow a height below the normal minimum,
+          // and don't persist it so the plugin reopens at its last expanded size.
+          figma.ui.resize(w, Math.max(COLLAPSED_UI_HEIGHT, Math.floor(msg.height)));
+        } else {
+          const h = Math.max(MIN_UI_HEIGHT, Math.floor(msg.height));
+          figma.ui.resize(w, h);
+          persistUiSize(w, h);
+        }
       }
       break;
     case "close":             figma.closePlugin(); break;

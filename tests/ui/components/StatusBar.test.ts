@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { setupUIFixture } from "../setup";
-import { setStatus, setBuildTimestamp, setViewMode } from "../../../src/ui/components/StatusBar";
+import { initStatusBar, setStatus, setViewMode } from "../../../src/ui/components/StatusBar";
 
 describe("StatusBar", () => {
   beforeEach(() => {
     setupUIFixture();
+  });
+
+  describe("initStatusBar", () => {
+    it("should run without throwing against the UI fixture", () => {
+      expect(() => initStatusBar()).not.toThrow();
+    });
   });
 
   describe("setStatus", () => {
@@ -15,20 +21,12 @@ describe("StatusBar", () => {
       expect(statusText?.textContent).toBe("Loading...");
     });
 
-    it("should update to translation count", () => {
+    it("should overwrite previous status text", () => {
+      setStatus("Ready");
       setStatus("150 translations loaded");
 
       const statusText = document.getElementById("statusText");
       expect(statusText?.textContent).toBe("150 translations loaded");
-    });
-  });
-
-  describe("setBuildTimestamp", () => {
-    it("should update build timestamp", () => {
-      setBuildTimestamp("2024-01-15 10:30");
-
-      const timestamp = document.getElementById("buildTimestamp");
-      expect(timestamp?.textContent).toBe("Updated: 2024-01-15 10:30");
     });
   });
 
@@ -41,6 +39,7 @@ describe("StatusBar", () => {
     });
 
     it("should hide view mode banner when false", () => {
+      setViewMode(true);
       setViewMode(false);
 
       const banner = document.getElementById("viewModeBanner");

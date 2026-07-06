@@ -148,18 +148,18 @@ describe("CurrentApiAdapter", () => {
 
 describe("Adapter Registry", () => {
   describe("createAdapter", () => {
-    it("should create adapter with auto-detection", () => {
-      const adapter = createAdapter(sampleApiData);
+    it("should create adapter with auto-detection", async () => {
+      const adapter = await createAdapter(sampleApiData);
       expect(adapter).toBeInstanceOf(CurrentApiAdapter);
     });
 
-    it("should create adapter with explicit type", () => {
-      const adapter = createAdapter(sampleApiData, "current-api");
+    it("should create adapter with explicit type", async () => {
+      const adapter = await createAdapter(sampleApiData, "current-api");
       expect(adapter).toBeInstanceOf(CurrentApiAdapter);
     });
 
-    it("should throw for undetectable format", () => {
-      expect(() => createAdapter({ invalid: "format" })).toThrow(
+    it("should throw for undetectable format", async () => {
+      await expect(createAdapter({ invalid: "format" })).rejects.toThrow(
         "Unable to detect adapter type"
       );
     });

@@ -186,6 +186,8 @@ export interface PluginMessage {
   // resize-ui flow
   width?: number;
   height?: number;
+  /** When true, allow resizing below the normal minimum height (collapse to header). */
+  collapsed?: boolean;
 }
 
 // Constants
