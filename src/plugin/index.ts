@@ -264,7 +264,7 @@ function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string
       metadata,
     };
   } else {
-    const trimmed = node.characters.trim().toLowerCase();
+    const trimmed = node.characters.trim();
     const exactIds = trimmed ? (textToIdMap.get(trimmed) || []) : [];
     if (exactIds.length > 0) {
       const exactMatches = exactIds.map(id => ({
@@ -415,7 +415,7 @@ async function handleSelectionChange(): Promise<void> {
         metadata,
       };
     } else {
-      const trimmed = selectedNode.characters.trim().toLowerCase();
+      const trimmed = selectedNode.characters.trim();
       const exactIds = trimmed ? (textToIdMap.get(trimmed) || []) : [];
       if (exactIds.length > 0) {
         const exactMatches = exactIds.map(id => ({

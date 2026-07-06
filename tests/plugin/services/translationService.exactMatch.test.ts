@@ -23,7 +23,7 @@ describe("exact-match handling with duplicate text", () => {
       };
 
       const map = await getTextToIdMap(data);
-      const ids = map.get("submit");
+      const ids = map.get("Submit");
 
       expect(ids).toEqual(["M-1", "M-2", "M-3"]);
     });
@@ -34,12 +34,12 @@ describe("exact-match handling with duplicate text", () => {
       };
 
       const map = await getTextToIdMap(data);
-      const ids = map.get("cancel");
+      const ids = map.get("Cancel");
 
       expect(ids).toEqual(["M-1"]); // single entry, single ID
     });
 
-    it("normalizes case so casing differences across entries collapse to one bucket", async () => {
+    it("keeps casing differences across entries in separate buckets", async () => {
       const data: TranslationMap = {
         "M-1": { en: "Submit" },
         "M-2": { en: "SUBMIT" },
@@ -47,7 +47,9 @@ describe("exact-match handling with duplicate text", () => {
       };
 
       const map = await getTextToIdMap(data);
-      expect(map.get("submit")).toEqual(["M-1", "M-2", "M-3"]);
+      expect(map.get("Submit")).toEqual(["M-1"]);
+      expect(map.get("SUBMIT")).toEqual(["M-2"]);
+      expect(map.get("submit")).toEqual(["M-3"]);
     });
 
     it("keeps unique-text entries as singletons", async () => {
@@ -57,8 +59,8 @@ describe("exact-match handling with duplicate text", () => {
       };
 
       const map = await getTextToIdMap(data);
-      expect(map.get("hello")).toEqual(["M-1"]);
-      expect(map.get("world")).toEqual(["M-2"]);
+      expect(map.get("Hello")).toEqual(["M-1"]);
+      expect(map.get("World")).toEqual(["M-2"]);
     });
   });
 
@@ -139,16 +141,17 @@ describe("exact-match handling with duplicate text", () => {
       expect(result.exactMatches).toBeUndefined();
     });
 
-    it("matches case-insensitively across duplicates", async () => {
+    it("exact-matches only entries with identical casing", async () => {
       const data: TranslationMap = {
         "M-1": { en: "OK" },
         "M-2": { en: "ok" },
         "M-3": { en: "Ok" },
       };
 
-      const result = await detectMatchAsync(data, "oK");
+      // Only the entry whose text matches the query's casing exactly is an exact match.
+      const result = await detectMatchAsync(data, "OK");
       expect(result.status).toBe("exact");
-      expect(result.exactMatches?.map(m => m.multilanId).sort()).toEqual(["M-1", "M-2", "M-3"]);
+      expect(result.exactMatches?.map(m => m.multilanId)).toEqual(["M-1"]);
     });
   });
 });

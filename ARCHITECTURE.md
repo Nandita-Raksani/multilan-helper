@@ -1,166 +1,152 @@
-# Developer Guide: Hexagonal Architecture
+# Architecture: The Translation Data Layer (Ports & Adapters)
 
-This plugin uses a hexagonal (ports-and-adapters) architecture to decouple external data formats from internal plugin logic.
+This document explains **how translation data enters the plugin**. For the overall
+UI ↔ plugin message flow and the project layout, see [README.md](./README.md).
 
-## Architecture Overview
+## Why a hexagonal architecture?
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    EXTERNAL SOURCES                              │
-│  .tra files       │  API response    │  Other Sources            │
-│  (user upload)    │  (future)        │  (extensible)             │
-└────────┬──────────┴───────┬──────────┴───────────┬──────────────┘
-         │                  │                      │
-         ▼                  ▼                      ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      ADAPTERS LAYER                              │
-│  src/adapters/implementations/                                   │
-│  - traFileAdapter.ts       (async, parses .tra CSV format)       │
-│  - currentApiAdapter.ts    (transforms JSON API format)          │
-│  - searchApiAdapter.ts     (transforms search API format)        │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    PORT (contract)                               │
-│  src/ports/translationPort.ts                                    │
-│  - getTranslationMap(): TranslationMap                           │
-│  - getMetadataMap(): MetadataMap                                 │
-│  - getTranslationCount(): number                                 │
-│  - getSourceIdentifier(): string                                 │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                PLUGIN CORE (unchanged)                           │
-│  Uses TranslationMap & MetadataMap — doesn't care about source  │
-└─────────────────────────────────────────────────────────────────┘
-```
+The plugin core — search, matching, linking, language switching — only ever needs
+translation data in **one internal shape**. It should not know or care whether that
+data came from an uploaded `.tra` file, a REST API, or anything else.
 
-## Current Data Source: .tra Files
+Ports-and-adapters (a.k.a. hexagonal architecture) enforces exactly that split:
 
-Users upload `.tra` files at runtime via the plugin UI. The `TraFileAdapter` parses them asynchronously.
+- A **port** is an interface — the contract the core depends on.
+- An **adapter** implements the port by converting some external format into it.
 
-### .tra File Format
+Add a new data source → write a new adapter. The core never changes.
 
 ```
-multilanId,"translation text","ignored"
-10001,"Submit","All"
-10002,"Cancel","All"
-10003,"Say ""Hello""","All"
+   EXTERNAL FORMATS                 ADAPTERS                    PORT                 CORE
+  (what the world has)      (translate → internal shape)    (the contract)     (format-agnostic)
+
+  .tra files  ──────────▶  TraFileAdapter        ┐
+  JSON API    ──────────▶  CurrentApiAdapter      ├─▶  TranslationDataPort  ─▶  plugin/services/*
+  Search API  ──────────▶  SearchApiAdapter      ┘                              (search, link, …)
 ```
 
-- **Column 1**: Numeric multilanId
-- **Column 2**: Quoted translation text (supports `""` for escaped quotes)
-- **Column 3**: Ignored metadata (typically "All")
+## The port
 
-### How .tra Files Are Loaded
-
-1. User clicks a folder button (EB/EBB/PCB) or drags files onto the upload modal
-2. UI reads files via `FileReader` with encoding detection (UTF-8, falls back to Windows-1252)
-3. Raw text content sent to plugin via `postMessage`
-4. Plugin merges with existing data (incremental uploads supported)
-5. `TraFileAdapter.createAsync()` parses files asynchronously in chunks
-6. Data cached in `figma.clientStorage` (per-user, persists across sessions)
-
-### TraFileAdapter
+`src/ports/translationPort.ts` defines the whole contract:
 
 ```typescript
-// Async factory — parses in chunks to avoid blocking
+export interface TranslationDataPort {
+  getTranslationMap(): TranslationMap;   // { multilanId: { en, fr, nl, de } }
+  getMetadataMap(): MetadataMap;         // { multilanId: { status, modifiedBy, … } }
+  getTranslationCount(): number;
+  getSourceIdentifier(): string;         // e.g. "tra-files"
+}
+```
+
+Every adapter returns data in these two internal shapes:
+
+```typescript
+// TranslationMap — keyed by multilanId
+{ "10001": { en: "Submit", fr: "Soumettre", nl: "Indienen", de: "Einreichen" } }
+
+// MetadataMap — keyed by multilanId (empty for .tra files, which carry no metadata)
+{ "10001": { status: "FINAL", modifiedBy: "john@company.com", modifiedAt: "2025-01-10T14:22:00Z" } }
+```
+
+## The adapters
+
+`src/adapters/implementations/` holds three adapters. **One is live; two are
+extensibility points** kept (and unit-tested) so a future API source can be wired in
+without redesigning the core.
+
+| Adapter | External format | Status |
+|---------|-----------------|--------|
+| `TraFileAdapter` | `.tra` CSV text, up to 4 languages | **Active** — the only source used at runtime |
+| `CurrentApiAdapter` | Legacy JSON array of multilans | Extensibility (tested, not wired) |
+| `SearchApiAdapter` | `resultList` search-API shape | Extensibility (tested, not wired) |
+
+### TraFileAdapter (the active one)
+
+```typescript
+// Async factory — parses in chunks so a huge upload never blocks the UI.
 const adapter = await TraFileAdapter.createAsync(traFileData);
 const translationMap = adapter.getTranslationMap();
-const metadataMap = adapter.getMetadataMap();  // Empty for .tra files
+const metadataMap = adapter.getMetadataMap();  // empty — .tra has no metadata
 ```
 
-The adapter:
-- Parses 4 language files in parallel via `Promise.all()`
-- Yields to the event loop every 2000 lines (non-blocking)
-- Handles partial uploads (1-4 languages)
+It parses the (up to) four language files in parallel via `Promise.all`, yields to
+the event loop every ~2000 lines, and tolerates partial uploads (1–4 languages).
 
-## Internal Formats (What Adapters Must Produce)
+### How a `.tra` upload flows to the core
 
-### TranslationMap
+1. User picks a folder (EB/EBB/PCB) or drops files on the upload modal.
+2. The **UI** reads each file with `FileReader` (UTF-8, falling back to Windows-1252).
+3. Raw text is sent to the **plugin** via `postMessage`.
+4. The plugin merges it with any previously uploaded languages (incremental uploads).
+5. `createAdapter(traData, "tra-files")` builds a `TraFileAdapter` and parses asynchronously.
+6. The result is compressed (fflate) and cached in `figma.clientStorage`
+   (see `storageService.ts` for the 5 MB-quota LRU eviction).
+
+## The registry & factory
+
+`src/adapters/index.ts` is the single entry point to the adapter layer:
 
 ```typescript
-{
-  "10001": {
-    "en": "Submit",
-    "fr": "Soumettre",
-    "nl": "Indienen",
-    "de": "Einreichen"
-  }
-}
+// Pick an adapter explicitly (what production does — the source is always known):
+const adapter = await createAdapter(traData, "tra-files");
+
+// …or let the factory sniff the format (used by the future API paths & tests):
+const type = detectAdapterType(data);   // "search-api" | "current-api" | "tra-files" | null
 ```
 
-### MetadataMap
+`createAdapter` looks the type up in `adapterRegistry` (a `Map` of type → factory) and
+awaits the factory. New sources register with `registerAdapter(type, factory)`.
 
-```typescript
-{
-  "10001": {
-    "status": "FINAL",
-    "createdAt": "2024-06-15T10:30:00Z",
-    "modifiedAt": "2025-01-10T14:22:00Z",
-    "modifiedBy": "john.smith@company.com",
-    "sourceLanguageId": "en"
-  }
-}
-```
+> Note: today the plugin always calls `createAdapter(data, "tra-files")` with an explicit
+> type, so `detectAdapterType` is exercised mainly by the future-API adapters and the tests.
 
-Note: .tra files don't contain metadata, so `MetadataMap` is empty for that adapter.
+## Adding a new data source
 
-## Adding a New Adapter
+1. **Define the external types + a type guard** in `src/adapters/types/newApi.types.ts`:
 
-### Step 1: Define External Types
+   ```typescript
+   export interface NewApiResponse { translations: Array<{ key: string; texts: Record<string, string> }>; }
 
-Create `src/adapters/types/newApi.types.ts`:
+   export function isNewApiFormat(data: unknown): data is NewApiResponse {
+     return typeof data === "object" && data !== null && "translations" in data;
+   }
+   ```
 
-```typescript
-export interface NewApiResponse {
-  translations: Array<{
-    key: string;
-    texts: { [lang: string]: string };
-    meta?: { status?: string; updatedAt?: string };
-  }>;
-}
+2. **Implement the adapter** in `src/adapters/implementations/newApiAdapter.ts` so it
+   satisfies `TranslationDataPort` (map external → `TranslationMap` / `MetadataMap`).
 
-export function isNewApiFormat(data: unknown): data is NewApiResponse {
-  if (typeof data !== "object" || data === null) return false;
-  return "translations" in (data as Record<string, unknown>);
-}
-```
+3. **Register it** in `src/adapters/index.ts`: add to `AdapterType`, `adapterRegistry`,
+   and (if you want auto-detection) `detectAdapterType`.
 
-### Step 2: Create the Adapter
+The plugin core in `src/plugin/services/` needs **no changes** — that is the whole point.
 
-Create `src/adapters/implementations/newApiAdapter.ts` implementing `TranslationDataPort`.
-
-### Step 3: Register in `src/adapters/index.ts`
-
-Add to `AdapterType`, `adapterRegistry`, and `detectAdapterType()`.
-
-## File Structure
+## File map
 
 ```
 src/
 ├── ports/
-│   └── translationPort.ts          # Port interface (contract)
+│   └── translationPort.ts          # The contract (TranslationDataPort)
 ├── adapters/
-│   ├── index.ts                    # Registry & async factory
+│   ├── index.ts                    # Registry, createAdapter, detectAdapterType
 │   ├── types/
-│   │   ├── traFile.types.ts        # .tra file types & parser
-│   │   ├── currentApi.types.ts     # JSON API types
-│   │   └── searchApi.types.ts      # Search API types
+│   │   ├── traFile.types.ts        # .tra format + parser + isTraFileData   (active)
+│   │   ├── currentApi.types.ts     # legacy JSON format + guard             (future)
+│   │   └── searchApi.types.ts      # search-API format + guard              (future)
 │   └── implementations/
-│       ├── traFileAdapter.ts       # .tra file adapter (async)
-│       ├── currentApiAdapter.ts    # JSON API adapter
-│       └── searchApiAdapter.ts     # Search API adapter
+│       ├── traFileAdapter.ts       # active adapter (async)
+│       ├── currentApiAdapter.ts    # future adapter
+│       └── searchApiAdapter.ts     # future adapter
 └── shared/
-    └── types.ts                    # Internal types (TranslationMap, etc.)
+    └── types.ts                    # Internal shapes (TranslationMap, MetadataMap, …)
 ```
 
-## Key Design Principles
+## Design principles
 
-1. **Adapters transform external -> internal format** only
-2. **The internal format is the contract** — plugin core only uses `TranslationMap` and `MetadataMap`
-3. **Adapters handle validation** via type guards
-4. **Plugin core stays unchanged** when adding new data sources
-5. **Adapter factory is async** — `createAdapter()` returns `Promise<TranslationDataPort>`
+1. **Adapters only translate** external → internal. No business logic.
+2. **The internal format is the contract.** The core depends on `TranslationMap` /
+   `MetadataMap`, never on a source format.
+3. **Adapters own validation** via type guards (`isTraFileData`, `isSearchApiFormat`, …).
+4. **The core stays untouched** when a data source is added.
+5. **The factory is async** — `createAdapter()` returns `Promise<TranslationDataPort>`,
+   because parsing large uploads must not block.
+</content>

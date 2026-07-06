@@ -300,7 +300,7 @@ export async function detectMatchAsync(
 
   // Pass 1: Exact match (cached, O(1) after first build)
   const textToIdMap = await getTextToIdMap(translationData);
-  const exactIds = textToIdMap.get(trimmed.toLowerCase());
+  const exactIds = textToIdMap.get(trimmed);
   if (exactIds && exactIds.length > 0) {
     const exactMatches = exactIds.map(id => ({
       multilanId: id,
@@ -347,14 +347,17 @@ async function buildTextToIdMapAsync(translationData: TranslationMap): Promise<M
     // otherwise add the ID twice), but keep duplicates *across multilan entries*.
     const seenForThisEntry = new Set<string>();
     for (const text of Object.values(langs)) {
-      const lower = text.toLowerCase();
-      if (seenForThisEntry.has(lower)) continue;
-      seenForThisEntry.add(lower);
-      const existing = textToMultilanIds.get(lower);
+      // Key by the original text (case-sensitive) so "Private" only exact-matches
+      // an entry translated as "Private", not "private". Case-insensitive matches
+      // still surface via the fuzzy/close-match pass.
+      const key = text;
+      if (seenForThisEntry.has(key)) continue;
+      seenForThisEntry.add(key);
+      const existing = textToMultilanIds.get(key);
       if (existing) {
         existing.push(multilanId);
       } else {
-        textToMultilanIds.set(lower, [multilanId]);
+        textToMultilanIds.set(key, [multilanId]);
       }
     }
     if ((i + 1) % CHUNK_SIZE === 0) {
@@ -394,7 +397,7 @@ export function invalidateTextToIdMapCache(): void {
 
 /** Fast exact-match lookup. Returns all multilanIds whose text equals `text`. */
 export async function exactMatchLookup(translationData: TranslationMap, text: string): Promise<string[]> {
-  const trimmed = text.trim().toLowerCase();
+  const trimmed = text.trim();
   if (!trimmed) return [];
   const map = await getTextToIdMap(translationData);
   return map.get(trimmed) ?? [];

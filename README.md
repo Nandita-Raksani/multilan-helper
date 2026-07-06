@@ -1,121 +1,170 @@
 # Multilan Helper
 
-A Figma plugin for managing multilingual text content by linking text layers to translation IDs (multilanIds). Translation data is loaded from `.tra` files uploaded at runtime.
+A Figma plugin for managing multilingual text. It links Figma text layers to translation IDs (**multilanIds**) so designers can switch a design between English, French, Dutch, and German in place. Translation data comes from `.tra` files that users upload at runtime — nothing is bundled at build time.
 
-## Features
+> New to the codebase? Read **[How It Works](#how-it-works)** first, then **[Project Structure](#project-structure)**. For the data-source design (ports & adapters), see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
-### Translation File Upload
-- **Runtime Upload**: Upload `.tra` files per folder (EB, EBB, PCB) — no build-time bundling
-- **Drag & Drop**: Drop all 4 language files at once, or use a file picker
-- **Auto-Detection**: Language detected from filename (e.g., `en-BE.tra` -> EN)
-- **Partial Upload**: Upload 1-4 languages per folder; missing languages are disabled
-- **Incremental Upload**: Add languages to a folder over time without losing previously uploaded ones
-- **Per-User Storage**: Each user's uploads cached locally in Figma's clientStorage
-- **Upload Tracking**: Last upload timestamp shown on folder buttons
+---
 
-### Search & Matching
-- **Global Search**: Search translations by multilanId or text content with fuzzy matching
-- **Exact Match**: O(1) lookup via cached text-to-ID map
-- **Fuzzy Match**: Levenshtein distance scoring with early termination
-- **Translation Preview**: View all language variants (EN, FR, NL, DE) for each result
-- **Status Badges**: See match status (Linked, Match, Close Match, No Match)
-- **Copy ID**: Click multilanId to copy to clipboard
+## How It Works
 
-### Frame/Multi-Selection Mode
-- **Batch View**: Select multiple text nodes or a frame to see all matches at once
-- **Per-Node Actions**: Link, unlink, or find close matches for individual nodes
-- **Carousel**: Browse through close match suggestions per node
+A Figma plugin runs as **two separate programs** that cannot call each other directly — they only exchange messages:
 
-### Language Switching
-- **Supported Languages**: English, French, Dutch, German (EN, FR, NL, DE)
-- **Per-Folder Availability**: Language buttons disabled for languages not uploaded
-- **Auto-Detection**: Detects current language from linked nodes
-- **Bulk Update**: Switch language for all linked nodes (page or selection scope)
-- **Variable Support**: `###variable###` patterns prompt for values when linking
-
-### Other Features
-- **Auto-Unlink**: Detects when linked text is manually modified and unlinks it
-- **Highlight Unlinked**: Select all unlinked text nodes on canvas
-- **Toast Notifications**: Visual feedback for uploads and actions
-- **View Mode**: Read-only mode for users without edit permissions
-
-## Installation
-
-```bash
-npm install
+```
+┌─────────────────────────┐   postMessage    ┌──────────────────────────┐
+│   UI  (iframe)           │  ───────────────▶ │  Plugin  (Figma sandbox) │
+│   src/ui/                │                   │  src/plugin/             │
+│   • renders HTML/CSS     │ ◀───────────────  │  • reads/writes the      │
+│   • no access to canvas  │   postMessage     │    Figma document        │
+└─────────────────────────┘                   └──────────────────────────┘
 ```
 
-## Commands
+- **The UI** (`src/ui/`) is a normal web page. It renders the panel, but it *cannot* touch the Figma canvas. It sends requests like "link this node" and renders whatever the plugin sends back.
+- **The plugin** (`src/plugin/`) runs in Figma's sandbox with access to the document (nodes, text, selection). It has no DOM. It receives messages, mutates the document, and posts results back.
 
-```bash
-npm run build          # Build the plugin
-npm run build:watch    # Build with watch mode for development
-npm run test           # Run tests
-npm run typecheck      # Run TypeScript type checking
-npm run lint           # Run ESLint
-npm run lint:fix       # Run ESLint with auto-fix
+Every interaction is a round trip:
+
+```
+User clicks "Link"  →  pluginBridge.linkNode(id)  →  postMessage
+                    →  plugin router (figma.ui.onmessage)  →  linkingService.linkTextNode()
+                    →  plugin writes multilanId onto the node  →  postMessage("node-updated")
+                    →  UI store updates  →  component re-renders
 ```
 
-## Development
+The two sides share **only types**, from `src/shared/types.ts` — most importantly `PluginMessage`, the union of every message that can cross the boundary.
 
-1. Run `npm run build:watch` to start development build
-2. In Figma desktop app: Plugins > Development > Import plugin from manifest
-3. Select the `manifest.json` file from this project
-4. Run the plugin from Plugins > Development menu
+### Where translation data comes from
+
+Translation data is loaded through a **ports-and-adapters (hexagonal) architecture** so the plugin core never depends on a specific file or API format. Today the only live source is uploaded `.tra` files, but the design leaves room for API sources without touching the core. See **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+
+---
 
 ## Project Structure
 
 ```
 src/
-├── plugin/                 # Figma sandbox code
-│   ├── index.ts           # Main plugin entry point (message router + handlers)
-│   └── services/          # Plugin services
-│       ├── translationService.ts  # Search, scoring, language detection
-│       ├── nodeService.ts         # Text node operations (read/write pluginData)
-│       └── linkingService.ts      # Link/unlink/switch language operations
-├── ui/                     # Plugin UI (iframe)
-│   ├── index.html         # HTML template
-│   ├── main.ts            # UI entry point & message handler
-│   ├── components/        # UI components
-│   │   ├── FolderSelector.ts     # EB/EBB/PCB folder buttons
-│   │   ├── LanguageBar.ts        # EN/FR/NL/DE language buttons
-│   │   ├── SearchPanel.ts        # Search input & results rendering
-│   │   ├── FramePanel.ts         # Multi-selection frame mode
-│   │   ├── TraUploadModal.ts     # .tra file upload modal (drag & drop)
-│   │   ├── VariablePromptModal.ts # Variable input modal
-│   │   ├── Toast.ts              # Toast notifications
-│   │   ├── StatusBar.ts          # Status bar
-│   │   └── Tabs.ts               # Tab switching
+├── plugin/                      # Runs in the Figma sandbox (has document access, no DOM)
+│   ├── index.ts                 # Entry point + message router (figma.ui.onmessage) + handlers
+│   └── services/
+│       ├── translationService.ts  # Search, fuzzy scoring, exact-match cache, language detection
+│       ├── nodeService.ts         # Read/write text nodes & their pluginData (multilanId, etc.)
+│       ├── linkingService.ts      # Link / unlink / switch-language / placeholder operations
+│       └── storageService.ts      # LRU-aware writes to figma.clientStorage (5 MB quota)
+│
+├── ui/                          # Runs in the iframe (has DOM, no document access)
+│   ├── index.html               # HTML shell
+│   ├── main.ts                  # Entry point: wires components, dispatches incoming messages
+│   ├── components/              # One file per piece of UI
+│   │   ├── FolderSelector.ts      # EB / EBB / PCB folder buttons (+ upload timestamps)
+│   │   ├── LanguageBar.ts         # EN / FR / NL / DE buttons (disabled if not uploaded)
+│   │   ├── SearchPanel.ts         # Search box, results, single-node match banner
+│   │   ├── FramePanel.ts          # Multi-selection / frame mode (per-node matches)
+│   │   ├── ManualLinkWidget.ts    # Manual multilanId entry + verification
+│   │   ├── TraUploadModal.ts      # Drag-and-drop .tra upload modal
+│   │   ├── StatusBar.ts           # Status line + view-only mode
+│   │   ├── Toast.ts               # Transient notifications
+│   │   ├── Tabs.ts                # Single-tab stub (kept for a future multi-tab UI)
+│   │   └── index.ts               # Barrel export
 │   ├── services/
-│   │   └── pluginBridge.ts       # UI <-> Plugin message bridge
+│   │   └── pluginBridge.ts        # The UI half of the message bridge (typed send/receive)
 │   ├── state/
-│   │   └── store.ts              # Centralized UI state management
-│   └── styles/
-│       └── main.css              # All CSS styles
-├── shared/                 # Shared types (used by both plugin and UI)
-│   └── types.ts
-├── ports/                  # Hexagonal architecture ports
-│   └── translationPort.ts
-├── adapters/               # Data format adapters
-│   ├── index.ts           # Adapter registry & factory
-│   ├── types/             # External format type definitions
-│   │   └── traFile.types.ts
-│   └── implementations/   # Adapter implementations
-│       └── traFileAdapter.ts
-└── translations/           # .tra files (gitignored, uploaded at runtime)
+│   │   └── store.ts               # Single source of UI state + subscribe/notify
+│   └── styles/main.css
+│
+├── shared/
+│   └── types.ts                 # Types shared by BOTH sides (incl. PluginMessage union)
+│
+├── ports/                       # Hexagonal architecture — see ARCHITECTURE.md
+│   └── translationPort.ts       # TranslationDataPort: the contract every data source implements
+├── adapters/                    # Turn an external format INTO the port's shape
+│   ├── index.ts                 # Adapter registry + factory (createAdapter / detectAdapterType)
+│   ├── types/                   # External-format type definitions + parsers/type-guards
+│   └── implementations/         # traFileAdapter (active), currentApiAdapter & searchApiAdapter (future)
+│
+└── translations/                # Sample .tra files (real data is uploaded at runtime)
 ```
+
+### The two message endpoints
+
+If you only remember two files, remember these:
+
+| Side | File | Role |
+|------|------|------|
+| UI → Plugin | `src/ui/services/pluginBridge.ts` | Typed methods (`linkNode`, `globalSearch`, …) that `postMessage` to the plugin, plus a subscription list for replies. |
+| Plugin → UI | `src/plugin/index.ts` (`figma.ui.onmessage`) | A single `switch` on `msg.type` that routes each message to a handler. |
+
+Every message type is a member of the `PluginMessage` union in `src/shared/types.ts` — the single place to look to see what can cross the boundary.
+
+---
+
+## Features
+
+### Translation file upload
+- **Runtime upload** of `.tra` files per folder (EB / EBB / PCB) — no build-time bundling
+- **Drag & drop** all four language files at once, or pick them
+- **Auto-detection** of language from filename (`en-BE.tra` → EN)
+- **Partial & incremental**: upload 1–4 languages, add more later without losing prior uploads
+- **Per-user storage**: uploads are compressed and cached in `figma.clientStorage`
+- **LRU eviction**: if the 5 MB quota is hit, the least-recently-used folder is evicted first
+
+### Search & matching
+- **Global search** by multilanId or text, with fuzzy matching
+- **Exact match** via an O(1) text→ID map (case-sensitive — `Private` ≠ `private`)
+- **Fuzzy match** via Levenshtein scoring with early termination and cancellation
+- **Translation preview** across all uploaded languages, with status badges
+
+### Frame / multi-selection mode
+- Select several text nodes (or a frame) to see all matches at once
+- Per-node link / unlink / browse close-match suggestions
+
+### Language switching
+- Switch EN / FR / NL / DE for all linked nodes (page or selection scope)
+- Detects the current language from already-linked nodes
+- `###variable###` placeholders prompt for values and are preserved across languages
+
+### Other
+- **Auto-unlink** when a linked layer's text is edited by hand
+- **Highlight unlinked** text nodes on the canvas
+- **View-only mode** for users without edit permission
+
+---
+
+## Getting Started
+
+```bash
+npm install
+```
+
+| Command | Description |
+|---------|-------------|
+| `npm run build` | Build plugin + UI into `dist/` |
+| `npm run build:watch` | Rebuild on change (use this while developing) |
+| `npm run test` | Run the Vitest suite |
+| `npm run typecheck` | Type-check with `tsc --noEmit` |
+| `npm run lint` / `lint:fix` | ESLint |
+
+To load the plugin:
+
+1. Run `npm run build:watch`.
+2. In the Figma desktop app: **Plugins → Development → Import plugin from manifest**.
+3. Select `manifest.json` from this project.
+4. Run it from **Plugins → Development**.
+
+---
 
 ## Data Storage
 
 | Data | Storage | Scope |
 |------|---------|-------|
-| MultilanId links | `pluginData` on each TextNode | Per-document |
-| Expected text | `pluginData` on each TextNode | Per-document |
-| .tra file content | `figma.clientStorage` | Per-user |
-| Upload metadata | `figma.clientStorage` | Per-user |
+| MultilanId link | `pluginData` on each TextNode | Per-document |
+| Expected text (for auto-unlink) | `pluginData` on each TextNode | Per-document |
+| `.tra` content (compressed) | `figma.clientStorage` | Per-user |
+| Upload metadata & timestamps | `figma.clientStorage` | Per-user |
 | Selected folder | `figma.clientStorage` | Per-user |
 
-## Translation Data Format (.tra files)
+The `pluginData` keys are defined once in `src/shared/types.ts` (`PLUGIN_DATA_KEY`, `EXPECTED_TEXT_KEY`, `PLACEHOLDER_KEY`) and read/written only through `nodeService.ts`.
+
+## `.tra` File Format
 
 ```
 multilanId,"translation text","ignored"
@@ -124,21 +173,32 @@ multilanId,"translation text","ignored"
 10003,"Hello, ###name###!","All"
 ```
 
-Each folder (EB, EBB, PCB) has up to 4 language files: `en-BE.tra`, `fr-BE.tra`, `nl-BE.tra`, `de-BE.tra`.
+- **Column 1** — numeric multilanId
+- **Column 2** — quoted translation text (`""` escapes a literal quote)
+- **Column 3** — ignored
 
-## Variable Format
+Each folder (EB / EBB / PCB) has up to four language files: `en-BE.tra`, `fr-BE.tra`, `nl-BE.tra`, `de-BE.tra`.
 
-Translations can include variables using the `###variable###` format:
-- Example: `"Welcome back, ###username###! You have ###count### messages."`
-- When linking, input fields appear for each variable
-- Variable values are preserved when switching languages
+## Variables
+
+Translations may embed `###variable###` placeholders, e.g. `"Welcome back, ###username###!"`. When linking, an input appears per variable, and the values are preserved when the language is switched.
 
 ## Performance
 
-Optimized for datasets with 80,000+ multilans per folder:
-- Async chunked .tra file parsing (non-blocking)
-- Async chunked text-to-ID map building
-- Chunked fuzzy search with cancellation support
-- Page scan caching with 5-second TTL
-- Parallelized clientStorage calls
-- No memory-heavy pre-built indexes
+Tuned for folders with 80,000+ multilanIds:
+
+- Async, chunked `.tra` parsing (yields to the event loop, never blocks the UI)
+- Async, chunked text→ID map building, cached until the data source changes
+- Chunked fuzzy search with cancellation (a new query cancels the previous one)
+- Compressed `.tra` storage (fflate `deflate`) to stay within the 5 MB quota
+- Parallelized `clientStorage` reads/writes
+
+---
+
+## Related Docs
+
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — the ports-and-adapters data layer and how to add a new data source
+- **[TESTING.md](./TESTING.md)** — how the tests are organized
+- **[PUBLISHING.md](./PUBLISHING.md)** — release process
+</content>
+</invoke>
