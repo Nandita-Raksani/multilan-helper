@@ -535,8 +535,22 @@ function renderGlobalSearchResultsImpl(): void {
 
     if (match.status === 'linked' && match.multilanId && match.translations && !existingIds.has(match.multilanId)) {
       results.unshift({ multilanId: match.multilanId, translations: match.translations, metadata: match.metadata });
-    } else if (match.status === 'exact' && match.multilanId && match.translations && !existingIds.has(match.multilanId)) {
-      results.unshift({ multilanId: match.multilanId, translations: match.translations, metadata: match.metadata });
+    } else if (match.status === 'exact') {
+      // Surface every multilanId that shares this exact text, not just the first.
+      // (A single text like "From" or "Deleted" often maps to several multilanIds.)
+      const exact = match.exactMatches && match.exactMatches.length > 0
+        ? match.exactMatches
+        : (match.multilanId && match.translations
+            ? [{ multilanId: match.multilanId, translations: match.translations, metadata: match.metadata }]
+            : []);
+      // Iterate in reverse so the primary match ends up first after unshift.
+      for (let i = exact.length - 1; i >= 0; i--) {
+        const em = exact[i];
+        if (!existingIds.has(em.multilanId)) {
+          results.unshift({ multilanId: em.multilanId, translations: em.translations, metadata: em.metadata });
+          existingIds.add(em.multilanId);
+        }
+      }
     } else if (match.status === 'close' && match.suggestions) {
       for (const suggestion of match.suggestions) {
         if (!existingIds.has(suggestion.multilanId)) {

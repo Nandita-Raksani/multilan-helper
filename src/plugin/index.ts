@@ -32,6 +32,7 @@ import {
   detectMatchAsync,
   invalidateTextToIdMapCache,
   getTextToIdMap,
+  normalizeExactKey,
   createCancellationToken,
 } from "./services/translationService";
 import type { CancellationToken } from "./services/translationService";
@@ -265,7 +266,7 @@ function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string
     };
   } else {
     const trimmed = node.characters.trim();
-    const exactIds = trimmed ? (textToIdMap.get(trimmed) || []) : [];
+    const exactIds = trimmed ? (textToIdMap.get(normalizeExactKey(trimmed)) || []) : [];
     if (exactIds.length > 0) {
       const exactMatches = exactIds.map(id => ({
         multilanId: id,
@@ -416,7 +417,7 @@ async function handleSelectionChange(): Promise<void> {
       };
     } else {
       const trimmed = selectedNode.characters.trim();
-      const exactIds = trimmed ? (textToIdMap.get(trimmed) || []) : [];
+      const exactIds = trimmed ? (textToIdMap.get(normalizeExactKey(trimmed)) || []) : [];
       if (exactIds.length > 0) {
         const exactMatches = exactIds.map(id => ({
           multilanId: id,

@@ -153,5 +153,31 @@ describe("exact-match handling with duplicate text", () => {
       expect(result.status).toBe("exact");
       expect(result.exactMatches?.map(m => m.multilanId)).toEqual(["M-1"]);
     });
+
+    it("exact-matches canonically-equivalent text with differently-encoded accents", async () => {
+      // ".tra" stores the accent as a combining sequence (e + U+0301 combining
+      // acute); the query uses the precomposed form (U+00E9). They look identical
+      // on screen but are different byte sequences and must still exact-match.
+      const combining = "Supprimer l\'ope\u0301ration?"; // e + U+0301
+      const precomposed = "Supprimer l\'op\u00e9ration?"; // precomposed U+00E9
+      expect(combining).not.toBe(precomposed);
+      const data: TranslationMap = { "M-1": { fr: combining } };
+
+      const result = await detectMatchAsync(data, precomposed);
+      expect(result.status).toBe("exact");
+      expect(result.exactMatches?.map(m => m.multilanId)).toEqual(["M-1"]);
+    });
+
+    it("returns every multilanId sharing an exact text (not just the first)", async () => {
+      const data: TranslationMap = {
+        "M-1": { en: "From" },
+        "M-2": { en: "From" },
+        "M-3": { en: "From" },
+      };
+
+      const result = await detectMatchAsync(data, "From");
+      expect(result.status).toBe("exact");
+      expect(result.exactMatches?.map(m => m.multilanId)).toEqual(["M-1", "M-2", "M-3"]);
+    });
   });
 });

@@ -77,6 +77,20 @@ export function isLanguage(lang: string | undefined): lang is Language {
   return lang !== undefined && SUPPORTED_LANGUAGES.includes(lang as Language);
 }
 
+/**
+ * Normalize text for exact-match keying. Applies Unicode NFC so that
+ * canonically-equivalent strings compare equal — e.g. "é" stored as a single
+ * codepoint (U+00E9) vs "e" + combining accent (U+0065 U+0301), which look
+ * identical but are different byte sequences. Without this, an exact match can
+ * silently miss even though the text appears the same on screen.
+ *
+ * Case is intentionally preserved: exact matching stays case-sensitive so
+ * "Private" does not match "private" (see the text-to-ID map).
+ */
+export function normalizeExactKey(text: string): string {
+  return text.normalize('NFC');
+}
+
 // ---- Variable Handling ----
 
 /**
@@ -114,37 +128,68 @@ export function extractVariableValues(template: string, text: string): Record<st
 // ---- Levenshtein & Scoring ----
 
 /**
- * Levenshtein edit distance between two strings.
- * Uses 2-row approach (O(min(m,n)) space) with optional early termination.
+ * Levenshtein edit distance between two strings, clamped to `maxDistance`.
+ * Returns `maxDistance + 1` if the true distance exceeds it.
+ *
+ * When `maxDistance` is given we compute only the diagonal band of cells with
+ * |row - col| <= maxDistance: any cell with distance <= k necessarily has
+ * |i - j| <= k (you need at least |i - j| insert/deletes to reach it), so cells
+ * outside the band can never lie on an admissible path and are treated as
+ * infinity. This turns the cost from O(m*n) into O(n * maxDistance), which is
+ * what keeps close-match detection fast on long text.
  */
 function levenshteinDistance(a: string, b: string, maxDistance?: number): number {
-  const m = a.length;
-  const n = b.length;
+  let m = a.length;
+  let n = b.length;
 
   if (maxDistance !== undefined && Math.abs(m - n) > maxDistance) return maxDistance + 1;
-  if (m > n) return levenshteinDistance(b, a, maxDistance);
+  if (m > n) { [a, b] = [b, a]; [m, n] = [n, m]; }  // ensure a is the shorter string
+
+  const k = maxDistance ?? n;              // band half-width (full matrix if unbounded)
+  const INF = (maxDistance ?? (m + n)) + 1; // any value strictly above the clamp
 
   let prev = new Uint16Array(m + 1);
   let curr = new Uint16Array(m + 1);
-  for (let j = 0; j <= m; j++) prev[j] = j;
+  for (let j = 0; j <= m; j++) prev[j] = j <= k ? j : INF;
 
   for (let i = 1; i <= n; i++) {
-    curr[0] = i;
-    let rowMin = i;
-    for (let j = 1; j <= m; j++) {
-      curr[j] = a[j - 1] === b[i - 1]
-        ? prev[j - 1]
-        : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
-      if (curr[j] < rowMin) rowMin = curr[j];
+    const jFrom = Math.max(1, i - k);
+    const jTo = Math.min(m, i + k);
+
+    curr[0] = i <= k ? i : INF;
+    if (jFrom > 1) curr[jFrom - 1] = INF;   // sentinel so the left neighbour reads as infinity
+    let rowMin = curr[0];
+
+    for (let j = jFrom; j <= jTo; j++) {
+      const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+      let v = prev[j - 1] + cost;           // substitute / match (diagonal)
+      const del = prev[j] + 1;              // delete from b (above)
+      const ins = curr[j - 1] + 1;          // insert into b (left)
+      if (del < v) v = del;
+      if (ins < v) v = ins;
+      curr[j] = v;
+      if (v < rowMin) rowMin = v;
     }
+    if (jTo < m) curr[jTo + 1] = INF;       // sentinel for the next row's "above" read
+
     if (maxDistance !== undefined && rowMin > maxDistance) return maxDistance + 1;
     [prev, curr] = [curr, prev];
   }
-  return prev[m];
+
+  const result = prev[m];
+  if (maxDistance !== undefined && result > maxDistance) return maxDistance + 1;
+  return result;
 }
 
-/** Calculate fuzzy match score (0-1) between query and text. */
-export function calculateMatchScore(query: string, text: string): number {
+/**
+ * Calculate fuzzy match score (0-1) between query and text.
+ *
+ * `minScore` lets a caller that will discard anything below it opt into cheaper
+ * scoring: we only need to distinguish "at least minScore" from "below", so we
+ * can bound the edit distance more tightly. This makes Levenshtein bail far
+ * sooner on long text — the dominant cost when detecting close matches.
+ */
+export function calculateMatchScore(query: string, text: string, minScore: number = 0): number {
   const lowerQuery = query.toLowerCase();
   const lowerText = text.toLowerCase();
 
@@ -153,31 +198,38 @@ export function calculateMatchScore(query: string, text: string): number {
   const maxLen = Math.max(lowerQuery.length, lowerText.length);
   if (maxLen === 0) return 0;
 
-  const maxDistance = Math.floor(MAX_DISTANCE_RATIO * maxLen);
+  // Tighten the edit-distance ceiling to the strictest bound the caller cares
+  // about. similarity >= s  ⇔  distance <= (1 - s) * maxLen.
+  const minSimilarity = Math.max(MIN_SIMILARITY_THRESHOLD, minScore);
+  const maxDistance = Math.floor((1 - minSimilarity) * maxLen);
   const distance = levenshteinDistance(lowerQuery, lowerText, maxDistance);
 
-  if (distance > maxDistance) {
-    if (lowerText.includes(lowerQuery)) return SUBSTRING_CONTAINS_SCORE;
-    if (lowerQuery.includes(lowerText)) return SUBSTRING_CONTAINED_SCORE;
-    return 0;
+  let score = distance <= maxDistance ? 1 - distance / maxLen : 0;
+
+  // Substring relationships are weaker signals — only surface them when the
+  // caller's threshold can actually admit them (avoids wasted work + noise).
+  if (SUBSTRING_CONTAINS_SCORE >= minScore && lowerText.includes(lowerQuery)) {
+    score = Math.max(score, SUBSTRING_CONTAINS_SCORE);
+  } else if (SUBSTRING_CONTAINED_SCORE >= minScore && lowerQuery.includes(lowerText)) {
+    score = Math.max(score, SUBSTRING_CONTAINED_SCORE);
   }
 
-  const similarity = 1 - distance / maxLen;
-
-  if (lowerText.includes(lowerQuery)) return Math.max(similarity, SUBSTRING_CONTAINS_SCORE);
-  if (lowerQuery.includes(lowerText)) return Math.max(similarity, SUBSTRING_CONTAINED_SCORE);
-
-  return similarity >= MIN_SIMILARITY_THRESHOLD ? similarity : 0;
+  return score >= minSimilarity ? score : 0;
 }
 
 /**
  * Quick pre-filter: rejects entries where the length difference alone
  * makes a match impossible, avoiding expensive Levenshtein computation.
+ *
+ * A score of `minScore` needs distance <= (1 - minScore) * maxLen, and distance
+ * is at least the length difference, so the shorter/longer length ratio must be
+ * >= minScore. For long text this prunes almost everything before scoring.
  */
-function passesLengthPrefilter(queryLen: number, textLen: number): boolean {
+function passesLengthPrefilter(queryLen: number, textLen: number, minScore: number = 0): boolean {
   if (textLen === 0) return false;
+  const requiredRatio = Math.max(MIN_LENGTH_RATIO, minScore);
   const ratio = queryLen > textLen ? textLen / queryLen : queryLen / textLen;
-  return ratio >= MIN_LENGTH_RATIO;
+  return ratio >= requiredRatio;
 }
 
 // ---- Core Search Engine ----
@@ -187,6 +239,11 @@ interface SearchOptions {
   includeIdMatch: boolean;
   /** Attach metadata from metadataMap to results */
   includeMetadata: boolean;
+  /**
+   * Discard results below this score. Lets scoring skip length-mismatched
+   * entries and use a tighter edit-distance bound — a big speedup on long text.
+   */
+  minScore?: number;
 }
 
 /**
@@ -205,6 +262,7 @@ async function scoreEntriesAsync(
   const results: Array<SearchResult & { score: number }> = [];
   const lowerQuery = query.toLowerCase();
   const queryLen = lowerQuery.length;
+  const minScore = options.minScore ?? 0;
   const entries = Object.entries(translationData);
 
   for (let i = 0; i < entries.length; i++) {
@@ -228,8 +286,8 @@ async function scoreEntriesAsync(
 
     // Score against each language's text
     for (const text of Object.values(langs)) {
-      if (!passesLengthPrefilter(queryLen, text.length)) continue;
-      const score = calculateMatchScore(query, text);
+      if (!passesLengthPrefilter(queryLen, text.length, minScore)) continue;
+      const score = calculateMatchScore(query, text, minScore);
       bestScore = Math.max(bestScore, score);
       if (bestScore >= 1) break;
     }
@@ -252,16 +310,21 @@ async function scoreEntriesAsync(
 
 // ---- Public Search Functions ----
 
-/** Search translations with fuzzy scoring. Returns top results with scores. */
+/**
+ * Search translations with fuzzy scoring. Returns top results with scores.
+ * Pass `minScore` when you will discard lower scores anyway — it makes scoring
+ * skip length-mismatched entries and bound Levenshtein tighter (faster on long text).
+ */
 export async function searchTranslationsWithScoreAsync(
   translationData: TranslationMap,
   query: string,
   limit: number = 10,
-  cancellationToken?: CancellationToken
+  cancellationToken?: CancellationToken,
+  minScore: number = 0
 ): Promise<Array<SearchResult & { score: number }>> {
   return scoreEntriesAsync(
     translationData, query, limit,
-    { includeIdMatch: false, includeMetadata: false },
+    { includeIdMatch: false, includeMetadata: false, minScore },
     undefined, cancellationToken
   );
 }
@@ -300,7 +363,7 @@ export async function detectMatchAsync(
 
   // Pass 1: Exact match (cached, O(1) after first build)
   const textToIdMap = await getTextToIdMap(translationData);
-  const exactIds = textToIdMap.get(trimmed);
+  const exactIds = textToIdMap.get(normalizeExactKey(trimmed));
   if (exactIds && exactIds.length > 0) {
     const exactMatches = exactIds.map(id => ({
       multilanId: id,
@@ -319,8 +382,11 @@ export async function detectMatchAsync(
 
   if (cancellationToken?.cancelled) return { status: 'none' };
 
-  // Pass 2: Fuzzy match (chunked, non-blocking)
-  const fuzzyResults = await searchTranslationsWithScoreAsync(translationData, trimmed, 5, cancellationToken);
+  // Pass 2: Fuzzy match (chunked, non-blocking). We only surface results at or
+  // above CLOSE_MATCH_THRESHOLD, so scope the scorer to that bound up front.
+  const fuzzyResults = await searchTranslationsWithScoreAsync(
+    translationData, trimmed, 5, cancellationToken, CLOSE_MATCH_THRESHOLD
+  );
   if (cancellationToken?.cancelled) return { status: 'none' };
 
   const closeMatches = fuzzyResults.filter(r => r.score >= CLOSE_MATCH_THRESHOLD);
@@ -347,10 +413,11 @@ async function buildTextToIdMapAsync(translationData: TranslationMap): Promise<M
     // otherwise add the ID twice), but keep duplicates *across multilan entries*.
     const seenForThisEntry = new Set<string>();
     for (const text of Object.values(langs)) {
-      // Key by the original text (case-sensitive) so "Private" only exact-matches
-      // an entry translated as "Private", not "private". Case-insensitive matches
+      // Key by the normalized text (case-sensitive, NFC) so "Private" only
+      // exact-matches an entry translated as "Private", not "private", while
+      // canonically-equivalent accents still match. Case-insensitive matches
       // still surface via the fuzzy/close-match pass.
-      const key = text;
+      const key = normalizeExactKey(text);
       if (seenForThisEntry.has(key)) continue;
       seenForThisEntry.add(key);
       const existing = textToMultilanIds.get(key);
@@ -400,7 +467,7 @@ export async function exactMatchLookup(translationData: TranslationMap, text: st
   const trimmed = text.trim();
   if (!trimmed) return [];
   const map = await getTextToIdMap(translationData);
-  return map.get(trimmed) ?? [];
+  return map.get(normalizeExactKey(trimmed)) ?? [];
 }
 
 // ---- Language Detection ----
