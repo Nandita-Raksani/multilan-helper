@@ -70,6 +70,20 @@ class PluginBridge {
     });
   }
 
+  updateNodeFromTra(nodeId: string): void {
+    this.send({
+      type: 'update-node-from-tra',
+      nodeId
+    });
+  }
+
+  updateAllFromTra(scope: 'page' | 'selection'): void {
+    this.send({
+      type: 'update-all-from-tra',
+      scope
+    });
+  }
+
   selectNode(nodeId: string): void {
     this.send({
       type: 'select-node',

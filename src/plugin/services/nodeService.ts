@@ -3,10 +3,14 @@
 import {
   TextNodeInfo,
   TranslationEntry,
+  Language,
+  SUPPORTED_LANGUAGES,
   PLUGIN_DATA_KEY,
   PLACEHOLDER_KEY,
   EXPECTED_TEXT_KEY,
+  EXPECTED_LANG_KEY,
 } from "../../shared/types";
+import { extractVariableValues } from "./translationService";
 
 /**
  * Get multilanId from a text node
@@ -94,6 +98,78 @@ export function isTextModified(node: TextNode): boolean {
   return node.characters !== expectedText;
 }
 
+/**
+ * Get the language a node currently displays (recorded at link/switch time)
+ */
+export function getExpectedLang(node: TextNode): Language | null {
+  const value = node.getPluginData(EXPECTED_LANG_KEY);
+  return SUPPORTED_LANGUAGES.includes(value as Language) ? (value as Language) : null;
+}
+
+/**
+ * Set the language a node currently displays
+ */
+export function setExpectedLang(node: TextNode, lang: Language): void {
+  node.setPluginData(EXPECTED_LANG_KEY, lang);
+}
+
+/**
+ * Clear the recorded display language
+ */
+export function clearExpectedLang(node: TextNode): void {
+  node.setPluginData(EXPECTED_LANG_KEY, "");
+}
+
+/**
+ * True when the given .tra value and the node's current text represent the same
+ * translation. They match when identical, or when the node shows an interpolated
+ * form of a `###variable###` template (e.g. "Hello, John" for "Hello, ###name###").
+ */
+function textMatchesTranslation(translation: string, text: string): boolean {
+  if (translation === text) return true;
+  if (translation.includes("###")) {
+    const vars = extractVariableValues(translation, text);
+    if (vars) return true;
+  }
+  return false;
+}
+
+/**
+ * Check if a linked node's on-canvas text is out of date vs the current .tra.
+ *
+ * A node is out of date when it is linked, was NOT edited by a designer
+ * (current text still equals expectedText), yet the current translation for its
+ * language differs from what's on canvas. For nodes linked before the
+ * expectedLang feature, falls back to "matches none of the languages".
+ */
+export function isOutOfDate(
+  node: TextNode,
+  getTranslations: (multilanId: string) => TranslationEntry | null
+): boolean {
+  const multilanId = getMultilanId(node);
+  if (!multilanId) return false;
+
+  // A designer edit (text diverged from the snapshot) is not "out of date" —
+  // that's handled by auto-unlink, not by the update-from-tra flow.
+  if (isTextModified(node)) return false;
+
+  const translations = getTranslations(multilanId);
+  if (!translations) return false;
+
+  const lang = getExpectedLang(node);
+  if (lang) {
+    const target = translations[lang];
+    if (target === undefined || target === "") return false;
+    return !textMatchesTranslation(target, node.characters);
+  }
+
+  // Legacy node (no recorded language): out of date if the current text matches
+  // none of the available translations.
+  const values = Object.values(translations).filter((v) => v !== undefined && v !== "");
+  if (values.length === 0) return false;
+  return !values.some((v) => textMatchesTranslation(v, node.characters));
+}
+
 // Separator used to append multilanId to node name
 const NAME_SEPARATOR = " • ";
 
@@ -177,6 +253,7 @@ export function buildTextNodeInfo(
     translations,
     hasOverflow: false, // TODO: Implement overflow detection
     isPlaceholder: isPlaceholder(node),
+    outOfDate: multilanId ? isOutOfDate(node, getTranslations) : false,
   };
 }
 

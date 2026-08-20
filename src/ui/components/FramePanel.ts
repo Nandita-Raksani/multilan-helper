@@ -74,18 +74,24 @@ function renderNodeBubble(characters: string): string {
 
 function renderLinkedCard(item: FrameNodeMatchResult, currentLang: string, canEdit: boolean): string {
   const mr = item.matchResult;
+  const outOfDate = mr.outOfDate === true;
+  const cardClass = outOfDate ? 'frame-node-card frame-node-card-linked frame-node-card-outdated' : 'frame-node-card frame-node-card-linked';
   return `
     <div class="frame-node-group" data-node-id="${escapeHtml(item.nodeId)}">
       ${renderNodeBubble(item.characters)}
       <div class="results-grouped">
-        <div class="frame-node-card frame-node-card-linked">
+        <div class="${cardClass}">
           <div class="frame-node-id-row">
             <span class="frame-node-id">${escapeHtml(mr.multilanId || '')}</span>
             <button class="copy-btn icon-btn" data-text="${escapeHtml(mr.multilanId || '')}" title="Copy ID">${copyIconSvg}</button>
             <span class="match-badge match-badge-linked">Linked</span>
+            ${outOfDate ? '<span class="match-badge match-badge-outdated">Out of date</span>' : ''}
           </div>
           ${mr.translations ? `<div class="translations-preview">${renderTranslations(mr.translations, currentLang)}</div>` : ''}
-          ${canEdit ? `<div class="frame-node-actions"><button class="btn-sm btn-sm-danger btn-frame-unlink" data-node-id="${escapeHtml(item.nodeId)}">Unlink</button></div>` : ''}
+          ${canEdit ? `<div class="frame-node-actions">
+            ${outOfDate ? `<button class="btn-sm btn-sm-brand btn-frame-update" data-node-id="${escapeHtml(item.nodeId)}" title="Overwrite the canvas text with the current .tra value">Update from .tra</button>` : ''}
+            <button class="btn-sm btn-sm-danger btn-frame-unlink" data-node-id="${escapeHtml(item.nodeId)}">Unlink</button>
+          </div>` : ''}
         </div>
       </div>
     </div>`;
@@ -283,16 +289,23 @@ export function renderFramePanel(): void {
   );
   const linkedCount = results.filter(r => r.matchResult.status === 'linked').length;
   const unmatchedCount = results.filter(r => r.matchResult.status === 'none').length;
+  const outdatedCount = results.filter(r => r.matchResult.status === 'linked' && r.matchResult.outOfDate === true).length;
 
   let summaryParts: string[] = [];
   if (linkedCount > 0) summaryParts.push(`${linkedCount} linked`);
+  if (outdatedCount > 0) summaryParts.push(`${outdatedCount} out of date`);
   if (unmatchedCount > 0) summaryParts.push(`${unmatchedCount} unmatched`);
   const summaryText = summaryParts.length > 0 ? ` (${summaryParts.join(', ')})` : '';
+
+  const bulkUpdateBtn = (state.canEdit && outdatedCount > 0)
+    ? `<button class="btn-sm btn-sm-brand btn-frame-update-all" title="Overwrite every out-of-date layer with its current .tra value">Update all out-of-date (${outdatedCount})</button>`
+    : '';
 
   let html = `
     <div class="frame-header">
       <div class="frame-header-title">Frame selected &ndash; ${nodeCount} text layer${nodeCount !== 1 ? 's' : ''} found</div>
       <div class="frame-header-summary">${summaryText}</div>
+      ${bulkUpdateBtn ? `<div class="frame-header-actions">${bulkUpdateBtn}</div>` : ''}
     </div>
     <div class="frame-node-list">
   `;
@@ -362,6 +375,23 @@ function attachFramePanelHandlers(container: HTMLElement): void {
       e.stopPropagation();
       const nodeId = btn.dataset.nodeId!;
       pluginBridge.unlinkNode(nodeId);
+    });
+  });
+
+  // Update-from-tra buttons (per node)
+  container.querySelectorAll<HTMLButtonElement>('.btn-frame-update').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const nodeId = btn.dataset.nodeId!;
+      pluginBridge.updateNodeFromTra(nodeId);
+    });
+  });
+
+  // Bulk update-from-tra button
+  container.querySelectorAll<HTMLButtonElement>('.btn-frame-update-all').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pluginBridge.updateAllFromTra('selection');
     });
   });
 

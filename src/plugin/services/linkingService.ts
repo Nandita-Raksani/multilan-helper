@@ -18,6 +18,8 @@ import {
   updateNodeText,
   setExpectedText,
   clearExpectedText,
+  setExpectedLang,
+  clearExpectedLang,
   addMultilanIdToName,
   removeMultilanIdFromName,
   loadNodeFont,
@@ -72,6 +74,7 @@ export async function unlinkTextNode(nodeId: string): Promise<boolean> {
 
   clearMultilanId(node);
   clearExpectedText(node);
+  clearExpectedLang(node);
   return true;
 }
 
@@ -119,6 +122,7 @@ export function switchLanguage(
     try {
       node.characters = translation;
       setExpectedText(node, translation);
+      setExpectedLang(node, lang);
       success++;
     } catch (err) {
       console.error(`Failed to switch node ${node.id}:`, err);
@@ -207,6 +211,7 @@ export async function createLinkedTextNode(
 
   // Store expected text for modification detection
   setExpectedText(textNode, translation);
+  setExpectedLang(textNode, lang);
 
   // Position near viewport center or current selection
   const selection = figma.currentPage.selection;

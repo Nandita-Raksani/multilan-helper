@@ -42,10 +42,13 @@ import {
   selectNode,
   getTextNodesInScope,
   getMultilanId,
-  getExpectedText,
   isTextModified,
+  isOutOfDate,
+  getExpectedLang,
+  setExpectedLang,
   clearMultilanId,
   clearExpectedText,
+  clearExpectedLang,
   removeMultilanIdFromName,
   loadNodeFont,
   getTextNodeById,
@@ -223,29 +226,15 @@ function autoUnlinkModifiedNodes(nodes: TextNode[]): number {
     const multilanId = getMultilanId(node);
     if (!multilanId) continue;
 
+    // Only unlink genuine designer edits (text diverged from the snapshot).
+    // A node that is merely out of date vs a changed .tra keeps its link and is
+    // flagged for a manual "Update from .tra" instead.
     if (isTextModified(node)) {
       removeMultilanIdFromName(node);
       clearMultilanId(node);
       clearExpectedText(node);
+      clearExpectedLang(node);
       unlinkedCount++;
-      continue;
-    }
-
-    // For nodes without expectedText (linked before this feature),
-    // check if current text matches any translation for this multilanId
-    const expectedText = getExpectedText(node);
-    if (!expectedText) {
-      const translations = getTranslations(multilanId);
-      if (translations) {
-        const matchesAnyTranslation = Object.values(translations).some(
-          (text) => text === node.characters
-        );
-        if (!matchesAnyTranslation) {
-          removeMultilanIdFromName(node);
-          clearMultilanId(node);
-          unlinkedCount++;
-        }
-      }
     }
   }
 
@@ -263,6 +252,7 @@ function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string
       multilanId: node.multilanId,
       translations: node.translations || undefined,
       metadata,
+      outOfDate: node.outOfDate,
     };
   } else {
     const trimmed = node.characters.trim();
@@ -414,6 +404,7 @@ async function handleSelectionChange(): Promise<void> {
         multilanId: selectedNode.multilanId,
         translations: selectedNode.translations || undefined,
         metadata,
+        outOfDate: selectedNode.outOfDate,
       };
     } else {
       const trimmed = selectedNode.characters.trim();
@@ -495,6 +486,7 @@ async function handleLinkNode(msg: PluginMessage): Promise<void> {
     if (translation) {
       await updateNodeText(node, translation);
       setExpectedText(node, translation);
+      setExpectedLang(node, lang);
     }
     figma.notify(`Linked to ${msg.multilanId}`);
     await sendNodeUpdate(node);
@@ -526,6 +518,65 @@ async function handleRefresh(msg: PluginMessage): Promise<void> {
   if (unlinkedCount > 0) {
     figma.notify(`Auto-unlinked ${unlinkedCount} modified node${unlinkedCount > 1 ? 's' : ''}`);
   }
+  const textNodes = getAllTextNodesInfo(scope, getTranslations);
+  figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
+}
+
+/** Apply the current .tra translation to one linked, out-of-date node. */
+async function updateNodeFromTra(node: TextNode): Promise<boolean> {
+  const multilanId = getMultilanId(node);
+  if (!multilanId) return false;
+
+  // Resolve the target language: the node's recorded language, else the best
+  // guess from the current text (detectLanguage defaults to 'en').
+  const lang: Language = getExpectedLang(node) || detectLanguage(translationData, [
+    { multilanId, characters: node.characters },
+  ]);
+
+  const translation = getTranslation(translationData, multilanId, lang);
+  if (translation === null || translation === "") return false;
+  if (translation === node.characters) return false;
+
+  await updateNodeText(node, translation);
+  setExpectedText(node, translation);
+  setExpectedLang(node, lang);
+  return true;
+}
+
+async function handleUpdateNodeFromTra(msg: PluginMessage): Promise<void> {
+  if (!requireEditPermission()) return;
+  if (!msg.nodeId) return;
+
+  const node = await getTextNodeById(msg.nodeId);
+  if (!node) return;
+
+  const updated = await updateNodeFromTra(node);
+  if (updated) {
+    figma.notify("Updated from .tra");
+  } else {
+    figma.notify("Already up to date");
+  }
+  await sendNodeUpdate(node);
+}
+
+async function handleUpdateAllFromTra(msg: PluginMessage): Promise<void> {
+  if (!requireEditPermission()) return;
+
+  const scope = msg.scope || "page";
+  const nodes = getTextNodesInScope(scope);
+
+  let updatedCount = 0;
+  for (const node of nodes) {
+    if (!isOutOfDate(node, getTranslations)) continue;
+    if (await updateNodeFromTra(node)) updatedCount++;
+  }
+
+  if (updatedCount > 0) {
+    figma.notify(`Updated ${updatedCount} node${updatedCount > 1 ? 's' : ''} from .tra`);
+  } else {
+    figma.notify("No out-of-date nodes to update");
+  }
+
   const textNodes = getAllTextNodesInfo(scope, getTranslations);
   figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
 }
@@ -628,6 +679,7 @@ async function handleSwitchFolder(msg: PluginMessage): Promise<void> {
     await touchFolder(currentFolder);
     await initializeTraFileData(traData);
     await initialize();
+    await handleSelectionChange();
   } else {
     translationData = {};
     metadataData = {};
@@ -681,6 +733,9 @@ async function handleUploadTraFiles(msg: PluginMessage): Promise<void> {
 
     const translationCount = Object.keys(translationData).length;
     await initialize();
+    // Refresh the selection/frame panels so out-of-date badges appear against
+    // the newly-uploaded .tra without requiring the user to re-select.
+    await handleSelectionChange();
 
     figma.ui.postMessage({
       type: 'upload-success',
@@ -756,6 +811,8 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     case "search":            await handleSearch(msg); break;
     case "link-node":         await handleLinkNode(msg); break;
     case "unlink-node":       await handleUnlinkNode(msg); break;
+    case "update-node-from-tra": await handleUpdateNodeFromTra(msg); break;
+    case "update-all-from-tra":  await handleUpdateAllFromTra(msg); break;
     case "select-node":       if (msg.nodeId) await selectNode(msg.nodeId); break;
     case "refresh":           await handleRefresh(msg); break;
     case "lookup-multilanId":

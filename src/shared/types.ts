@@ -50,6 +50,9 @@ export interface TextNodeInfo {
   translations: TranslationEntry | null;
   hasOverflow: boolean;
   isPlaceholder: boolean;
+  // True when the node is linked but its on-canvas text no longer matches the
+  // current .tra value for its language (the translation changed since linking).
+  outOfDate?: boolean;
 }
 
 // Search result
@@ -73,6 +76,8 @@ export interface MatchDetectionResult {
   // Always contains the primary match plus any duplicates; UI renders a carousel
   // when length > 1.
   exactMatches?: SearchResult[];
+  // Set when status === 'linked' and the node's text is out of date vs the .tra.
+  outOfDate?: boolean;
 }
 
 export interface UnlinkedQueueItem {
@@ -123,6 +128,8 @@ export type PluginMessageType =
   | "find-close-matches"
   | "upload-tra-files"
   | "verify-multilan-id"
+  | "update-node-from-tra"
+  | "update-all-from-tra"
   | "resize-ui"
   | "close";
 
@@ -194,3 +201,6 @@ export interface PluginMessage {
 export const PLUGIN_DATA_KEY = "multilanId";
 export const PLACEHOLDER_KEY = "isPlaceholder";
 export const EXPECTED_TEXT_KEY = "expectedText";
+// Language the node currently displays; recorded at link/switch time so an
+// out-of-date node can be updated back to its original language from the .tra.
+export const EXPECTED_LANG_KEY = "expectedLang";

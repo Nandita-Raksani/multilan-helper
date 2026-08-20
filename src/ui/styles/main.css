@@ -581,6 +581,11 @@ body {
   color: #dc2626;
 }
 
+.match-badge-outdated {
+  background: rgba(245, 158, 11, 0.18);
+  color: #d97706;
+}
+
 .match-badge-inline {
   margin-left: auto;
 }
@@ -661,6 +666,10 @@ body {
 .search-result-card-exact,
 .search-result-card-close,
 .search-result-card-none {
+}
+
+.search-result-card-outdated {
+  border-left: 3px solid #f59e0b;
 }
 
 .no-match-selected-text {
@@ -1126,6 +1135,10 @@ body {
   margin-top: 2px;
 }
 
+.frame-header-actions {
+  margin-top: 8px;
+}
+
 .frame-node-list {
   display: flex;
   flex-direction: column;
@@ -1161,6 +1174,10 @@ body {
 }
 
 .frame-node-card-close {
+  border-left: 3px solid #f59e0b;
+}
+
+.frame-node-card-outdated {
   border-left: 3px solid #f59e0b;
 }
 

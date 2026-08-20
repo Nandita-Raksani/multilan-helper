@@ -110,7 +110,12 @@ function extractTraFilesFromZip(file: File): Promise<File[]> {
         const entries = unzipSync(zipData);
         const traFiles: File[] = [];
         for (const [path, data] of Object.entries(entries)) {
+          // Skip macOS AppleDouble junk (__MACOSX/…/._name.tra). These 100-odd-byte
+          // resource-fork files share the real file's name and would otherwise be
+          // detected as the same language, clobbering the real .tra with garbage.
+          if (path.startsWith('__MACOSX/') || path.includes('/__MACOSX/')) continue;
           const name = path.split('/').pop() || path;
+          if (name.startsWith('._')) continue;
           if (name.toLowerCase().endsWith('.tra')) {
             traFiles.push(new File([data], name, { lastModified: file.lastModified }));
           }

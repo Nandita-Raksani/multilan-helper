@@ -19,6 +19,10 @@ import {
   updateNodeText,
   createTextNode,
   isEffectivelyVisible,
+  isOutOfDate,
+  setExpectedText,
+  setExpectedLang,
+  getExpectedLang,
 } from "../../../src/plugin/services/nodeService";
 import { PLUGIN_DATA_KEY, PLACEHOLDER_KEY } from "../../../src/shared/types";
 
@@ -115,6 +119,65 @@ describe("nodeService", () => {
     });
   });
 
+  describe("isOutOfDate", () => {
+    // Helper: link a node to a multilanId with a recorded language + snapshot.
+    function linkNode(characters: string, lang?: string) {
+      const node = createMockTextNode({ characters });
+      node.setPluginData(PLUGIN_DATA_KEY, "10001");
+      setExpectedText(node, characters);
+      if (lang) setExpectedLang(node, lang as never);
+      return node;
+    }
+
+    it("returns false for an unlinked node", () => {
+      const node = createMockTextNode({ characters: "Hello" });
+      expect(isOutOfDate(node, () => ({ en: "Different" }))).toBe(false);
+    });
+
+    it("returns false when the recorded language still matches the .tra", () => {
+      const node = linkNode("Submit", "en");
+      expect(isOutOfDate(node, () => ({ en: "Submit", fr: "Soumettre" }))).toBe(false);
+    });
+
+    it("returns true when the .tra value for the recorded language changed", () => {
+      const node = linkNode("Submit", "en");
+      expect(isOutOfDate(node, () => ({ en: "Send", fr: "Soumettre" }))).toBe(true);
+    });
+
+    it("returns false for a designer-edited node (text diverged from snapshot)", () => {
+      const node = createMockTextNode({ characters: "Edited by designer" });
+      node.setPluginData(PLUGIN_DATA_KEY, "10001");
+      setExpectedText(node, "Submit"); // snapshot differs from current text
+      setExpectedLang(node, "en");
+      expect(isOutOfDate(node, () => ({ en: "Send" }))).toBe(false);
+    });
+
+    it("treats an interpolated ###variable### template as in sync", () => {
+      const node = linkNode("Hello, John", "en");
+      expect(isOutOfDate(node, () => ({ en: "Hello, ###name###" }))).toBe(false);
+    });
+
+    it("legacy node (no recorded language): in sync if text matches any language", () => {
+      const node = createMockTextNode({ characters: "Soumettre" });
+      node.setPluginData(PLUGIN_DATA_KEY, "10001");
+      setExpectedText(node, "Soumettre");
+      expect(getExpectedLang(node)).toBeNull();
+      expect(isOutOfDate(node, () => ({ en: "Submit", fr: "Soumettre" }))).toBe(false);
+    });
+
+    it("legacy node (no recorded language): out of date if text matches no language", () => {
+      const node = createMockTextNode({ characters: "Old value" });
+      node.setPluginData(PLUGIN_DATA_KEY, "10001");
+      setExpectedText(node, "Old value");
+      expect(isOutOfDate(node, () => ({ en: "Submit", fr: "Soumettre" }))).toBe(true);
+    });
+
+    it("returns false when the multilanId has no translations", () => {
+      const node = linkNode("Submit", "en");
+      expect(isOutOfDate(node, () => null)).toBe(false);
+    });
+  });
+
   describe("buildTextNodeInfo", () => {
     it("should build info for linked node", () => {
       const node = createMockTextNode({
@@ -139,6 +202,7 @@ describe("nodeService", () => {
         translations: { en: "Submit", fr: "Soumettre" },
         hasOverflow: false,
         isPlaceholder: false,
+        outOfDate: false,
       });
     });
 
@@ -161,6 +225,7 @@ describe("nodeService", () => {
         translations: null,
         hasOverflow: false,
         isPlaceholder: false,
+        outOfDate: false,
       });
       expect(mockGetTranslations).not.toHaveBeenCalled();
     });

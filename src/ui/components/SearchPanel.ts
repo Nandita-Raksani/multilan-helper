@@ -289,10 +289,12 @@ function renderResultCard(
     canEdit: boolean;
     currentLang: string;
     showTextCopyButtons: boolean;
+    outOfDate?: boolean;
   }
 ): string {
   const metadataJson = getMetadataJson(result);
   const matchBadge = getMatchBadgeForResult(result.multilanId);
+  const showOutOfDate = options.isCurrentLink && options.outOfDate === true;
 
   let cardClass = 'search-result-card';
   if (options.showCornerBadge && matchBadge) {
@@ -300,6 +302,7 @@ function renderResultCard(
     else if (matchBadge.label === 'Match') cardClass += ' search-result-card-exact';
     else if (matchBadge.label === 'Close Match') cardClass += ' search-result-card-close';
   }
+  if (showOutOfDate) cardClass += ' search-result-card-outdated';
 
   return `
     <div class="${cardClass}" data-multilan-id="${escapeHtml(result.multilanId)}">
@@ -311,6 +314,7 @@ function renderResultCard(
           ${getStatusBadge(result.metadata?.status)}
           ${result.score !== undefined && result.score < 1 ? `<span class="frame-score" style="margin-left:auto">${Math.round(result.score * 100)}%</span>` : ''}
           ${!options.showCornerBadge && matchBadge ? `<span class="match-badge ${matchBadge.css} match-badge-inline" ${result.score !== undefined ? 'style="margin-left:0"' : ''}>${matchBadge.label}</span>` : ''}
+          ${showOutOfDate ? '<span class="match-badge match-badge-outdated match-badge-inline">Out of date</span>' : ''}
         </div>
       </div>
       <div class="translations-preview">
@@ -333,6 +337,7 @@ function renderResultCard(
       </div>
       <div class="search-result-actions">
         ${options.canEdit && options.hasSelection && !options.isCurrentLink ? `<button class="btn-link-result btn-sm btn-sm-success" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
+        ${showOutOfDate && options.canEdit ? `<button class="btn-update-result btn-sm btn-sm-brand" data-id="${escapeHtml(result.multilanId)}" title="Overwrite the canvas text with the current .tra value">Update from .tra</button>` : ''}
         ${options.isCurrentLink && options.canEdit ? `<button class="btn-unlink-result btn-sm btn-sm-danger" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
         ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
       </div>
@@ -414,6 +419,7 @@ function renderSelectedNodeLayout(
         canEdit: state.canEdit,
         currentLang: state.currentLang,
         showTextCopyButtons: !state.canEdit,
+        outOfDate: match?.status === 'linked' && match.outOfDate === true,
       });
 
   const carouselNav = results.length > 1 ? `
@@ -660,6 +666,16 @@ function initSearchResultDelegation(): void {
       const currentState = store.getState();
       if (currentState.selectedNode) {
         pluginBridge.unlinkNode(currentState.selectedNode.id);
+      }
+      return;
+    }
+
+    // Update-from-tra button
+    if (btn?.classList.contains('btn-update-result')) {
+      e.stopPropagation();
+      const currentState = store.getState();
+      if (currentState.selectedNode) {
+        pluginBridge.updateNodeFromTra(currentState.selectedNode.id);
       }
       return;
     }
