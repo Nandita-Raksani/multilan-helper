@@ -1,8 +1,9 @@
-import type { Language, TextNodeInfo, SearchResult, MatchDetectionResult, UnlinkedQueueItem, FrameNodeMatchResult, FolderDataStatus } from '../../shared/types';
+import type { Language, AnnotationSide, TextNodeInfo, SearchResult, MatchDetectionResult, UnlinkedQueueItem, FrameNodeMatchResult, FolderDataStatus } from '../../shared/types';
 
 export interface UIState {
   canEdit: boolean;
   currentLang: Language;
+  annotationSide: AnnotationSide;
   scope: 'page' | 'selection';
   textNodes: TextNodeInfo[];
   selectedNode: TextNodeInfo | null;
@@ -27,6 +28,7 @@ class Store {
   private state: UIState = {
     canEdit: true,
     currentLang: 'en',
+    annotationSide: 'auto',
     scope: 'page',
     textNodes: [],
     selectedNode: null,

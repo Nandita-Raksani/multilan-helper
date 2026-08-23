@@ -9,6 +9,7 @@ import {
   PLACEHOLDER_KEY,
   EXPECTED_TEXT_KEY,
   EXPECTED_LANG_KEY,
+  ANNOTATION_KEY,
 } from "../../shared/types";
 import { extractVariableValues } from "./translationService";
 
@@ -217,18 +218,22 @@ export function isEffectivelyVisible(node: SceneNode): boolean {
  */
 export function getTextNodesInScope(scope: "page" | "selection"): TextNode[] {
   const nodes: TextNode[] = [];
+  // Skip the plugin's own on-canvas annotation labels — they are real text nodes
+  // but must never be treated as linkable content.
+  const isText = (n: BaseNode): boolean =>
+    n.type === "TEXT" && !n.getPluginData(ANNOTATION_KEY);
 
   if (scope === "selection" && figma.currentPage.selection.length > 0) {
     for (const node of figma.currentPage.selection) {
       if (node.type === "TEXT") {
-        nodes.push(node);
+        if (isText(node)) nodes.push(node);
       } else if ("findAll" in node) {
-        const textNodes = node.findAll((n) => n.type === "TEXT") as TextNode[];
+        const textNodes = node.findAll(isText) as TextNode[];
         nodes.push(...textNodes);
       }
     }
   } else {
-    const textNodes = figma.currentPage.findAll((n) => n.type === "TEXT") as TextNode[];
+    const textNodes = figma.currentPage.findAll(isText) as TextNode[];
     nodes.push(...textNodes);
   }
 

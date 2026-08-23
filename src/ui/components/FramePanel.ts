@@ -297,15 +297,16 @@ export function renderFramePanel(): void {
   if (unmatchedCount > 0) summaryParts.push(`${unmatchedCount} unmatched`);
   const summaryText = summaryParts.length > 0 ? ` (${summaryParts.join(', ')})` : '';
 
-  const bulkUpdateBtn = (state.canEdit && outdatedCount > 0)
-    ? `<button class="btn-sm btn-sm-brand btn-frame-update-all" title="Overwrite every out-of-date layer with its current .tra value">Update all out-of-date (${outdatedCount})</button>`
-    : '';
+  const headerActions: string[] = [];
+  if (state.canEdit && outdatedCount > 0) {
+    headerActions.push(`<button class="btn-sm btn-sm-brand btn-frame-update-all" title="Overwrite every out-of-date layer with its current .tra value">Update all out-of-date (${outdatedCount})</button>`);
+  }
 
   let html = `
     <div class="frame-header">
       <div class="frame-header-title">Frame selected &ndash; ${nodeCount} text layer${nodeCount !== 1 ? 's' : ''} found</div>
       <div class="frame-header-summary">${summaryText}</div>
-      ${bulkUpdateBtn ? `<div class="frame-header-actions">${bulkUpdateBtn}</div>` : ''}
+      ${headerActions.length > 0 ? `<div class="frame-header-actions">${headerActions.join('')}</div>` : ''}
     </div>
     <div class="frame-node-list">
   `;

@@ -11,6 +11,7 @@ import {
   MetadataMap,
   PluginMessage,
   Language,
+  AnnotationSide,
   SUPPORTED_LANGUAGES,
   FOLDER_NAMES,
   FrameNodeMatchResult,
@@ -66,6 +67,9 @@ import {
   rewriteInterpolatedNodesToTemplate,
 } from "./services/linkingService";
 import {
+  reconcileAnnotations,
+} from "./services/annotationService";
+import {
   setFolderTraData,
   touchFolder,
 } from "./services/storageService";
@@ -110,6 +114,7 @@ function decompressTraData(data: TraFileData): TraFileData {
 // ---- Plugin State ----
 
 let currentFolder: string = FOLDER_NAMES[0] || "EB";
+let annotationSide: AnnotationSide = "auto";
 let translationData: TranslationMap = {};
 let metadataData: MetadataMap = {};
 let lastSelectionTextNodes: TextNodeInfo[] = [];
@@ -206,6 +211,15 @@ async function initializeWithFolder(): Promise<void> {
     }
   } catch {
     // Use default folder
+  }
+
+  try {
+    const savedSide = await figma.clientStorage.getAsync('annotationSide');
+    if (savedSide === "auto" || savedSide === "left" || savedSide === "right") {
+      annotationSide = savedSide;
+    }
+  } catch {
+    // Keep default 'auto'
   }
 
   const traData = await loadTraDataForFolder(currentFolder);
@@ -326,6 +340,39 @@ async function sendNodeUpdate(node: TextNode): Promise<void> {
   });
 }
 
+// ---- Annotations ----
+
+/**
+ * Rebuild all on-canvas multilanId badges for the whole page. Runs on any change to
+ * the set of linked nodes so badges stay in sync and get de-overlapped together.
+ * Errors are swallowed so annotation issues never block linking.
+ */
+async function reconcilePageAnnotations(): Promise<void> {
+  if (!hasEditPermission()) return;
+  try {
+    const linked = getTextNodesInScope("page").filter((n) => getMultilanId(n));
+    const forced = annotationSide === "auto" ? undefined : annotationSide;
+    await reconcileAnnotations(linked, forced);
+  } catch (err) {
+    console.error("Annotation reconcile failed:", err);
+  }
+}
+
+async function handleSetAnnotationSide(msg: PluginMessage): Promise<void> {
+  if (!requireEditPermission()) return;
+  const side = msg.annotationSide;
+  if (side !== "auto" && side !== "left" && side !== "right") return;
+
+  annotationSide = side;
+  try {
+    await figma.clientStorage.setAsync("annotationSide", side);
+  } catch {
+    // Non-fatal — preference just won't persist across sessions.
+  }
+  await reconcilePageAnnotations();
+  figma.notify(`multilanId badges: ${side}`);
+}
+
 // ---- Initialize ----
 
 async function initialize(): Promise<void> {
@@ -370,8 +417,14 @@ async function initialize(): Promise<void> {
     detectedLanguage,
     folderNames: FOLDER_NAMES,
     folderName: currentFolder,
+    annotationSide,
     folderDataStatus: await buildFolderDataStatus(),
   });
+
+  // Ensure every linked node has an up-to-date on-canvas badge and stale ones are
+  // cleared — this backfills annotations for links made before this feature and
+  // for edits made outside the plugin. Errors here must never block startup.
+  await reconcilePageAnnotations();
 }
 
 // ---- Selection Change Handler ----
@@ -488,6 +541,10 @@ async function handleLinkNode(msg: PluginMessage): Promise<void> {
       setExpectedText(node, translation);
       setExpectedLang(node, lang);
     }
+    // Automatically draw the on-canvas multilanId badges so they're visible to
+    // anyone viewing the file (no dev seat / plugin needed). Rebuilds the whole page
+    // so all badges stay stacked without overlap.
+    await reconcilePageAnnotations();
     figma.notify(`Linked to ${msg.multilanId}`);
     await sendNodeUpdate(node);
   }
@@ -500,6 +557,8 @@ async function handleUnlinkNode(msg: PluginMessage): Promise<void> {
   const node = await getTextNodeById(msg.nodeId);
   const success = await unlinkTextNode(msg.nodeId);
   if (success) {
+    // Rebuild badges so this node's badge is gone and the rest restack.
+    await reconcilePageAnnotations();
     figma.notify("Unlinked");
     if (node) {
       await sendNodeUpdate(node);
@@ -518,6 +577,7 @@ async function handleRefresh(msg: PluginMessage): Promise<void> {
   if (unlinkedCount > 0) {
     figma.notify(`Auto-unlinked ${unlinkedCount} modified node${unlinkedCount > 1 ? 's' : ''}`);
   }
+  await reconcilePageAnnotations();
   const textNodes = getAllTextNodesInfo(scope, getTranslations);
   figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
 }
@@ -592,6 +652,8 @@ async function handleMarkAsPlaceholder(msg: PluginMessage): Promise<void> {
   const textNode = selection[0] as TextNode;
   if (msg.text) {
     await markAsPlaceholder(textNode, msg.text);
+    // Marking as placeholder clears the link, so refresh badges (drops this one).
+    await reconcilePageAnnotations();
     figma.notify("Marked as placeholder");
     const updatedNodeInfo = buildTextNodeInfo(textNode, getTranslations);
     const selectedNode = getSelectedTextNodeInfo(getTranslations);
@@ -813,6 +875,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     case "unlink-node":       await handleUnlinkNode(msg); break;
     case "update-node-from-tra": await handleUpdateNodeFromTra(msg); break;
     case "update-all-from-tra":  await handleUpdateAllFromTra(msg); break;
+    case "set-annotation-side":  await handleSetAnnotationSide(msg); break;
     case "select-node":       if (msg.nodeId) await selectNode(msg.nodeId); break;
     case "refresh":           await handleRefresh(msg); break;
     case "lookup-multilanId":
@@ -854,6 +917,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       if (msg.multilanId && msg.text) {
         const lang = (msg.language as Language) || "en";
         const textNode = await createLinkedTextNode(translationData, msg.multilanId, msg.text, lang);
+        await reconcilePageAnnotations();
         figma.notify(`Created text node: "${textNode.characters}" (${msg.multilanId})`);
         figma.ui.postMessage({ type: "text-created", multilanId: msg.multilanId });
       }

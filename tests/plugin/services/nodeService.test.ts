@@ -330,6 +330,22 @@ describe("nodeService", () => {
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe("nested-text");
     });
+
+    it("should exclude the plugin's own annotation label nodes", () => {
+      const realNode = createMockTextNode({ id: "real" });
+      const annotationNode = createMockTextNode({ id: "annotation" });
+      annotationNode.setPluginData("mlAnnotation", "true");
+
+      // Honour the predicate so the ANNOTATION_KEY filter is exercised.
+      (figma.currentPage.findAll as ReturnType<typeof vi.fn>).mockImplementation(
+        (pred: (n: TextNode) => boolean) => [realNode, annotationNode].filter(pred)
+      );
+
+      const result = getTextNodesInScope("page");
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("real");
+    });
   });
 
   describe("getAllTextNodesInfo", () => {

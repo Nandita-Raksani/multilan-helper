@@ -6,6 +6,10 @@ export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
 export const FOLDER_NAMES: readonly string[] = ["EB", "EBB", "PCB"];
 
+// Which side on-canvas multilanId badges are placed: 'auto' picks per node to avoid
+// covering content; 'left'/'right' force every badge to that side.
+export type AnnotationSide = "auto" | "left" | "right";
+
 // Translation status values
 export type MultilanStatus =
   | "TO_TRANSLATE_INTERNALLY"
@@ -130,6 +134,7 @@ export type PluginMessageType =
   | "verify-multilan-id"
   | "update-node-from-tra"
   | "update-all-from-tra"
+  | "set-annotation-side"
   | "resize-ui"
   | "close";
 
@@ -195,6 +200,8 @@ export interface PluginMessage {
   height?: number;
   /** When true, allow resizing below the normal minimum height (collapse to header). */
   collapsed?: boolean;
+  /** Badge side preference (auto/left/right) for the annotation feature. */
+  annotationSide?: AnnotationSide;
 }
 
 // Constants
@@ -204,3 +211,9 @@ export const EXPECTED_TEXT_KEY = "expectedText";
 // Language the node currently displays; recorded at link/switch time so an
 // out-of-date node can be updated back to its original language from the .tra.
 export const EXPECTED_LANG_KEY = "expectedLang";
+// Marks any plugin-created on-canvas annotation node (badge group/frame/label/line)
+// so text scans skip it and cleanup can find it.
+export const ANNOTATION_KEY = "mlAnnotation";
+// Stored on an annotation group: the id of the frame it annotates, so a re-run
+// can refresh in place and "Remove" can target the right group.
+export const ANNOTATION_TARGET_KEY = "mlAnnotationFrame";

@@ -1,4 +1,4 @@
-import type { Language, PluginMessage, TraUploadMetadata } from '../../shared/types';
+import type { AnnotationSide, Language, PluginMessage, TraUploadMetadata } from '../../shared/types';
 
 type MessageHandler = (message: PluginMessage) => void;
 
@@ -143,6 +143,10 @@ class PluginBridge {
 
   clearSelection(): void {
     this.send({ type: 'clear-selection' });
+  }
+
+  setAnnotationSide(annotationSide: AnnotationSide): void {
+    this.send({ type: 'set-annotation-side', annotationSide });
   }
 
   resizeUi(width: number, height: number, collapsed = false): void {
