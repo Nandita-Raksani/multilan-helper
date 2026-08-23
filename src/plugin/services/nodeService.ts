@@ -4,12 +4,14 @@ import {
   TextNodeInfo,
   TranslationEntry,
   Language,
+  AnnotationSide,
   SUPPORTED_LANGUAGES,
   PLUGIN_DATA_KEY,
   PLACEHOLDER_KEY,
   EXPECTED_TEXT_KEY,
   EXPECTED_LANG_KEY,
   ANNOTATION_KEY,
+  ANNOTATION_SIDE_KEY,
 } from "../../shared/types";
 import { extractVariableValues } from "./translationService";
 
@@ -119,6 +121,21 @@ export function setExpectedLang(node: TextNode, lang: Language): void {
  */
 export function clearExpectedLang(node: TextNode): void {
   node.setPluginData(EXPECTED_LANG_KEY, "");
+}
+
+/**
+ * Get this node's badge-side preference ('auto' when unset).
+ */
+export function getNodeSide(node: TextNode): AnnotationSide {
+  const value = node.getPluginData(ANNOTATION_SIDE_KEY);
+  return value === "left" || value === "right" ? value : "auto";
+}
+
+/**
+ * Set this node's badge-side preference ('auto' clears it).
+ */
+export function setNodeSide(node: TextNode, side: AnnotationSide): void {
+  node.setPluginData(ANNOTATION_SIDE_KEY, side === "auto" ? "" : side);
 }
 
 /**
@@ -259,6 +276,7 @@ export function buildTextNodeInfo(
     hasOverflow: false, // TODO: Implement overflow detection
     isPlaceholder: isPlaceholder(node),
     outOfDate: multilanId ? isOutOfDate(node, getTranslations) : false,
+    badgeSide: multilanId ? getNodeSide(node) : undefined,
   };
 }
 

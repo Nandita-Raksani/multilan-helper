@@ -1,4 +1,4 @@
-import type { SearchResult, MultilanStatus } from '../../shared/types';
+import type { SearchResult, MultilanStatus, AnnotationSide } from '../../shared/types';
 import { SUPPORTED_LANGUAGES } from '../../shared/types';
 import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
@@ -6,6 +6,7 @@ import { showSearchBar } from './FramePanel';
 import { getElementById } from '../utils/dom';
 import { escapeHtml, copyToClipboard, debounce } from '../utils/dom';
 import { renderManualLinkWidget, wireManualLinkWidget, clearAllManualLinkState } from './ManualLinkWidget';
+import { renderBadgeSideControl, wireBadgeSideControl } from './badgeSideControl';
 
 // Status badge configuration - light bg with colored text (like GitHub labels)
 const STATUS_CONFIG: Record<MultilanStatus, { bg: string; text: string; label: string }> = {
@@ -290,6 +291,8 @@ function renderResultCard(
     currentLang: string;
     showTextCopyButtons: boolean;
     outOfDate?: boolean;
+    nodeId?: string;
+    badgeSide?: AnnotationSide;
   }
 ): string {
   const metadataJson = getMetadataJson(result);
@@ -340,6 +343,7 @@ function renderResultCard(
         ${showOutOfDate && options.canEdit ? `<button class="btn-update-result btn-sm btn-sm-brand" data-id="${escapeHtml(result.multilanId)}" title="Overwrite the canvas text with the current .tra value">Update from .tra</button>` : ''}
         ${options.isCurrentLink && options.canEdit ? `<button class="btn-unlink-result btn-sm btn-sm-danger" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
         ${metadataJson ? `<button class="btn-info-toggle" title="Show details"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>` : ''}
+        ${options.isCurrentLink && options.canEdit && options.nodeId ? renderBadgeSideControl(options.nodeId, options.badgeSide || 'auto') : ''}
       </div>
       ${metadataJson ? `<div class="metadata-info collapsed">${buildMetadataContent(metadataJson)}</div>` : ''}
     </div>
@@ -420,6 +424,8 @@ function renderSelectedNodeLayout(
         currentLang: state.currentLang,
         showTextCopyButtons: !state.canEdit,
         outOfDate: match?.status === 'linked' && match.outOfDate === true,
+        nodeId: node.id,
+        badgeSide: match?.status === 'linked' ? match.badgeSide : undefined,
       });
 
   const carouselNav = results.length > 1 ? `
@@ -506,6 +512,7 @@ export function renderGlobalSearchResults(): void {
   // after every render path. The wire function is idempotent on stable DOM.
   const container = getElementById<HTMLDivElement>('globalSearchResults');
   wireManualLinkWidget(container, renderGlobalSearchResults, () => store.getState().currentLang);
+  wireBadgeSideControl(container);
 }
 
 function renderGlobalSearchResultsImpl(): void {

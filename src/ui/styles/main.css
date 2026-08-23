@@ -148,43 +148,37 @@ body {
   cursor: not-allowed;
 }
 
-/* Annotation side control */
-.annotation-bar {
+/* Per-node badge side control (Auto / Left / Right) on a linked node's card.
+   Sits on the same row as Link/Unlink, pushed to the right. */
+.badge-side-control {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 8px 8px 8px;
-  background: var(--figma-color-bg-secondary);
-  border-bottom: 1px solid var(--figma-color-border);
+  gap: 4px;
+  margin-left: auto;
 }
 
-.annotation-bar-label {
+.badge-side-label {
   font-size: 10px;
   color: var(--figma-color-text-tertiary);
+  margin-right: 2px;
 }
 
-.anno-side-group {
-  display: flex;
-  gap: 4px;
-}
-
-.anno-side-btn {
-  padding: 4px 10px;
+.badge-side-btn {
+  padding: 3px 8px;
   border: 1px solid var(--figma-color-border);
   border-radius: 6px;
   background: var(--figma-color-bg);
   color: var(--figma-color-text);
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
-.anno-side-btn:hover {
+.badge-side-btn:hover {
   background: var(--figma-color-bg-hover);
 }
 
-.anno-side-btn.active {
+.badge-side-btn.active {
   background: var(--figma-color-bg-brand);
   color: white;
   border-color: var(--figma-color-bg-brand);
@@ -811,6 +805,7 @@ body {
 
 .search-result-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
@@ -1252,6 +1247,7 @@ body {
 
 .frame-node-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-top: 6px;
   padding-top: 6px;

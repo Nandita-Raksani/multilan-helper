@@ -145,8 +145,8 @@ class PluginBridge {
     this.send({ type: 'clear-selection' });
   }
 
-  setAnnotationSide(annotationSide: AnnotationSide): void {
-    this.send({ type: 'set-annotation-side', annotationSide });
+  setNodeAnnotationSide(nodeId: string, annotationSide: AnnotationSide): void {
+    this.send({ type: 'set-node-annotation-side', nodeId, annotationSide });
   }
 
   resizeUi(width: number, height: number, collapsed = false): void {

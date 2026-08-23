@@ -57,6 +57,8 @@ export interface TextNodeInfo {
   // True when the node is linked but its on-canvas text no longer matches the
   // current .tra value for its language (the translation changed since linking).
   outOfDate?: boolean;
+  // This node's badge-side preference: 'auto' (default), 'left', or 'right'.
+  badgeSide?: AnnotationSide;
 }
 
 // Search result
@@ -82,6 +84,8 @@ export interface MatchDetectionResult {
   exactMatches?: SearchResult[];
   // Set when status === 'linked' and the node's text is out of date vs the .tra.
   outOfDate?: boolean;
+  // Set when status === 'linked' — the node's badge-side preference.
+  badgeSide?: AnnotationSide;
 }
 
 export interface UnlinkedQueueItem {
@@ -134,7 +138,7 @@ export type PluginMessageType =
   | "verify-multilan-id"
   | "update-node-from-tra"
   | "update-all-from-tra"
-  | "set-annotation-side"
+  | "set-node-annotation-side"
   | "resize-ui"
   | "close";
 
@@ -214,6 +218,8 @@ export const EXPECTED_LANG_KEY = "expectedLang";
 // Marks any plugin-created on-canvas annotation node (badge group/frame/label/line)
 // so text scans skip it and cleanup can find it.
 export const ANNOTATION_KEY = "mlAnnotation";
-// Stored on an annotation group: the id of the frame it annotates, so a re-run
-// can refresh in place and "Remove" can target the right group.
+// Stored on an annotation group: the id of the source node it annotates, so a
+// re-run can refresh in place and cleanup can target the right group.
 export const ANNOTATION_TARGET_KEY = "mlAnnotationFrame";
+// Per-node badge side preference ("left"/"right"); empty/absent means "auto".
+export const ANNOTATION_SIDE_KEY = "mlAnnotationSide";

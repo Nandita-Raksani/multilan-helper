@@ -11,7 +11,6 @@ import {
   MetadataMap,
   PluginMessage,
   Language,
-  AnnotationSide,
   SUPPORTED_LANGUAGES,
   FOLDER_NAMES,
   FrameNodeMatchResult,
@@ -47,6 +46,7 @@ import {
   isOutOfDate,
   getExpectedLang,
   setExpectedLang,
+  setNodeSide,
   clearMultilanId,
   clearExpectedText,
   clearExpectedLang,
@@ -114,7 +114,6 @@ function decompressTraData(data: TraFileData): TraFileData {
 // ---- Plugin State ----
 
 let currentFolder: string = FOLDER_NAMES[0] || "EB";
-let annotationSide: AnnotationSide = "auto";
 let translationData: TranslationMap = {};
 let metadataData: MetadataMap = {};
 let lastSelectionTextNodes: TextNodeInfo[] = [];
@@ -213,15 +212,6 @@ async function initializeWithFolder(): Promise<void> {
     // Use default folder
   }
 
-  try {
-    const savedSide = await figma.clientStorage.getAsync('annotationSide');
-    if (savedSide === "auto" || savedSide === "left" || savedSide === "right") {
-      annotationSide = savedSide;
-    }
-  } catch {
-    // Keep default 'auto'
-  }
-
   const traData = await loadTraDataForFolder(currentFolder);
   if (traData) {
     await initializeTraFileData(traData);
@@ -267,6 +257,7 @@ function buildSingleFrameMatchResult(node: TextNodeInfo, textToIdMap: Map<string
       translations: node.translations || undefined,
       metadata,
       outOfDate: node.outOfDate,
+      badgeSide: node.badgeSide,
     };
   } else {
     const trimmed = node.characters.trim();
@@ -351,26 +342,23 @@ async function reconcilePageAnnotations(): Promise<void> {
   if (!hasEditPermission()) return;
   try {
     const linked = getTextNodesInScope("page").filter((n) => getMultilanId(n));
-    const forced = annotationSide === "auto" ? undefined : annotationSide;
-    await reconcileAnnotations(linked, forced);
+    await reconcileAnnotations(linked);
   } catch (err) {
     console.error("Annotation reconcile failed:", err);
   }
 }
 
-async function handleSetAnnotationSide(msg: PluginMessage): Promise<void> {
+async function handleSetNodeAnnotationSide(msg: PluginMessage): Promise<void> {
   if (!requireEditPermission()) return;
   const side = msg.annotationSide;
-  if (side !== "auto" && side !== "left" && side !== "right") return;
+  if (!msg.nodeId || (side !== "auto" && side !== "left" && side !== "right")) return;
 
-  annotationSide = side;
-  try {
-    await figma.clientStorage.setAsync("annotationSide", side);
-  } catch {
-    // Non-fatal — preference just won't persist across sessions.
-  }
+  const node = await getTextNodeById(msg.nodeId);
+  if (!node || !getMultilanId(node)) return;
+
+  setNodeSide(node, side);
   await reconcilePageAnnotations();
-  figma.notify(`multilanId badges: ${side}`);
+  await sendNodeUpdate(node);
 }
 
 // ---- Initialize ----
@@ -417,7 +405,6 @@ async function initialize(): Promise<void> {
     detectedLanguage,
     folderNames: FOLDER_NAMES,
     folderName: currentFolder,
-    annotationSide,
     folderDataStatus: await buildFolderDataStatus(),
   });
 
@@ -458,6 +445,7 @@ async function handleSelectionChange(): Promise<void> {
         translations: selectedNode.translations || undefined,
         metadata,
         outOfDate: selectedNode.outOfDate,
+        badgeSide: selectedNode.badgeSide,
       };
     } else {
       const trimmed = selectedNode.characters.trim();
@@ -875,7 +863,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     case "unlink-node":       await handleUnlinkNode(msg); break;
     case "update-node-from-tra": await handleUpdateNodeFromTra(msg); break;
     case "update-all-from-tra":  await handleUpdateAllFromTra(msg); break;
-    case "set-annotation-side":  await handleSetAnnotationSide(msg); break;
+    case "set-node-annotation-side": await handleSetNodeAnnotationSide(msg); break;
     case "select-node":       if (msg.nodeId) await selectNode(msg.nodeId); break;
     case "refresh":           await handleRefresh(msg); break;
     case "lookup-multilanId":

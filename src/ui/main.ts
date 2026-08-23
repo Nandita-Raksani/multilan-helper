@@ -62,7 +62,6 @@ function handlePluginMessage(msg: PluginMessage): void {
         textNodes: msg.textNodes || [],
         selectedNode: msg.selectedNode || null,
         currentLang: initialLang,
-        annotationSide: msg.annotationSide || 'auto',
         translationCount: msg.translationCount || 0,
         folderNames,
         currentFolder,
@@ -73,7 +72,6 @@ function handlePluginMessage(msg: PluginMessage): void {
         setViewMode(true);
         hideLanguageBar();
       }
-      renderAnnotationSideControl(msg.canEdit ?? true);
 
       // No folder active if no translations loaded
       renderFolderButtons(folderNames, hasTranslations ? currentFolder : null, folderDataStatus);
@@ -354,29 +352,6 @@ function handlePluginMessage(msg: PluginMessage): void {
   }
 }
 
-/** Reflect the active badge-side choice on the control, and hide it for viewers. */
-function renderAnnotationSideControl(canEdit: boolean): void {
-  const bar = document.getElementById('annotationBar');
-  if (bar) bar.style.display = canEdit ? '' : 'none';
-  const active = store.getState().annotationSide;
-  document.querySelectorAll<HTMLButtonElement>('.anno-side-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.side === active);
-  });
-}
-
-/** Wire the Auto/Left/Right badge-side buttons. */
-function initAnnotationSideControl(): void {
-  document.querySelectorAll<HTMLButtonElement>('.anno-side-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const side = btn.dataset.side as 'auto' | 'left' | 'right';
-      if (store.getState().annotationSide === side) return;
-      store.setState({ annotationSide: side });
-      renderAnnotationSideControl(store.getState().canEdit);
-      pluginBridge.setAnnotationSide(side);
-    });
-  });
-}
-
 function init(): void {
   // Initialize all components
   initFolderSelector();
@@ -384,7 +359,6 @@ function init(): void {
   initTabs();
   initSearchPanel();
   initStatusBar();
-  initAnnotationSideControl();
 
   // Render folder buttons immediately from the shared constant so the bar is
   // visible from frame one — the init message arrives later (after plugin font

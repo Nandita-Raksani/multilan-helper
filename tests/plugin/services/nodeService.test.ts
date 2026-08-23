@@ -23,6 +23,8 @@ import {
   setExpectedText,
   setExpectedLang,
   getExpectedLang,
+  getNodeSide,
+  setNodeSide,
 } from "../../../src/plugin/services/nodeService";
 import { PLUGIN_DATA_KEY, PLACEHOLDER_KEY } from "../../../src/shared/types";
 
@@ -119,6 +121,27 @@ describe("nodeService", () => {
     });
   });
 
+  describe("getNodeSide / setNodeSide", () => {
+    it("defaults to 'auto' when unset", () => {
+      expect(getNodeSide(createMockTextNode())).toBe("auto");
+    });
+
+    it("round-trips 'left' and 'right'", () => {
+      const node = createMockTextNode();
+      setNodeSide(node, "left");
+      expect(getNodeSide(node)).toBe("left");
+      setNodeSide(node, "right");
+      expect(getNodeSide(node)).toBe("right");
+    });
+
+    it("'auto' clears the stored preference", () => {
+      const node = createMockTextNode();
+      setNodeSide(node, "left");
+      setNodeSide(node, "auto");
+      expect(getNodeSide(node)).toBe("auto");
+    });
+  });
+
   describe("isOutOfDate", () => {
     // Helper: link a node to a multilanId with a recorded language + snapshot.
     function linkNode(characters: string, lang?: string) {
@@ -203,6 +226,7 @@ describe("nodeService", () => {
         hasOverflow: false,
         isPlaceholder: false,
         outOfDate: false,
+        badgeSide: "auto",
       });
     });
 

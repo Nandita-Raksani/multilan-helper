@@ -4,6 +4,7 @@ import { store } from '../state/store';
 import { pluginBridge } from '../services/pluginBridge';
 import { escapeHtml, copyToClipboard } from '../utils/dom';
 import { renderManualLinkWidget, wireManualLinkWidget } from './ManualLinkWidget';
+import { renderBadgeSideControl, wireBadgeSideControl } from './badgeSideControl';
 
 // Carousel state: tracks current suggestion index per nodeId
 const nodeCarouselIndexMap = new Map<string, number>();
@@ -91,6 +92,7 @@ function renderLinkedCard(item: FrameNodeMatchResult, currentLang: string, canEd
           ${canEdit ? `<div class="frame-node-actions">
             ${outOfDate ? `<button class="btn-sm btn-sm-brand btn-frame-update" data-node-id="${escapeHtml(item.nodeId)}" title="Overwrite the canvas text with the current .tra value">Update from .tra</button>` : ''}
             <button class="btn-sm btn-sm-danger btn-frame-unlink" data-node-id="${escapeHtml(item.nodeId)}">Unlink</button>
+            ${renderBadgeSideControl(item.nodeId, mr.badgeSide || 'auto')}
           </div>` : ''}
         </div>
       </div>
@@ -336,6 +338,8 @@ export function renderFramePanel(): void {
 
 function attachFramePanelHandlers(container: HTMLElement): void {
   const state = store.getState();
+
+  wireBadgeSideControl(container);
 
   // Card click → select/zoom node on canvas
   container.querySelectorAll<HTMLElement>('.frame-node-group').forEach(group => {

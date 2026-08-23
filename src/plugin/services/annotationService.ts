@@ -4,7 +4,7 @@
 // so the plugin's text scans ignore them.
 
 import { ANNOTATION_KEY, ANNOTATION_TARGET_KEY } from "../../shared/types";
-import { getMultilanId, isEffectivelyVisible } from "./nodeService";
+import { getMultilanId, getNodeSide, isEffectivelyVisible } from "./nodeService";
 
 // Container node types that count as a "frame"/screen we annotate around.
 const CONTAINER_TYPES: ReadonlySet<string> = new Set([
@@ -208,16 +208,14 @@ export function resolveOverlaps(
 }
 
 /** Build the desired (un-nudged) badge geometry for one linked node. */
-function buildDesired(
-  node: TextNode,
-  frameBox: Box,
-  obstacles: Box[],
-  forcedSide?: Side
-): DesiredBadge | null {
+function buildDesired(node: TextNode, frameBox: Box, obstacles: Box[]): DesiredBadge | null {
   const box = node.absoluteBoundingBox;
   const multilanId = getMultilanId(node);
   if (!box || !multilanId) return null;
 
+  // Each node carries its own side preference; 'auto' lets chooseColumn decide.
+  const pref = getNodeSide(node);
+  const forcedSide = pref === "auto" ? undefined : pref;
   const width = multilanId.length * BADGE_CHAR_W + BADGE_PAD_X * 2;
   const { side, columnX } = chooseColumn(frameBox, box, obstacles, width, forcedSide);
   const centerY = box.y + box.height / 2;
@@ -340,10 +338,7 @@ export function removeAllAnnotations(): void {
  * different frames or loose on the page) get stacked instead of piling up. Removes
  * all existing annotations first, so it doubles as cleanup for unlinked nodes.
  */
-export async function reconcileAnnotations(
-  linkedNodes: TextNode[],
-  forcedSide?: Side
-): Promise<void> {
+export async function reconcileAnnotations(linkedNodes: TextNode[]): Promise<void> {
   removeAllAnnotations();
 
   const usable = linkedNodes.filter(
@@ -360,7 +355,7 @@ export async function reconcileAnnotations(
   for (const node of usable) {
     const frame = resolveTargetFrames([node])[0];
     const frameBox = (frame && frame.absoluteBoundingBox) || node.absoluteBoundingBox!;
-    const d = buildDesired(node, frameBox, obstacles, forcedSide);
+    const d = buildDesired(node, frameBox, obstacles);
     if (d) {
       desired.push(d);
       nodes.push(node);
