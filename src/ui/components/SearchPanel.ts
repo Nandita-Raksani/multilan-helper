@@ -362,7 +362,9 @@ function renderCloseMatchCard(
   result: SearchResult,
   canEdit: boolean,
   currentLang: string,
-  isCurrentLink: boolean
+  isCurrentLink: boolean,
+  nodeId?: string,
+  badgeSide?: AnnotationSide
 ): string {
   const scorePercent = result.score !== undefined ? Math.round(result.score * 100) : null;
   const badgeLabel = isCurrentLink ? 'Linked' : 'Close Match';
@@ -395,6 +397,7 @@ function renderCloseMatchCard(
       <div class="frame-node-actions">
         ${canEdit && !isCurrentLink ? `<button class="btn-sm btn-sm-success btn-link-result" data-id="${escapeHtml(result.multilanId)}">Link</button>` : ''}
         ${canEdit && isCurrentLink ? `<button class="btn-sm btn-sm-danger btn-unlink-result" data-id="${escapeHtml(result.multilanId)}">Unlink</button>` : ''}
+        ${canEdit && isCurrentLink && nodeId ? renderBadgeSideControl(nodeId, badgeSide || 'auto') : ''}
       </div>
     </div>`;
 }
@@ -415,7 +418,14 @@ function renderSelectedNodeLayout(
 
   // Use frame-style card for close match results (from on-demand fuzzy)
   const cardHtml = isCloseMatchResult
-    ? renderCloseMatchCard(current, state.canEdit, state.currentLang, !!isCurrentLink)
+    ? renderCloseMatchCard(
+        current,
+        state.canEdit,
+        state.currentLang,
+        !!isCurrentLink,
+        node.id,
+        match?.status === 'linked' ? match.badgeSide : undefined
+      )
     : renderResultCard(current, {
         showCornerBadge: false,
         hasSelection: true,
@@ -633,6 +643,8 @@ function renderGlobalSearchResultsImpl(): void {
       canEdit: state.canEdit,
       currentLang: state.currentLang,
       showTextCopyButtons,
+      nodeId: state.selectedNode?.id,
+      badgeSide: state.matchResult?.status === 'linked' ? state.matchResult.badgeSide : undefined,
     });
   }).join('');
 }

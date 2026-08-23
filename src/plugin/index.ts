@@ -14,6 +14,7 @@ import {
   SUPPORTED_LANGUAGES,
   FOLDER_NAMES,
   FrameNodeMatchResult,
+  MatchDetectionResult,
   TextNodeInfo,
   FolderDataStatus,
   TraUploadMetadata,
@@ -315,6 +316,41 @@ async function patchNodeInSelection(
   return { selectionTextNodes, frameMatchResults };
 }
 
+/** Build the match result for a single selected node (linked / exact / none). */
+function buildSelectedMatchResult(
+  selectedNode: TextNodeInfo,
+  textToIdMap: Map<string, string[]>
+): MatchDetectionResult {
+  if (selectedNode.multilanId) {
+    return {
+      status: 'linked',
+      multilanId: selectedNode.multilanId,
+      translations: selectedNode.translations || undefined,
+      metadata: metadataData ? metadataData[selectedNode.multilanId] : undefined,
+      outOfDate: selectedNode.outOfDate,
+      badgeSide: selectedNode.badgeSide,
+    };
+  }
+  const trimmed = selectedNode.characters.trim();
+  const exactIds = trimmed ? (textToIdMap.get(normalizeExactKey(trimmed)) || []) : [];
+  if (exactIds.length > 0) {
+    const exactMatches = exactIds.map(id => ({
+      multilanId: id,
+      translations: translationData[id],
+      metadata: metadataData ? metadataData[id] : undefined,
+    }));
+    const primary = exactMatches[0];
+    return {
+      status: 'exact',
+      multilanId: primary.multilanId,
+      translations: primary.translations,
+      metadata: primary.metadata,
+      exactMatches,
+    };
+  }
+  return { status: 'none' };
+}
+
 /** Send incremental node update to UI after link/unlink. */
 async function sendNodeUpdate(node: TextNode): Promise<void> {
   const updatedNodeInfo = buildTextNodeInfo(node, getTranslations);
@@ -322,10 +358,20 @@ async function sendNodeUpdate(node: TextNode): Promise<void> {
   const patched = await patchNodeInSelection(node, lastSelectionTextNodes, lastFrameMatchResults);
   lastSelectionTextNodes = patched.selectionTextNodes;
   lastFrameMatchResults = patched.frameMatchResults;
+
+  // Recompute the selected node's match so the UI shows the correct card (e.g. the
+  // linked card with its badge-side control) instead of blanking after a link.
+  let matchResult: MatchDetectionResult | undefined = undefined;
+  if (selectedNode) {
+    const textToIdMap = await getTextToIdMap(translationData);
+    matchResult = buildSelectedMatchResult(selectedNode, textToIdMap);
+  }
+
   figma.ui.postMessage({
     type: "node-updated",
     nodeInfo: updatedNodeInfo,
     selectedNode,
+    matchResult,
     selectionTextNodes: patched.selectionTextNodes,
     frameMatchResults: patched.frameMatchResults,
   });
@@ -435,40 +481,9 @@ async function handleSelectionChange(): Promise<void> {
 
   const textToIdMap = await getTextToIdMap(translationData);
 
-  let matchResult = undefined;
-  if (selectedNode) {
-    if (selectedNode.multilanId) {
-      const metadata = metadataData ? metadataData[selectedNode.multilanId] : undefined;
-      matchResult = {
-        status: 'linked' as const,
-        multilanId: selectedNode.multilanId,
-        translations: selectedNode.translations || undefined,
-        metadata,
-        outOfDate: selectedNode.outOfDate,
-        badgeSide: selectedNode.badgeSide,
-      };
-    } else {
-      const trimmed = selectedNode.characters.trim();
-      const exactIds = trimmed ? (textToIdMap.get(normalizeExactKey(trimmed)) || []) : [];
-      if (exactIds.length > 0) {
-        const exactMatches = exactIds.map(id => ({
-          multilanId: id,
-          translations: translationData[id],
-          metadata: metadataData ? metadataData[id] : undefined,
-        }));
-        const primary = exactMatches[0];
-        matchResult = {
-          status: 'exact' as const,
-          multilanId: primary.multilanId,
-          translations: primary.translations,
-          metadata: primary.metadata,
-          exactMatches,
-        };
-      } else {
-        matchResult = { status: 'none' as const };
-      }
-    }
-  }
+  const matchResult = selectedNode
+    ? buildSelectedMatchResult(selectedNode, textToIdMap)
+    : undefined;
 
   const frameMatchResults = selectionTextNodes.length > 1
     ? buildFrameMatchResults(selectionTextNodes, textToIdMap)
