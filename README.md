@@ -3,6 +3,8 @@
 A Figma plugin for managing multilingual text. It links Figma text layers to translation IDs (**multilanIds**) so designers can switch a design between English, French, Dutch, and German in place. Translation data comes from `.tra` files that users upload at runtime — nothing is bundled at build time.
 
 > New to the codebase? Read **[How It Works](#how-it-works)** first, then **[Project Structure](#project-structure)**. For the data-source design (ports & adapters), see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
+>
+> **Not a developer?** Read **[USER-GUIDE.md](./USER-GUIDE.md)** instead — how designers use the plugin, in plain language.
 
 ---
 
@@ -100,32 +102,51 @@ Every message type is a member of the `PluginMessage` union in `src/shared/types
 ## Features
 
 ### Translation file upload
-- **Runtime upload** of `.tra` files per folder (EB / EBB / PCB) — no build-time bundling
-- **Drag & drop** all four language files at once, or pick them
-- **Auto-detection** of language from filename (`en-BE.tra` → EN)
-- **Partial & incremental**: upload 1–4 languages, add more later without losing prior uploads
+- **Runtime upload** of a release **`.zip`** per folder (EB / EBB / PCB) — no build-time bundling. Loose `.tra` files are rejected with a hint to upload the original zip.
+- **Drag & drop** the zip or pick it; the `.tra` files inside are extracted in the UI (`fflate`), macOS `__MACOSX` junk skipped
+- **Auto-detection** of language from filename (`en-BE.tra` → EN); the zip name and any date in it are stored as upload metadata
+- **Partial & incremental**: a zip with 1–4 languages works; later uploads merge
 - **Per-user storage**: uploads are compressed and cached in `figma.clientStorage`
 - **LRU eviction**: if the 5 MB quota is hit, the least-recently-used folder is evicted first
+- **Re-upload** by clicking the already-active folder button; the last upload date/zip name is shown
 
 ### Search & matching
-- **Global search** by multilanId or text, with fuzzy matching
-- **Exact match** via an O(1) text→ID map (case-sensitive — `Private` ≠ `private`)
-- **Fuzzy match** via Levenshtein scoring with early termination and cancellation
-- **Translation preview** across all uploaded languages, with status badges
+- **Global search** by multilanId or text, with fuzzy matching, insensitive to case, accents, apostrophe/space variants (`foldForSearch`)
+- **Exact match** via an O(1) text→ID map (strict — NFC normalization only); all IDs sharing the same text are surfaced, not just the first
+- **Fuzzy match** via Levenshtein scoring with early termination and cancellation, run **on demand** per node ("Find close match")
+- **Translation preview** across all uploaded languages, with status badges (status metadata exists only for API sources; `.tra` files carry none)
+- **Manual link by multilanId** — paste an ID, verify it, preview its translations, then link
 
 ### Frame / multi-selection mode
 - Select several text nodes (or a frame) to see all matches at once
-- Per-node link / unlink / browse close-match suggestions
+- Per-node link / unlink / update / badge side / browse close-match suggestions
+- Header summary (`N linked, N out of date, N unmatched`); clicking a card selects and zooms the node
+- Nodes hidden via their own or an ancestor's `visible` flag are skipped everywhere
 
 ### Language switching
-- Switch EN / FR / NL / DE for all linked nodes (page or selection scope)
-- Detects the current language from already-linked nodes
-- `###variable###` placeholders prompt for values and are preserved across languages
+- Switch EN / FR / NL / DE for all linked nodes — **selection scope when something is selected, page scope otherwise**
+- Detects the current language from already-linked nodes at startup
+- Missing translations become `*Multilan not available*` and are reported back to the UI
+- `###variable###` templates are kept in canonical template form (interpolated text is rewritten back on refresh)
+
+### On-canvas multilanId badges
+- Linking draws a green badge + dashed leader line outside the frame, readable by anyone without the plugin
+- All badges live in one page-level **"Multilan IDs"** group so they can be hidden/shown together
+- Badges are added/removed incrementally on link, unlink, create and side change; the whole page reconciles on plugin start and refresh
+- Per-node **badge side**: `auto` / `left` / `right`, stored on the node
+
+### Out-of-date detection
+- A linked, un-edited node whose `.tra` wording has since changed is flagged **Out of date** (`isOutOfDate`), using the language recorded on the node at link/switch time
+- **Update** applies the current `.tra` value to **one node at a time** — deliberately no bulk update, so layout breakage stays visible and per-layer
+- Nodes edited by hand are *not* "out of date" — they are auto-unlinked instead
 
 ### Other
-- **Auto-unlink** when a linked layer's text is edited by hand
-- **Highlight unlinked** text nodes on the canvas
-- **View-only mode** for users without edit permission
+- **Auto-unlink** when a linked layer's text is edited by hand (runs on plugin start and on refresh)
+- **Highlight unlinked** — walks the selection's unlinked nodes one at a time, selecting each on canvas
+- **Preview (read-only) mode in Dev Mode** — every write handler is gated by `hasEditPermission()`, i.e. `figma.editorType === "figma"`. On a dev seat the UI hides the language bar, highlight-unlinked, link/unlink/update/badge-side and manual link; it keeps folder upload, search, match detection, out-of-date badges and translation previews, and *adds* per-language copy buttons. Users with neither seat can't run the plugin at all — for them the on-canvas badges and the `• multilanId` layer-name suffix are the whole interface. See [USER-GUIDE.md § Who can do what](./USER-GUIDE.md#8-who-can-do-what--designers-developers-everyone-else).
+
+  > ⚠️ `manifest.json` currently declares `"editorType": ["figma"]`. For the plugin to actually appear in Dev Mode this must be `["figma", "dev"]` — the read-only code path is complete, the manifest is the only thing gating it.
+- **Resizable** panel (drag handle) and **collapse to header**
 
 ---
 
@@ -158,11 +179,16 @@ To load the plugin:
 |------|---------|-------|
 | MultilanId link | `pluginData` on each TextNode | Per-document |
 | Expected text (for auto-unlink) | `pluginData` on each TextNode | Per-document |
+| Expected language (for out-of-date checks) | `pluginData` on each TextNode | Per-document |
+| Badge side preference | `pluginData` on each TextNode | Per-document |
+| Annotation markers (badge nodes + container group) | `pluginData` on the annotation nodes | Per-document |
 | `.tra` content (compressed) | `figma.clientStorage` | Per-user |
 | Upload metadata & timestamps | `figma.clientStorage` | Per-user |
 | Selected folder | `figma.clientStorage` | Per-user |
 
-The `pluginData` keys are defined once in `src/shared/types.ts` (`PLUGIN_DATA_KEY`, `EXPECTED_TEXT_KEY`, `PLACEHOLDER_KEY`) and read/written only through `nodeService.ts`.
+Anything on a node is shared with everyone who opens the file (links, badges); anything in `clientStorage` is local to one user — each teammate uploads the release zip themselves.
+
+The `pluginData` keys are defined once in `src/shared/types.ts` (`PLUGIN_DATA_KEY`, `EXPECTED_TEXT_KEY`, `EXPECTED_LANG_KEY`, `PLACEHOLDER_KEY`, `ANNOTATION_KEY`, `ANNOTATION_TARGET_KEY`, `ANNOTATION_SIDE_KEY`, `ANNOTATION_CONTAINER_KEY`) and read/written only through `nodeService.ts` / `annotationService.ts`.
 
 ## `.tra` File Format
 
@@ -181,7 +207,7 @@ Each folder (EB / EBB / PCB) has up to four language files: `en-BE.tra`, `fr-BE.
 
 ## Variables
 
-Translations may embed `###variable###` placeholders, e.g. `"Welcome back, ###username###!"`. When linking, an input appears per variable, and the values are preserved when the language is switched.
+Translations may embed `###variable###` placeholders, e.g. `"Welcome back, ###username###!"`. Nodes keep the canonical template form on canvas: a node whose text was interpolated in an earlier version (`"Welcome back, Ana!"`) is rewritten back to the template on refresh, and `isOutOfDate` treats an interpolated form as matching its template rather than as a change.
 
 ## Performance
 
@@ -197,6 +223,7 @@ Tuned for folders with 80,000+ multilanIds:
 
 ## Related Docs
 
+- **[USER-GUIDE.md](./USER-GUIDE.md)** — the designer-facing manual (what each button does, in plain language)
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** — the ports-and-adapters data layer and how to add a new data source
 - **[TESTING.md](./TESTING.md)** — how the tests are organized
 - **[PUBLISHING.md](./PUBLISHING.md)** — release process
