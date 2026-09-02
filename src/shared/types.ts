@@ -137,7 +137,6 @@ export type PluginMessageType =
   | "upload-tra-files"
   | "verify-multilan-id"
   | "update-node-from-tra"
-  | "update-all-from-tra"
   | "set-node-annotation-side"
   | "resize-ui"
   | "close";

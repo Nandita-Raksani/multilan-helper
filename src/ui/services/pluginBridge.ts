@@ -77,13 +77,6 @@ class PluginBridge {
     });
   }
 
-  updateAllFromTra(scope: 'page' | 'selection'): void {
-    this.send({
-      type: 'update-all-from-tra',
-      scope
-    });
-  }
-
   selectNode(nodeId: string): void {
     this.send({
       type: 'select-node',

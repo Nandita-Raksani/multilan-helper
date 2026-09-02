@@ -17,6 +17,8 @@ let cachedSortOrder: string[] | null = null;
 
 const copyIconSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
 
+export const syncIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+
 export function isFrameMode(): boolean {
   return store.getState().selectionTextNodes.length > 1;
 }
@@ -85,12 +87,14 @@ function renderLinkedCard(item: FrameNodeMatchResult, currentLang: string, canEd
           <div class="frame-node-id-row">
             <span class="frame-node-id">${escapeHtml(mr.multilanId || '')}</span>
             <button class="copy-btn icon-btn" data-text="${escapeHtml(mr.multilanId || '')}" title="Copy ID">${copyIconSvg}</button>
-            <span class="match-badge match-badge-linked">Linked</span>
-            ${outOfDate ? '<span class="match-badge match-badge-outdated">Out of date</span>' : ''}
+            <span class="badge-group">
+              <span class="match-badge match-badge-linked">Linked</span>
+              ${outOfDate ? '<span class="match-badge match-badge-outdated">Out of date</span>' : ''}
+            </span>
           </div>
           ${mr.translations ? `<div class="translations-preview">${renderTranslations(mr.translations, currentLang)}</div>` : ''}
           ${canEdit ? `<div class="frame-node-actions">
-            ${outOfDate ? `<button class="btn-sm btn-sm-brand btn-frame-update" data-node-id="${escapeHtml(item.nodeId)}" title="Overwrite the canvas text with the current .tra value">Update from .tra</button>` : ''}
+            ${outOfDate ? `<button class="btn-sm btn-sm-update btn-frame-update" data-node-id="${escapeHtml(item.nodeId)}" title="Overwrite the canvas text with the current .tra value">${syncIconSvg}Update</button>` : ''}
             <button class="btn-sm btn-sm-danger btn-frame-unlink" data-node-id="${escapeHtml(item.nodeId)}">Unlink</button>
             ${renderBadgeSideControl(item.nodeId, mr.badgeSide || 'auto')}
           </div>` : ''}
@@ -134,7 +138,7 @@ function renderExactSlide(nodeId: string, match: SearchResult, index: number, to
       <div class="frame-node-id-row">
         <span class="frame-node-id">${escapeHtml(match.multilanId)}</span>
         <button class="copy-btn icon-btn" data-text="${escapeHtml(match.multilanId)}" title="Copy ID">${copyIconSvg}</button>
-        <span class="match-badge match-badge-exact" style="margin-left:auto">Match${total > 1 ? ` ${index + 1}/${total}` : ''}</span>
+        <span class="badge-group"><span class="match-badge match-badge-exact">Match${total > 1 ? ` ${index + 1}/${total}` : ''}</span></span>
       </div>
       ${match.translations ? `<div class="translations-preview">${renderTranslations(match.translations, currentLang)}</div>` : ''}
       ${canEdit ? `<div class="frame-node-actions"><button class="btn-sm btn-sm-success btn-frame-link" data-node-id="${escapeHtml(nodeId)}" data-multilan-id="${escapeHtml(match.multilanId)}">Link</button></div>` : ''}
@@ -179,8 +183,10 @@ function renderSuggestionSlide(nodeId: string, suggestion: SearchResult & { scor
       <div class="frame-node-id-row">
         <span class="frame-node-id">${escapeHtml(suggestion.multilanId)}</span>
         <button class="copy-btn icon-btn" data-text="${escapeHtml(suggestion.multilanId)}" title="Copy ID">${copyIconSvg}</button>
-        <span class="frame-score" style="margin-left:auto">${scorePercent}%</span>
-        <span class="match-badge match-badge-close" style="margin-left:0">Close Match</span>
+        <span class="badge-group">
+          <span class="frame-score">${scorePercent}%</span>
+          <span class="match-badge match-badge-close">Close Match</span>
+        </span>
       </div>
       <div class="translations-preview">${renderTranslations(suggestion.translations, currentLang)}</div>
       <div class="frame-node-actions">
@@ -227,7 +233,7 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
           <div class="frame-node-card frame-node-card-none">
             <div class="frame-node-id-row" style="margin-bottom:0">
               <span class="frame-node-hint" style="margin:0">No matching translations found</span>
-              <span class="match-badge match-badge-none">No match</span>
+              <span class="badge-group"><span class="match-badge match-badge-none">No match</span></span>
             </div>
           </div>
           ${canEdit ? renderManualLinkWidget(item.nodeId) : ''}
@@ -243,7 +249,7 @@ function renderNoneCard(item: FrameNodeMatchResult): string {
         <div class="frame-node-card frame-node-card-none">
           <div class="frame-node-id-row" style="margin-bottom:0">
             <span class="frame-node-hint" style="margin:0">No exact match</span>
-            ${!canEdit ? '<span class="match-badge match-badge-none">No match</span>' : ''}
+            ${!canEdit ? '<span class="badge-group"><span class="match-badge match-badge-none">No match</span></span>' : ''}
           </div>
           ${canEdit ? `<div class="frame-node-actions" style="justify-content:flex-start"><button class="btn-sm btn-sm-brand btn-find-close" data-node-id="${escapeHtml(item.nodeId)}" data-text="${escapeHtml(item.characters)}">Find close match</button></div>` : ''}
         </div>
@@ -299,16 +305,13 @@ export function renderFramePanel(): void {
   if (unmatchedCount > 0) summaryParts.push(`${unmatchedCount} unmatched`);
   const summaryText = summaryParts.length > 0 ? ` (${summaryParts.join(', ')})` : '';
 
-  const headerActions: string[] = [];
-  if (state.canEdit && outdatedCount > 0) {
-    headerActions.push(`<button class="btn-sm btn-sm-brand btn-frame-update-all" title="Overwrite every out-of-date layer with its current .tra value">Update all out-of-date (${outdatedCount})</button>`);
-  }
-
+  // Out-of-date layers are updated one at a time, from each card's own
+  // "Update" button — the header only reports the count.
   let html = `
     <div class="frame-header">
       <div class="frame-header-title">Frame selected &ndash; ${nodeCount} text layer${nodeCount !== 1 ? 's' : ''} found</div>
       <div class="frame-header-summary">${summaryText}</div>
-      ${headerActions.length > 0 ? `<div class="frame-header-actions">${headerActions.join('')}</div>` : ''}
+      ${state.canEdit && outdatedCount > 0 ? '<div class="frame-header-hint">Review each out-of-date layer and update it individually.</div>' : ''}
     </div>
     <div class="frame-node-list">
   `;
@@ -389,14 +392,6 @@ function attachFramePanelHandlers(container: HTMLElement): void {
       e.stopPropagation();
       const nodeId = btn.dataset.nodeId!;
       pluginBridge.updateNodeFromTra(nodeId);
-    });
-  });
-
-  // Bulk update-from-tra button
-  container.querySelectorAll<HTMLButtonElement>('.btn-frame-update-all').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      pluginBridge.updateAllFromTra('selection');
     });
   });
 

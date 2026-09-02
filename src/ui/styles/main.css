@@ -622,10 +622,6 @@ body {
   color: #d97706;
 }
 
-.match-badge-inline {
-  margin-left: auto;
-}
-
 
 /* Search Panel */
 /* Search Input Container */
@@ -877,6 +873,25 @@ body {
 
 .btn-sm-warning:hover {
   background: #d97706;
+}
+
+/* "Update" — pairs with the amber Out-of-date badge on the same card */
+.btn-sm-update {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f59e0b;
+  color: white;
+}
+
+.btn-sm-update:hover {
+  background: #d97706;
+}
+
+.btn-sm-update svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .currently-linked-text {
@@ -1172,8 +1187,10 @@ body {
   margin-top: 2px;
 }
 
-.frame-header-actions {
-  margin-top: 8px;
+.frame-header-hint {
+  font-size: 10px;
+  color: var(--figma-color-text-secondary);
+  margin-top: 6px;
 }
 
 .frame-node-list {
@@ -1229,7 +1246,11 @@ body {
   margin-bottom: 6px;
 }
 
-.frame-node-id-row .match-badge {
+/* Badges sit together as one group, pinned to the right of the id row */
+.badge-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
 }
 
@@ -1242,7 +1263,6 @@ body {
 .frame-score {
   font-size: 10px;
   color: var(--figma-color-text-tertiary);
-  margin-left: auto;
 }
 
 .frame-node-actions {

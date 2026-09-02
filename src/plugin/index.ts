@@ -44,7 +44,6 @@ import {
   getTextNodesInScope,
   getMultilanId,
   isTextModified,
-  isOutOfDate,
   getExpectedLang,
   setExpectedLang,
   setNodeSide,
@@ -622,28 +621,6 @@ async function handleUpdateNodeFromTra(msg: PluginMessage): Promise<void> {
   await sendNodeUpdate(node);
 }
 
-async function handleUpdateAllFromTra(msg: PluginMessage): Promise<void> {
-  if (!requireEditPermission()) return;
-
-  const scope = msg.scope || "page";
-  const nodes = getTextNodesInScope(scope);
-
-  let updatedCount = 0;
-  for (const node of nodes) {
-    if (!isOutOfDate(node, getTranslations)) continue;
-    if (await updateNodeFromTra(node)) updatedCount++;
-  }
-
-  if (updatedCount > 0) {
-    figma.notify(`Updated ${updatedCount} node${updatedCount > 1 ? 's' : ''} from .tra`);
-  } else {
-    figma.notify("No out-of-date nodes to update");
-  }
-
-  const textNodes = getAllTextNodesInfo(scope, getTranslations);
-  figma.ui.postMessage({ type: "text-nodes-updated", textNodes });
-}
-
 async function handleMarkAsPlaceholder(msg: PluginMessage): Promise<void> {
   if (!requireEditPermission()) return;
 
@@ -877,7 +854,6 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
     case "link-node":         await handleLinkNode(msg); break;
     case "unlink-node":       await handleUnlinkNode(msg); break;
     case "update-node-from-tra": await handleUpdateNodeFromTra(msg); break;
-    case "update-all-from-tra":  await handleUpdateAllFromTra(msg); break;
     case "set-node-annotation-side": await handleSetNodeAnnotationSide(msg); break;
     case "select-node":       if (msg.nodeId) await selectNode(msg.nodeId); break;
     case "refresh":           await handleRefresh(msg); break;
