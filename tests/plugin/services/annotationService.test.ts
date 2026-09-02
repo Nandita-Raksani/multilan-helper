@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createMockTextNode } from "../../setup";
 import {
   resolveOverlaps,
+  nudgeRectBelow,
   naturalSideForNode,
   boxesIntersect,
   chooseColumn,
@@ -28,6 +29,30 @@ function desired(
 }
 
 describe("annotationService", () => {
+  describe("nudgeRectBelow", () => {
+    const rect = { x: 100, y: 100, width: 50, height: 24 };
+
+    it("leaves the rect where it is when nothing is occupied", () => {
+      expect(nudgeRectBelow(rect, [])).toBe(100);
+    });
+
+    it("pushes below an occupied box it overlaps (+min gap)", () => {
+      const occupied = { x: 100, y: 90, width: 50, height: 24 }; // bottom 114
+      expect(nudgeRectBelow(rect, [occupied], 8)).toBe(122); // 114 + 8
+    });
+
+    it("ignores a box that doesn't overlap horizontally", () => {
+      const occupied = { x: 400, y: 90, width: 50, height: 24 };
+      expect(nudgeRectBelow(rect, [occupied], 8)).toBe(100);
+    });
+
+    it("cascades below multiple stacked boxes", () => {
+      const a = { x: 100, y: 90, width: 50, height: 24 }; // bottom 114
+      const b = { x: 100, y: 120, width: 50, height: 24 }; // bottom 144
+      expect(nudgeRectBelow(rect, [a, b], 8)).toBe(152); // 144 + 8
+    });
+  });
+
   describe("resolveOverlaps", () => {
     it("keeps badges in place when they don't overlap", () => {
       const out = resolveOverlaps([desired(180, 30), desired(180, 200)]);

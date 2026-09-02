@@ -222,3 +222,6 @@ export const ANNOTATION_KEY = "mlAnnotation";
 export const ANNOTATION_TARGET_KEY = "mlAnnotationFrame";
 // Per-node badge side preference ("left"/"right"); empty/absent means "auto".
 export const ANNOTATION_SIDE_KEY = "mlAnnotationSide";
+// Marks the single page-level group that holds all annotation badges/leaders, so
+// they can be hidden/shown together.
+export const ANNOTATION_CONTAINER_KEY = "mlAnnotationContainer";

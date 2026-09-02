@@ -1,9 +1,15 @@
 // Annotation service — draws on-canvas multilanId badges with dashed leader lines
 // outside a frame, so anyone viewing the file (any seat, no plugin) can read the
-// multilanId of each linked text. All created nodes are marked with ANNOTATION_KEY
-// so the plugin's text scans ignore them.
+// multilanId of each linked text. All badges/leaders live under one page-level
+// "Multilan IDs" group (hide/show together) and are marked with ANNOTATION_KEY so
+// the plugin's text scans skip them. Nodes are left unlocked so viewers can copy
+// the id text.
 
-import { ANNOTATION_KEY, ANNOTATION_TARGET_KEY } from "../../shared/types";
+import {
+  ANNOTATION_KEY,
+  ANNOTATION_TARGET_KEY,
+  ANNOTATION_CONTAINER_KEY,
+} from "../../shared/types";
 import { getMultilanId, getNodeSide, isEffectivelyVisible } from "./nodeService";
 
 // Container node types that count as a "frame"/screen we annotate around.
@@ -22,6 +28,8 @@ const BADGE_HEIGHT = 24; // estimated badge height, used for stacking
 const BADGE_MIN_GAP = 8; // minimum vertical gap between stacked badges
 const BADGE_CHAR_W = 8; // estimated width per id character (for overlap detection)
 const BADGE_PAD_X = 8; // horizontal badge padding (per side)
+
+const CONTAINER_NAME = "Multilan IDs";
 
 // Badge / line styling: white badge, green border + green text + green dashed line.
 const GREEN: RGB = { r: 0.086, g: 0.639, b: 0.29 }; // ~#16A34A
@@ -72,9 +80,7 @@ export function naturalSideForNode(frameBox: Box, nodeBox: Box): Side {
   return nodeCenterX < frameCenterX ? "left" : "right";
 }
 
-/**
- * Which sides are blocked by a neighbouring node/screen within `band` of the frame,
- * used so a badge never lands on top of other design content. */
+/** True when two boxes overlap (optionally within a margin). */
 export function boxesIntersect(a: Box, b: Box, margin: number = 0): boolean {
   return (
     a.x < b.x + b.width + margin &&
@@ -93,7 +99,7 @@ function collidesAny(rect: Box, obstacles: Box[], margin: number): boolean {
  * Choose which side a badge goes and how far out its column sits, so it doesn't cover
  * other content. Tries the natural (nearest) side, then the other side, at the base
  * gap; if both would overlap content, pushes the natural side further out until clear.
- * `obstacles` are the absolute boxes of real content (text + screens) to avoid.
+ * A `forcedSide` skips the auto choice but still pushes out to avoid content.
  */
 export function chooseColumn(
   frameBox: Box,
@@ -127,19 +133,15 @@ export function chooseColumn(
     return columnX;
   };
 
-  // Manual override: always use the chosen side, only pushing out to avoid content.
   if (forcedSide) {
     return { side: forcedSide, columnX: pushOut(forcedSide) };
   }
-
-  // Auto: prefer a side that's already clear at the base gap.
   for (const side of [natural, other]) {
     const columnX = baseColumn(side);
     if (!collidesAny(rectFor(side, columnX), obstacles, margin)) {
       return { side, columnX };
     }
   }
-  // Both busy — push the natural side outward until it clears (bounded).
   return { side: natural, columnX: pushOut(natural) };
 }
 
@@ -164,11 +166,9 @@ export function resolveTargetFrames(selection: readonly SceneNode[]): SceneNode[
 }
 
 /**
- * Pure global de-overlap: given every badge's desired rect + connection points,
- * stack them so no two badges overlap. Processed top-to-bottom; a badge that would
- * collide with an already-placed one (horizontally AND vertically) is pushed straight
- * down until it clears. Only vertical position changes, so each leader becomes an
- * elbow (out to the column, then down) when its badge is nudged off the text line.
+ * Pure global de-overlap (used by the full rebuild): stack all badges so none
+ * overlap. Processed top-to-bottom; a badge colliding with an already-placed one is
+ * pushed straight down until it clears — its leader then bends into an elbow.
  */
 export function resolveOverlaps(
   desired: DesiredBadge[],
@@ -183,19 +183,7 @@ export function resolveOverlaps(
 
   for (const { d, i } of order) {
     const rect: Box = { ...d.rect };
-    let moved = true;
-    while (moved) {
-      moved = false;
-      for (const p of placed) {
-        const xOverlap = rect.x < p.x + p.width && rect.x + rect.width > p.x;
-        const yOverlap =
-          rect.y < p.y + p.height + minGap && rect.y + rect.height + minGap > p.y;
-        if (xOverlap && yOverlap) {
-          rect.y = p.y + p.height + minGap; // push below the blocker
-          moved = true;
-        }
-      }
-    }
+    rect.y = nudgeRectBelow(rect, placed, minGap);
     placed.push(rect);
     out[i] = {
       side: d.side,
@@ -207,13 +195,33 @@ export function resolveOverlaps(
   return out;
 }
 
+/**
+ * Pure: return the y at which `rect` clears all `occupied` boxes, pushing it straight
+ * down (never up). Only vertical position changes; x/width stay put.
+ */
+export function nudgeRectBelow(rect: Box, occupied: Box[], minGap: number = BADGE_MIN_GAP): number {
+  let y = rect.y;
+  let moved = true;
+  while (moved) {
+    moved = false;
+    for (const o of occupied) {
+      const xOverlap = rect.x < o.x + o.width && rect.x + rect.width > o.x;
+      const yOverlap = y < o.y + o.height + minGap && y + rect.height + minGap > o.y;
+      if (xOverlap && yOverlap) {
+        y = o.y + o.height + minGap;
+        moved = true;
+      }
+    }
+  }
+  return y;
+}
+
 /** Build the desired (un-nudged) badge geometry for one linked node. */
 function buildDesired(node: TextNode, frameBox: Box, obstacles: Box[]): DesiredBadge | null {
   const box = node.absoluteBoundingBox;
   const multilanId = getMultilanId(node);
   if (!box || !multilanId) return null;
 
-  // Each node carries its own side preference; 'auto' lets chooseColumn decide.
   const pref = getNodeSide(node);
   const forcedSide = pref === "auto" ? undefined : pref;
   const width = multilanId.length * BADGE_CHAR_W + BADGE_PAD_X * 2;
@@ -233,8 +241,7 @@ function buildDesired(node: TextNode, frameBox: Box, obstacles: Box[]): DesiredB
   };
 }
 
-/** Absolute boxes of real content (visible text + top-level screens) badges must
- * avoid. Annotation nodes are already removed before this is gathered. */
+/** Absolute boxes of real content (visible text + top-level screens) badges avoid. */
 function gatherObstacles(): Box[] {
   const boxes: Box[] = [];
   const texts = figma.currentPage.findAll(
@@ -249,6 +256,19 @@ function gatherObstacles(): Box[] {
     if (isAnnotationNode(child)) continue;
     const b = child.absoluteBoundingBox;
     if (b) boxes.push(b);
+  }
+  return boxes;
+}
+
+/** Absolute boxes of the badges already on canvas (used for incremental stacking). */
+function gatherBadgeRects(): Box[] {
+  const badges = figma.currentPage.findAll(
+    (n) => n.type === "FRAME" && isAnnotationNode(n)
+  ) as FrameNode[];
+  const boxes: Box[] = [];
+  for (const b of badges) {
+    const bb = b.absoluteBoundingBox;
+    if (bb) boxes.push(bb);
   }
   return boxes;
 }
@@ -285,8 +305,7 @@ async function createBadge(multilanId: string): Promise<FrameNode> {
   return badge;
 }
 
-/** A green dashed leader: straight when the badge is on the text line, an elbow
- * (horizontal then vertical) when it was nudged down to avoid an overlap. */
+/** A green dashed leader: straight when on the text line, an elbow when nudged. */
 function createLeader(p: BadgePlacement): VectorNode {
   const v = figma.createVector();
   v.name = "ml-leader";
@@ -302,12 +321,12 @@ function createLeader(p: BadgePlacement): VectorNode {
   return v;
 }
 
-/** Create one badge + leader group for a node at the given placement. */
-async function createAnnotation(
+/** Create the leader + badge nodes for one linked node (tagged, unlocked). */
+async function createNodeNodes(
   node: TextNode,
   multilanId: string,
   p: BadgePlacement
-): Promise<void> {
+): Promise<SceneNode[]> {
   const leader = createLeader(p);
   figma.currentPage.appendChild(leader);
 
@@ -316,27 +335,97 @@ async function createAnnotation(
   badge.x = p.side === "right" ? p.badgeCenter.x : p.badgeCenter.x - badge.width;
   badge.y = p.badgeCenter.y - badge.height / 2;
 
-  const group = figma.group([leader, badge], figma.currentPage);
-  group.name = `multilanId ${multilanId}`;
-  group.expanded = false;
-  markAnnotation(group);
-  group.setPluginData(ANNOTATION_TARGET_KEY, node.id);
-  group.locked = true;
+  leader.setPluginData(ANNOTATION_TARGET_KEY, node.id);
+  badge.setPluginData(ANNOTATION_TARGET_KEY, node.id);
+  return [leader, badge];
 }
 
-/** Remove every annotation group on the current page. */
-export function removeAllAnnotations(): void {
-  const groups = figma.currentPage.findAll(
-    (n) => !!n.getPluginData(ANNOTATION_TARGET_KEY)
+/** The single page-level "Multilan IDs" group, if it exists. */
+function getContainer(): GroupNode | null {
+  const c = figma.currentPage.findOne(
+    (n) => n.type === "GROUP" && n.getPluginData(ANNOTATION_CONTAINER_KEY) === "true"
   );
-  for (const g of groups) g.remove();
+  return (c as GroupNode) || null;
+}
+
+/** Add freshly-created annotation nodes into the container (creating it if needed). */
+function addToContainer(nodes: SceneNode[]): void {
+  if (nodes.length === 0) return;
+  const container = getContainer();
+  if (container) {
+    for (const n of nodes) container.appendChild(n); // appendChild preserves absolute position
+  } else {
+    const c = figma.group(nodes, figma.currentPage);
+    c.name = CONTAINER_NAME;
+    c.expanded = false;
+    markAnnotation(c);
+    c.setPluginData(ANNOTATION_CONTAINER_KEY, "true");
+  }
+}
+
+/** Remove the annotation nodes belonging to one source node (empties the container
+ * group automatically when it was the last one). */
+export function removeNodeAnnotation(nodeId: string): void {
+  const nodes = figma.currentPage.findAll(
+    (n) => n.getPluginData(ANNOTATION_TARGET_KEY) === nodeId
+  );
+  for (const n of nodes) if (!n.removed) n.remove();
+}
+
+/** Remove the whole annotation container and any stray annotation nodes. */
+export function removeAllAnnotations(): void {
+  const nodes = figma.currentPage.findAll(
+    (n) =>
+      n.getPluginData(ANNOTATION_CONTAINER_KEY) === "true" ||
+      !!n.getPluginData(ANNOTATION_TARGET_KEY)
+  );
+  for (const n of nodes) if (!n.removed) n.remove();
 }
 
 /**
- * Rebuild all on-canvas badges for the given linked nodes. Badges are laid out
- * together and de-overlapped globally, so texts that are close together (even across
- * different frames or loose on the page) get stacked instead of piling up. Removes
- * all existing annotations first, so it doubles as cleanup for unlinked nodes.
+ * Incrementally add (or refresh) the badge for one linked node WITHOUT touching the
+ * others: the new badge is placed to avoid content and nudged below any existing
+ * badges it would overlap, then dropped into the container. Used on link/create.
+ */
+export async function annotateNode(node: TextNode): Promise<void> {
+  const multilanId = getMultilanId(node);
+  if (!multilanId || !isEffectivelyVisible(node)) return;
+
+  removeNodeAnnotation(node.id);
+
+  const box = node.absoluteBoundingBox;
+  if (!box) return;
+
+  const frame = resolveTargetFrames([node])[0];
+  const frameBox = (frame && frame.absoluteBoundingBox) || box;
+  const width = multilanId.length * BADGE_CHAR_W + BADGE_PAD_X * 2;
+  const pref = getNodeSide(node);
+  const forcedSide = pref === "auto" ? undefined : pref;
+
+  const { side, columnX } = chooseColumn(frameBox, box, gatherObstacles(), width, forcedSide);
+  const centerY = box.y + box.height / 2;
+  const rectX = side === "right" ? columnX : columnX - width;
+  const rect: Box = { x: rectX, y: centerY - BADGE_HEIGHT / 2, width, height: BADGE_HEIGHT };
+  const badgeTop = nudgeRectBelow(rect, gatherBadgeRects(), BADGE_MIN_GAP);
+  const textEdgeX =
+    side === "right"
+      ? Math.min(box.x + box.width, columnX - MIN_LINE)
+      : Math.max(box.x, columnX + MIN_LINE);
+
+  const placement: BadgePlacement = {
+    side,
+    textEdge: { x: textEdgeX, y: centerY },
+    elbow: { x: columnX, y: centerY },
+    badgeCenter: { x: columnX, y: badgeTop + BADGE_HEIGHT / 2 },
+  };
+  const nodes = await createNodeNodes(node, multilanId, placement);
+  addToContainer(nodes);
+}
+
+/**
+ * Full rebuild: remove all badges and recreate them for the given linked nodes with
+ * global de-overlap, all under one container group. Used on load / folder switch /
+ * refresh / tra upload — NOT on every link (linking is incremental via annotateNode).
  */
 export async function reconcileAnnotations(linkedNodes: TextNode[]): Promise<void> {
   removeAllAnnotations();
@@ -346,12 +435,9 @@ export async function reconcileAnnotations(linkedNodes: TextNode[]): Promise<voi
   );
   if (usable.length === 0) return;
 
-  // Real content boxes badges must not cover (gathered after annotations removed).
   const obstacles = gatherObstacles();
-
   const desired: DesiredBadge[] = [];
   const nodes: TextNode[] = [];
-
   for (const node of usable) {
     const frame = resolveTargetFrames([node])[0];
     const frameBox = (frame && frame.absoluteBoundingBox) || node.absoluteBoundingBox!;
@@ -363,8 +449,12 @@ export async function reconcileAnnotations(linkedNodes: TextNode[]): Promise<voi
   }
 
   const placements = resolveOverlaps(desired);
+  const created: SceneNode[] = [];
   for (let i = 0; i < placements.length; i++) {
     const multilanId = getMultilanId(nodes[i]);
-    if (multilanId) await createAnnotation(nodes[i], multilanId, placements[i]);
+    if (!multilanId) continue;
+    const nn = await createNodeNodes(nodes[i], multilanId, placements[i]);
+    created.push(...nn);
   }
+  addToContainer(created);
 }

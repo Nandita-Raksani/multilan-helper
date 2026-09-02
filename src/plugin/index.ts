@@ -67,6 +67,8 @@ import {
   rewriteInterpolatedNodesToTemplate,
 } from "./services/linkingService";
 import {
+  annotateNode,
+  removeNodeAnnotation,
   reconcileAnnotations,
 } from "./services/annotationService";
 import {
@@ -393,6 +395,16 @@ async function reconcilePageAnnotations(): Promise<void> {
   }
 }
 
+/** Add/refresh a single node's badge without rebuilding the others (on link/create). */
+async function annotateNodeSafe(node: TextNode): Promise<void> {
+  if (!hasEditPermission()) return;
+  try {
+    await annotateNode(node);
+  } catch (err) {
+    console.error("Annotate node failed:", err);
+  }
+}
+
 async function handleSetNodeAnnotationSide(msg: PluginMessage): Promise<void> {
   if (!requireEditPermission()) return;
   const side = msg.annotationSide;
@@ -402,7 +414,7 @@ async function handleSetNodeAnnotationSide(msg: PluginMessage): Promise<void> {
   if (!node || !getMultilanId(node)) return;
 
   setNodeSide(node, side);
-  await reconcilePageAnnotations();
+  await annotateNodeSafe(node);
   await sendNodeUpdate(node);
 }
 
@@ -543,10 +555,8 @@ async function handleLinkNode(msg: PluginMessage): Promise<void> {
       setExpectedText(node, translation);
       setExpectedLang(node, lang);
     }
-    // Automatically draw the on-canvas multilanId badges so they're visible to
-    // anyone viewing the file (no dev seat / plugin needed). Rebuilds the whole page
-    // so all badges stay stacked without overlap.
-    await reconcilePageAnnotations();
+    // Draw just this node's badge (incremental — leaves the other badges in place).
+    await annotateNodeSafe(node);
     figma.notify(`Linked to ${msg.multilanId}`);
     await sendNodeUpdate(node);
   }
@@ -559,8 +569,8 @@ async function handleUnlinkNode(msg: PluginMessage): Promise<void> {
   const node = await getTextNodeById(msg.nodeId);
   const success = await unlinkTextNode(msg.nodeId);
   if (success) {
-    // Rebuild badges so this node's badge is gone and the rest restack.
-    await reconcilePageAnnotations();
+    // Remove just this node's badge (leave the others in place).
+    removeNodeAnnotation(msg.nodeId);
     figma.notify("Unlinked");
     if (node) {
       await sendNodeUpdate(node);
@@ -632,8 +642,8 @@ async function handleMarkAsPlaceholder(msg: PluginMessage): Promise<void> {
   const textNode = selection[0] as TextNode;
   if (msg.text) {
     await markAsPlaceholder(textNode, msg.text);
-    // Marking as placeholder clears the link, so refresh badges (drops this one).
-    await reconcilePageAnnotations();
+    // Marking as placeholder clears the link, so drop just this node's badge.
+    removeNodeAnnotation(textNode.id);
     figma.notify("Marked as placeholder");
     const updatedNodeInfo = buildTextNodeInfo(textNode, getTranslations);
     const selectedNode = getSelectedTextNodeInfo(getTranslations);
@@ -896,7 +906,7 @@ figma.ui.onmessage = async (msg: PluginMessage) => {
       if (msg.multilanId && msg.text) {
         const lang = (msg.language as Language) || "en";
         const textNode = await createLinkedTextNode(translationData, msg.multilanId, msg.text, lang);
-        await reconcilePageAnnotations();
+        await annotateNodeSafe(textNode);
         figma.notify(`Created text node: "${textNode.characters}" (${msg.multilanId})`);
         figma.ui.postMessage({ type: "text-created", multilanId: msg.multilanId });
       }
